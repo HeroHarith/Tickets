@@ -106,13 +106,11 @@ export class DatabaseStorage implements IStorage {
         conditions.push(eq(events.featured, options.featured));
       }
       
-      // Search in title, description, location, and organizer
       if (options.search) {
         conditions.push(
           sql`(${ilike(events.title, `%${options.search}%`)} OR
                ${ilike(events.description, `%${options.search}%`)} OR
-               ${ilike(events.location, `%${options.search}%`)} OR
-               ${eq(events.organizer, Number(options.search) || 0)})`
+               ${ilike(events.location, `%${options.search}%`)})`
         );
       }
       
@@ -120,108 +118,9 @@ export class DatabaseStorage implements IStorage {
         conditions.push(eq(events.organizer, options.organizer));
       }
       
-      // Event type filter (general, conference, seated)
-      if (options.eventType) {
-        conditions.push(eq(events.eventType, options.eventType));
-      }
-      
-      // Location filter with optional radius
+      // Location filter
       if (options.location) {
-        conditions.push(
-          sql`${ilike(events.location, `%${options.location}%`)}`
-        );
-        
-        // Note: For a true location-based search with radius, 
-        // we would need geographic coordinates and a distance calculation using
-        // the radiusMiles parameter and latitude/longitude fields
-      }
-      
-      // Popularity filters
-      if (options.popularityFilter) {
-        const now = new Date();
-        const sevenDaysAgo = new Date(now);
-        sevenDaysAgo.setDate(now.getDate() - 7);
-        
-        switch(options.popularityFilter) {
-          case 'trending':
-            // For trending events, check for recent ticket sales
-            conditions.push(sql`EXISTS (
-              SELECT 1 FROM ${tickets}
-              WHERE ${tickets.eventId} = ${events.id}
-              AND ${tickets.purchaseDate} >= ${sevenDaysAgo.toISOString()}
-            )`);
-            break;
-            
-          case 'popular':
-            // Events with more than 5 ticket sales
-            conditions.push(sql`EXISTS (
-              SELECT 1 FROM ${tickets}
-              WHERE ${tickets.eventId} = ${events.id}
-              GROUP BY ${tickets.eventId}
-              HAVING COUNT(*) > 5
-            )`);
-            break;
-            
-          case 'almost-sold-out':
-            // Events with less than 10% of tickets remaining
-            conditions.push(sql`EXISTS (
-              SELECT 1 FROM ${ticketTypes}
-              WHERE ${ticketTypes.eventId} = ${events.id}
-              AND ${ticketTypes.availableQuantity} <= 0.1 * ${ticketTypes.quantity}
-              AND ${ticketTypes.availableQuantity} > 0
-            )`);
-            break;
-            
-          case 'just-announced':
-            // Events created in the last 7 days
-            conditions.push(sql`${events.createdAt} >= ${sevenDaysAgo.toISOString()}`);
-            break;
-        }
-      }
-      
-      // Price filter
-      if (options.priceFilter) {
-        switch(options.priceFilter) {
-          case 'free':
-            conditions.push(sql`EXISTS (
-              SELECT 1 FROM ${ticketTypes}
-              WHERE ${ticketTypes.eventId} = ${events.id}
-              AND ${ticketTypes.price} = '0'
-            )`);
-            break;
-            
-          case 'paid':
-            conditions.push(sql`EXISTS (
-              SELECT 1 FROM ${ticketTypes}
-              WHERE ${ticketTypes.eventId} = ${events.id}
-              AND ${ticketTypes.price} > '0'
-            )`);
-            break;
-            
-          case 'low-price':
-            conditions.push(sql`EXISTS (
-              SELECT 1 FROM ${ticketTypes}
-              WHERE ${ticketTypes.eventId} = ${events.id}
-              AND CAST(${ticketTypes.price} AS DECIMAL) BETWEEN 0.01 AND 20.00
-            )`);
-            break;
-            
-          case 'mid-price':
-            conditions.push(sql`EXISTS (
-              SELECT 1 FROM ${ticketTypes}
-              WHERE ${ticketTypes.eventId} = ${events.id}
-              AND CAST(${ticketTypes.price} AS DECIMAL) BETWEEN 20.01 AND 50.00
-            )`);
-            break;
-            
-          case 'high-price':
-            conditions.push(sql`EXISTS (
-              SELECT 1 FROM ${ticketTypes}
-              WHERE ${ticketTypes.eventId} = ${events.id}
-              AND CAST(${ticketTypes.price} AS DECIMAL) > 50.00
-            )`);
-            break;
-        }
+        conditions.push(ilike(events.location, `%${options.location}%`));
       }
       
       // Date filters
@@ -277,22 +176,6 @@ export class DatabaseStorage implements IStorage {
         conditions.push(sql`${events.startDate} <= ${options.maxDate}`);
       }
       
-      // Tags filtering - implementation depends on how tags are stored
-      if (options.tags && options.tags.length > 0) {
-        // If we have a proper tags column, we would use it
-        // For now, we can search for tags in the tags field or description
-        const tagConditions = options.tags.map(tag => {
-          return sql`(${events.tags} @> array[${tag}]::text[] OR ${ilike(events.description, `%${tag}%`)})`;
-        });
-        
-        // Using OR between tag conditions
-        if (tagConditions.length === 1) {
-          conditions.push(tagConditions[0]);
-        } else if (tagConditions.length > 1) {
-          conditions.push(sql`(${sql.join(tagConditions, sql` OR `)})`);
-        }
-      }
-      
       if (conditions.length > 0) {
         // Cast query to appropriate type to satisfy TypeScript
         // This doesn't affect functionality but resolves type issues with query.where()
@@ -308,16 +191,11 @@ export class DatabaseStorage implements IStorage {
         case 'date-desc':
           return await query.orderBy(desc(events.startDate));
         case 'price-asc':
-          // For price sorting, we need to first get the events, then sort client-side
-          // based on the minimum ticket price (done in the client)
-          const eventsDataAsc = await query.orderBy(desc(events.startDate));
-          return eventsDataAsc;
         case 'price-desc':
-          const eventsDataDesc = await query.orderBy(desc(events.startDate));
-          return eventsDataDesc;
-        case 'popularity-desc':
-          // Simple approximation - recently created events tend to be promoted more
-          return await query.orderBy(desc(events.createdAt));
+          // For price sorting, we need to first get the events, then fetch ticket types and sort
+          // This is because price isn't in the events table but in ticket_types
+          const eventsData = await query.orderBy(desc(events.startDate)); // default sort as a fallback
+          return eventsData;
         default:
           return await query.orderBy(desc(events.startDate));
       }

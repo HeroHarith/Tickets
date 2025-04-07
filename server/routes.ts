@@ -64,27 +64,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         featured, 
         search, 
         organizer, 
-        eventType,
         dateFilter, 
-        priceFilter,
-        popularityFilter,
+        priceFilter, 
         minDate, 
         maxDate, 
         location,
-        radiusMiles,
-        sortBy,
-        tags
+        sortBy
       } = req.query;
-      
-      // Process tags which could be a single string or an array
-      let processedTags: string[] = [];
-      if (tags) {
-        if (Array.isArray(tags)) {
-          processedTags = tags as string[];
-        } else {
-          processedTags = [tags as string];
-        }
-      }
       
       // Validate the params using our eventSearchSchema
       const { data, error } = validateRequest(eventSearchSchema, {
@@ -92,15 +78,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         featured: featured === "true",
         search,
         organizer: organizer ? parseInt(organizer as string) : undefined,
-        eventType,
         dateFilter,
         priceFilter,
-        popularityFilter,
         minDate,
         maxDate,
         location,
-        radiusMiles: radiusMiles ? parseInt(radiusMiles as string) : undefined,
-        tags: processedTags,
         sortBy
       });
       

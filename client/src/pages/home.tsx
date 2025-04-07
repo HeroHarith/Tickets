@@ -1,28 +1,22 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import EventCard from "@/components/ui/event-card";
 import TabsComponent from "@/components/ui/tabs-component";
 import EventSearch from "@/components/ui/event-search";
 import { Button } from "@/components/ui/button";
 import { Event, TicketType } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
-import { Loader2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 
 const Home = () => {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useState({
     search: "",
     category: "",
-    eventType: "",
     dateFilter: "",
     priceFilter: "",
-    popularityFilter: "",
     minDate: "",
     maxDate: "",
     location: "",
-    radiusMiles: 25,
-    tags: [] as string[],
     sortBy: "date-desc"
   });
   
@@ -65,17 +59,11 @@ const Home = () => {
       // Add all search parameters
       if (searchParams.search) params.append("search", searchParams.search);
       if (searchParams.category) params.append("category", searchParams.category);
-      if (searchParams.eventType) params.append("eventType", searchParams.eventType);
       if (searchParams.dateFilter) params.append("dateFilter", searchParams.dateFilter);
       if (searchParams.priceFilter) params.append("priceFilter", searchParams.priceFilter);
-      if (searchParams.popularityFilter) params.append("popularityFilter", searchParams.popularityFilter);
       if (searchParams.minDate) params.append("minDate", searchParams.minDate);
       if (searchParams.maxDate) params.append("maxDate", searchParams.maxDate);
       if (searchParams.location) params.append("location", searchParams.location);
-      if (searchParams.radiusMiles) params.append("radiusMiles", searchParams.radiusMiles.toString());
-      if (searchParams.tags.length > 0) {
-        searchParams.tags.forEach(tag => params.append("tags", tag));
-      }
       if (searchParams.sortBy) params.append("sortBy", searchParams.sortBy);
       
       const res = await fetch(`/api/events?${params.toString()}`);
@@ -151,15 +139,11 @@ const Home = () => {
   const handleSearch = (params: {
     search: string;
     category: string;
-    eventType?: string;
     dateFilter?: string;
     priceFilter?: string;
-    popularityFilter?: string;
     minDate?: string;
     maxDate?: string;
     location?: string;
-    radiusMiles?: number;
-    tags?: string[];
     sortBy?: string;
   }) => {
     setSearchParams({
@@ -178,125 +162,6 @@ const Home = () => {
       />
       
       <EventSearch onSearch={handleSearch} />
-      
-      {/* Active Filters */}
-      {(searchParams.category || 
-        searchParams.eventType || 
-        searchParams.dateFilter || 
-        searchParams.priceFilter || 
-        searchParams.popularityFilter || 
-        searchParams.location || 
-        searchParams.tags.length > 0) && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
-          <div className="bg-gray-50 rounded-lg p-3 flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium text-gray-700 mr-1">Active filters:</span>
-            
-            {searchParams.category && (
-              <Badge 
-                variant="secondary" 
-                className="px-2 py-1 flex items-center gap-1 bg-gray-100 hover:bg-gray-200"
-                onClick={() => setSearchParams({...searchParams, category: ""})}
-              >
-                Category: {searchParams.category.replace(/-/g, ' ')}
-                <span className="ml-1 rounded-full hover:bg-gray-300 p-0.5">×</span>
-              </Badge>
-            )}
-            
-            {searchParams.eventType && (
-              <Badge 
-                variant="secondary" 
-                className="px-2 py-1 flex items-center gap-1 bg-gray-100 hover:bg-gray-200"
-                onClick={() => setSearchParams({...searchParams, eventType: ""})}
-              >
-                Type: {searchParams.eventType.replace(/-/g, ' ')}
-                <span className="ml-1 rounded-full hover:bg-gray-300 p-0.5">×</span>
-              </Badge>
-            )}
-            
-            {searchParams.dateFilter && (
-              <Badge 
-                variant="secondary" 
-                className="px-2 py-1 flex items-center gap-1 bg-gray-100 hover:bg-gray-200"
-                onClick={() => setSearchParams({...searchParams, dateFilter: ""})}
-              >
-                Date: {searchParams.dateFilter.replace(/-/g, ' ')}
-                <span className="ml-1 rounded-full hover:bg-gray-300 p-0.5">×</span>
-              </Badge>
-            )}
-            
-            {searchParams.priceFilter && (
-              <Badge 
-                variant="secondary" 
-                className="px-2 py-1 flex items-center gap-1 bg-gray-100 hover:bg-gray-200"
-                onClick={() => setSearchParams({...searchParams, priceFilter: ""})}
-              >
-                Price: {searchParams.priceFilter.replace(/-/g, ' ')}
-                <span className="ml-1 rounded-full hover:bg-gray-300 p-0.5">×</span>
-              </Badge>
-            )}
-            
-            {searchParams.popularityFilter && (
-              <Badge 
-                variant="secondary" 
-                className="px-2 py-1 flex items-center gap-1 bg-gray-100 hover:bg-gray-200"
-                onClick={() => setSearchParams({...searchParams, popularityFilter: ""})}
-              >
-                Popularity: {searchParams.popularityFilter.replace(/-/g, ' ')}
-                <span className="ml-1 rounded-full hover:bg-gray-300 p-0.5">×</span>
-              </Badge>
-            )}
-            
-            {searchParams.location && (
-              <Badge 
-                variant="secondary" 
-                className="px-2 py-1 flex items-center gap-1 bg-gray-100 hover:bg-gray-200"
-                onClick={() => setSearchParams({...searchParams, location: ""})}
-              >
-                Location: {searchParams.location} ({searchParams.radiusMiles} miles)
-                <span className="ml-1 rounded-full hover:bg-gray-300 p-0.5">×</span>
-              </Badge>
-            )}
-            
-            {searchParams.tags.map(tag => (
-              <Badge 
-                key={tag}
-                variant="secondary" 
-                className="px-2 py-1 flex items-center gap-1 bg-gray-100 hover:bg-gray-200"
-                onClick={() => setSearchParams({
-                  ...searchParams, 
-                  tags: searchParams.tags.filter(t => t !== tag)
-                })}
-              >
-                Tag: {tag.replace(/-/g, ' ')}
-                <span className="ml-1 rounded-full hover:bg-gray-300 p-0.5">×</span>
-              </Badge>
-            ))}
-            
-            {/* Clear all filters button */}
-            <Button
-              variant="outline"
-              size="sm"
-              className="ml-auto text-xs"
-              onClick={() => setSearchParams({
-                search: "",
-                category: "",
-                eventType: "",
-                dateFilter: "",
-                priceFilter: "",
-                popularityFilter: "",
-                minDate: "",
-                maxDate: "",
-                location: "",
-                radiusMiles: 25,
-                tags: [],
-                sortBy: "date-desc"
-              })}
-            >
-              Clear All Filters
-            </Button>
-          </div>
-        </div>
-      )}
       
       {/* Featured Events Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">

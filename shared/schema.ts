@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, varchar, numeric, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, varchar, numeric, jsonb, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -38,6 +38,10 @@ export const events = pgTable("events", {
   organizer: integer("organizer_id").notNull(), // References users.id
   createdAt: timestamp("created_at").defaultNow().notNull(),
   featured: boolean("featured").default(false).notNull(),
+  latitude: real("latitude"), // For location-based radius search
+  longitude: real("longitude"), // For location-based radius search
+  tags: text("tags").array(), // Store event tags as an array of strings
+  ticketsSold: integer("tickets_sold").default(0).notNull(), // Count of tickets sold for popularity sorting
 });
 
 // Ticket Type model
@@ -167,6 +171,9 @@ export const EVENT_PRICE_FILTERS = [
   "all",
   "free",
   "paid",
+  "low-price",
+  "mid-price",
+  "high-price",
   "under-25",
   "25-to-50",
   "50-to-100",
@@ -182,17 +189,55 @@ export type DateFilter = z.infer<typeof dateFilterSchema>;
 export const priceFilterSchema = z.enum(EVENT_PRICE_FILTERS);
 export type PriceFilter = z.infer<typeof priceFilterSchema>;
 
+// Popularity filters for trending events
+export const EVENT_POPULARITY_FILTERS = [
+  "all",
+  "trending",
+  "popular",
+  "almost-sold-out",
+  "just-announced",
+  "most-tickets-sold", 
+  "newest",
+  "ending-soon"
+] as const;
+
+export const popularityFilterSchema = z.enum(EVENT_POPULARITY_FILTERS);
+export type PopularityFilter = z.infer<typeof popularityFilterSchema>;
+
+// Event tags for more specific filtering
+export const EVENT_TAGS = [
+  "family-friendly",
+  "18-plus", 
+  "21-plus",
+  "outdoor",
+  "indoor",
+  "virtual",
+  "weekend",
+  "weekday",
+  "evening",
+  "morning",
+  "afternoon",
+  "accessibility"
+] as const;
+
+export const eventTagSchema = z.enum(EVENT_TAGS);
+export type EventTag = z.infer<typeof eventTagSchema>;
+
 export const eventSearchSchema = z.object({
   search: z.string().optional(),
   category: categorySchema.optional(),
+  eventType: eventTypeSchema.optional(),
   dateFilter: dateFilterSchema.optional(),
   priceFilter: priceFilterSchema.optional(),
+  popularityFilter: popularityFilterSchema.optional(),
   minDate: z.string().optional(),
   maxDate: z.string().optional(),
   location: z.string().optional(),
+  radiusMiles: z.number().optional(),
+  tags: z.array(eventTagSchema).optional(),
   featured: z.boolean().optional(),
   organizer: z.number().optional(),
-  sortBy: z.enum(['date-asc', 'date-desc', 'price-asc', 'price-desc']).optional().default('date-desc')
+  sortBy: z.enum(['date-asc', 'date-desc', 'price-asc', 'price-desc', 'popularity-desc']).optional().default('date-desc')
 });
 
 export type EventSearchParams = z.infer<typeof eventSearchSchema>;

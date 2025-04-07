@@ -22,13 +22,12 @@ interface TicketTypeInput {
 // Extended schema with form-specific validation
 const eventFormSchema = createEventSchema.extend({
   imageUrl: z.string().optional(),
-  // Use a string in the form that will be transformed to a Date object
-  startDate: z.string().min(1, "Start date is required").transform(
-    (str) => str ? new Date(str) : undefined
-  ),
-  endDate: z.string().optional().transform(
-    (str) => str ? new Date(str) : undefined
-  ),
+  // Convert string inputs to Date objects for proper validation
+  startDate: z.coerce.date({
+    required_error: "Start date is required",
+    invalid_type_error: "Start date must be a valid date",
+  }),
+  endDate: z.coerce.date().optional(),
   // Override the ticketTypes to ensure availableQuantity is required
   ticketTypes: z.array(z.object({
     name: z.string(),
@@ -55,8 +54,8 @@ const CreateEvent = () => {
       description: "",
       location: "",
       category: "Music",
-      startDate: "",
-      endDate: "",
+      startDate: new Date(),
+      endDate: undefined,
       imageUrl: "",
       organizer: 1, // Default user
       featured: false,
@@ -70,7 +69,7 @@ const CreateEvent = () => {
         }
       ]
     }
-  } as any);
+  });
   
   const createEventMutation = useMutation({
     mutationFn: (data: EventFormValues) => 

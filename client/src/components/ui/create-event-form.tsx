@@ -29,8 +29,8 @@ interface EventFormValues {
   description: string;
   location: string;
   category: string;
-  startDate: string | Date;
-  endDate?: string | Date;
+  startDate: Date;
+  endDate?: Date;
   imageUrl?: string;
   featured: boolean;
   organizer: number;
@@ -179,9 +179,14 @@ const CreateEventForm = ({ form, onSubmit, isPending, categories }: CreateEventF
                   <FormControl>
                     <Input 
                       type="date" 
-                      {...field} 
-                      value={typeof field.value === 'string' ? field.value : 
-                            field.value instanceof Date ? field.value.toISOString().split('T')[0] : ''}
+                      value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : ''}
+                      onChange={(e) => {
+                        const date = e.target.value ? new Date(e.target.value) : undefined;
+                        field.onChange(date);
+                      }}
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                      name={field.name}
                     />
                   </FormControl>
                   <FormMessage />
@@ -200,9 +205,14 @@ const CreateEventForm = ({ form, onSubmit, isPending, categories }: CreateEventF
                   <FormControl>
                     <Input 
                       type="date" 
-                      {...field} 
-                      value={typeof field.value === 'string' ? field.value : 
-                            field.value instanceof Date ? field.value.toISOString().split('T')[0] : ''}
+                      value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : ''}
+                      onChange={(e) => {
+                        const date = e.target.value ? new Date(e.target.value) : undefined;
+                        field.onChange(date);
+                      }}
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                      name={field.name}
                     />
                   </FormControl>
                   <FormMessage />

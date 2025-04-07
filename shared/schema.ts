@@ -18,6 +18,11 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Event Types
+export const EVENT_TYPES = ["general", "conference", "seated"] as const;
+export const eventTypeSchema = z.enum(EVENT_TYPES);
+export type EventType = z.infer<typeof eventTypeSchema>;
+
 // Event model
 export const events = pgTable("events", {
   id: serial("id").primaryKey(),
@@ -28,6 +33,8 @@ export const events = pgTable("events", {
   endDate: timestamp("end_date"),
   category: text("category").notNull(),
   imageUrl: text("image_url"),
+  eventType: text("event_type").default("general").notNull(), // Type of event: general, conference, seated
+  seatingMap: jsonb("seating_map"), // For seated events, store a seating chart configuration
   organizer: integer("organizer_id").notNull(), // References users.id
   createdAt: timestamp("created_at").defaultNow().notNull(),
   featured: boolean("featured").default(false).notNull(),
@@ -42,6 +49,7 @@ export const ticketTypes = pgTable("ticket_types", {
   price: numeric("price", { precision: 10, scale: 2 }).notNull(),
   quantity: integer("quantity").notNull(),
   availableQuantity: integer("available_quantity").notNull(),
+  ticketFeatures: jsonb("ticket_features"), // Additional features (like lunch for conferences, etc.)
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -57,7 +65,20 @@ export const tickets = pgTable("tickets", {
   orderId: text("order_id").notNull(), // For grouping tickets in an order
   qrCode: text("qr_code"), // QR code data for ticket validation
   isUsed: boolean("is_used").default(false).notNull(), // Track if ticket has been used
+  seatAssignment: jsonb("seat_assignment"), // For seated events: [{"row": "A", "seat": 5}, ...]
+  attendeeDetails: jsonb("attendee_details"), // Store customer details for each ticket
+  emailSent: boolean("email_sent").default(false).notNull(), // Track if confirmation email was sent
 });
+
+// Customer details schema for ticket purchase
+export const attendeeDetailsSchema = z.object({
+  fullName: z.string().min(1, "Full name is required"),
+  email: z.string().email("Valid email is required"),
+  phone: z.string().optional(),
+  specialRequirements: z.string().optional(),
+});
+
+export type AttendeeDetails = z.infer<typeof attendeeDetailsSchema>;
 
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
@@ -108,9 +129,14 @@ export const purchaseTicketSchema = z.object({
     z.object({
       ticketTypeId: z.number(),
       quantity: z.number().min(1),
+      attendeeDetails: z.array(attendeeDetailsSchema)
+        .optional()
+        .default([]),
     })
   ).min(1, "At least one ticket must be selected"),
   eventId: z.number(),
+  // Primary attendee/purchaser details
+  customerDetails: attendeeDetailsSchema
 });
 
 export type PurchaseTicketInput = z.infer<typeof purchaseTicketSchema>;

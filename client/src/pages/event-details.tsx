@@ -1,21 +1,38 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { useState } from "react";
-import { Calendar, MapPin } from "lucide-react";
+import { Calendar, MapPin, CreditCard, Mail, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { queryClient } from "@/lib/queryClient";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { Event, TicketType, PurchaseTicketInput } from "@shared/schema";
+import { Event, TicketType, PurchaseTicketInput, AttendeeDetails, attendeeDetailsSchema } from "@shared/schema";
 import TabsComponent from "@/components/ui/tabs-component";
 import { useAuth } from "@/hooks/use-auth";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Input } from "@/components/ui/input";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type TicketSelection = {
   ticketTypeId: number;
   quantity: number;
+  attendeeDetails?: AttendeeDetails[];
 };
+
+// Form schema for customer details
+const customerDetailsSchema = attendeeDetailsSchema.extend({
+  saveToWallet: z.boolean().default(false),
+  agreeToTerms: z.boolean().refine(val => val === true, {
+    message: "You must agree to the terms and conditions."
+  })
+});
 
 const EventDetails = () => {
   const [, setLocation] = useLocation();
@@ -24,6 +41,20 @@ const EventDetails = () => {
   const { user } = useAuth();
   
   const [ticketSelections, setTicketSelections] = useState<TicketSelection[]>([]);
+  const [showCheckout, setShowCheckout] = useState(false);
+  
+  // Initialize form with default values
+  const form = useForm<z.infer<typeof customerDetailsSchema>>({
+    resolver: zodResolver(customerDetailsSchema),
+    defaultValues: {
+      fullName: user?.name || "",
+      email: user?.email || "",
+      phone: "",
+      specialRequirements: "",
+      saveToWallet: true,
+      agreeToTerms: false
+    }
+  });
   
   // Get navigation tabs based on user role
   const getNavTabs = () => {
@@ -127,7 +158,7 @@ const EventDetails = () => {
     return calculateTotal() + calculateServiceFee();
   };
   
-  const handlePurchase = () => {
+  const handleProceedToCheckout = () => {
     if (ticketSelections.length === 0) {
       toast({
         title: "No tickets selected",
@@ -137,9 +168,27 @@ const EventDetails = () => {
       return;
     }
     
+    setShowCheckout(true);
+  };
+  
+  const handleBackToSelection = () => {
+    setShowCheckout(false);
+  };
+  
+  const handlePurchase = (values: z.infer<typeof customerDetailsSchema>) => {
+    // Get attendee details from form
+    const { saveToWallet, agreeToTerms, ...customerDetails } = values;
+    
+    // Prepare purchase data
     purchaseMutation.mutate({
       eventId,
-      ticketSelections: ticketSelections.filter(ts => ts.quantity > 0)
+      customerDetails,
+      ticketSelections: ticketSelections
+        .filter(ts => ts.quantity > 0)
+        .map(ts => ({
+          ...ts,
+          attendeeDetails: ts.attendeeDetails || Array(ts.quantity).fill(customerDetails)
+        }))
     });
   };
   
@@ -359,15 +408,188 @@ const EventDetails = () => {
             )}
           </div>
           
-          <div className="flex justify-end">
-            <Button
-              onClick={handlePurchase}
-              disabled={ticketSelections.length === 0 || purchaseMutation.isPending}
-              className="w-full md:w-auto bg-primary hover:bg-primary/90"
-            >
-              {purchaseMutation.isPending ? "Processing..." : "Purchase Tickets"}
-            </Button>
-          </div>
+          {showCheckout ? (
+            <Card className="mt-6">
+              <CardHeader>
+                <h2 className="text-xl font-semibold">Customer Details</h2>
+                <p className="text-sm text-gray-500">
+                  Please provide your details to complete your purchase
+                </p>
+              </CardHeader>
+              <CardContent>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(handlePurchase)} className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="fullName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Full Name</FormLabel>
+                          <FormControl>
+                            <div className="flex items-center border rounded-md pl-2">
+                              <User className="h-4 w-4 text-gray-400 mr-2" />
+                              <Input 
+                                placeholder="John Doe" 
+                                {...field} 
+                                className="border-0 focus-visible:ring-0"
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email</FormLabel>
+                          <FormControl>
+                            <div className="flex items-center border rounded-md pl-2">
+                              <Mail className="h-4 w-4 text-gray-400 mr-2" />
+                              <Input 
+                                placeholder="you@example.com" 
+                                type="email" 
+                                {...field} 
+                                className="border-0 focus-visible:ring-0" 
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="phone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Phone (optional)</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="+1 (555) 123-4567" 
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="specialRequirements"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Special Requirements (optional)</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Accessibility requirements, dietary restrictions, etc." 
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="saveToWallet"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 px-1 pb-2">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>
+                              Save ticket to Apple/Google Wallet
+                            </FormLabel>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="agreeToTerms"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 px-1">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>
+                              I agree to the terms and conditions
+                            </FormLabel>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <div className="bg-gray-50 rounded-md p-4 my-6">
+                      <h3 className="font-semibold mb-2">Order Summary</h3>
+                      {ticketSelections.map(selection => {
+                        const ticketType = ticketTypes?.find(tt => tt.id === selection.ticketTypeId);
+                        if (!ticketType) return null;
+                        return (
+                          <div key={ticketType.id} className="flex justify-between mb-2">
+                            <span>{ticketType.name} x{selection.quantity}</span>
+                            <span>${(Number(ticketType.price) * selection.quantity).toFixed(2)}</span>
+                          </div>
+                        );
+                      })}
+                      <div className="flex justify-between mb-2">
+                        <span>Service Fee</span>
+                        <span>${calculateServiceFee().toFixed(2)}</span>
+                      </div>
+                      <Separator className="my-2" />
+                      <div className="flex justify-between font-semibold">
+                        <span>Total</span>
+                        <span>${calculateGrandTotal().toFixed(2)}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-between pt-4">
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={handleBackToSelection}
+                      >
+                        Back
+                      </Button>
+                      <Button 
+                        type="submit" 
+                        disabled={purchaseMutation.isPending}
+                        className="bg-primary hover:bg-primary/90"
+                      >
+                        {purchaseMutation.isPending ? "Processing..." : "Complete Purchase"}
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="flex justify-end">
+              <Button
+                onClick={handleProceedToCheckout}
+                disabled={ticketSelections.length === 0}
+                className="w-full md:w-auto bg-primary hover:bg-primary/90"
+              >
+                Proceed to Checkout
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -5,8 +5,10 @@ import TabsComponent from "@/components/ui/tabs-component";
 import EventSearch from "@/components/ui/event-search";
 import { Button } from "@/components/ui/button";
 import { Event, TicketType } from "@shared/schema";
+import { useAuth } from "@/hooks/use-auth";
 
 const Home = () => {
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useState({
     search: "",
     category: "",
@@ -14,6 +16,24 @@ const Home = () => {
   });
   
   const [sortBy, setSortBy] = useState("date");
+  
+  // Get navigation tabs based on user role
+  const getNavTabs = () => {
+    const tabs = [
+      { id: "browse", label: "Browse Events", href: "/" },
+      { id: "tickets", label: "My Tickets", href: "/my-tickets" }
+    ];
+    
+    // Add manager-specific tabs if user has appropriate role
+    if (user && ['eventManager', 'admin'].includes(user.role)) {
+      tabs.push(
+        { id: "managed", label: "Managed Events", href: "/managed-events" },
+        { id: "sales", label: "Sales Reports", href: "/sales-reports" }
+      );
+    }
+    
+    return tabs;
+  };
   
   // Fetch featured events
   const featuredEventsQuery = useQuery<Event[]>({
@@ -112,12 +132,7 @@ const Home = () => {
   return (
     <div>
       <TabsComponent
-        tabs={[
-          { id: "browse", label: "Browse Events", href: "/" },
-          { id: "tickets", label: "My Tickets", href: "/my-tickets" },
-          { id: "managed", label: "Managed Events", href: "/managed-events" },
-          { id: "sales", label: "Sales Reports", href: "/managed-events" }
-        ]}
+        tabs={getNavTabs()}
         activeTab="browse"
       />
       

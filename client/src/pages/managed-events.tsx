@@ -6,17 +6,40 @@ import { Card, CardContent } from "@/components/ui/card";
 import TabsComponent from "@/components/ui/tabs-component";
 import { format } from "date-fns";
 import { Event, TicketType } from "@shared/schema";
+import { useAuth } from "@/hooks/use-auth";
+import { useState } from "react";
 
 interface EventWithTicketTypes extends Event {
   ticketTypes?: TicketType[];
 }
 
 const ManagedEvents = () => {
+  const { user } = useAuth();
+  
+  // Get navigation tabs based on user role
+  const getNavTabs = () => {
+    const tabs = [
+      { id: "browse", label: "Browse Events", href: "/" },
+      { id: "tickets", label: "My Tickets", href: "/my-tickets" }
+    ];
+    
+    // Add manager-specific tabs if user has appropriate role
+    if (user && ['eventManager', 'admin'].includes(user.role)) {
+      tabs.push(
+        { id: "managed", label: "Managed Events", href: "/managed-events" },
+        { id: "sales", label: "Sales Reports", href: "/sales-reports" }
+      );
+    }
+    
+    return tabs;
+  };
+  
   // Fetch events created by the current user
   const eventsQuery = useQuery<Event[]>({
-    queryKey: ["/api/events", { organizer: 1 }], // User ID 1 for the demo
+    queryKey: ["/api/events", { organizer: user?.id }],
+    enabled: !!user,
     queryFn: async () => {
-      const res = await fetch("/api/events?organizer=1");
+      const res = await fetch(`/api/events?organizer=${user?.id}`);
       if (!res.ok) throw new Error("Failed to fetch managed events");
       return res.json();
     }
@@ -67,12 +90,7 @@ const ManagedEvents = () => {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <TabsComponent
-          tabs={[
-            { id: "browse", label: "Browse Events", href: "/" },
-            { id: "tickets", label: "My Tickets", href: "/my-tickets" },
-            { id: "managed", label: "Managed Events", href: "/managed-events" },
-            { id: "sales", label: "Sales Reports", href: "/managed-events" }
-          ]}
+          tabs={getNavTabs()}
           activeTab="managed"
         />
         
@@ -105,12 +123,7 @@ const ManagedEvents = () => {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <TabsComponent
-          tabs={[
-            { id: "browse", label: "Browse Events", href: "/" },
-            { id: "tickets", label: "My Tickets", href: "/my-tickets" },
-            { id: "managed", label: "Managed Events", href: "/managed-events" },
-            { id: "sales", label: "Sales Reports", href: "/managed-events" }
-          ]}
+          tabs={getNavTabs()}
           activeTab="managed"
         />
         
@@ -127,12 +140,7 @@ const ManagedEvents = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <TabsComponent
-        tabs={[
-          { id: "browse", label: "Browse Events", href: "/" },
-          { id: "tickets", label: "My Tickets", href: "/my-tickets" },
-          { id: "managed", label: "Managed Events", href: "/managed-events" },
-          { id: "sales", label: "Sales Reports", href: "/managed-events" }
-        ]}
+        tabs={getNavTabs()}
         activeTab="managed"
       />
       
@@ -147,7 +155,7 @@ const ManagedEvents = () => {
           </Link>
         </div>
         
-        {eventsQuery.data?.length === 0 ? (
+        {!eventsQuery.data || eventsQuery.data.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg shadow-md">
             <div className="mx-auto w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
               <Calendar className="h-8 w-8 text-gray-400" />
@@ -201,7 +209,7 @@ const ManagedEvents = () => {
                     </div>
                   </div>
                   
-                  <Link href={`/sales/${event.id}`}>
+                  <Link href={`/sales-reports/${event.id}`}>
                     <Button 
                       variant="outline" 
                       className="w-full"

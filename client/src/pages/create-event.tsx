@@ -9,6 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { createEventSchema, EVENT_CATEGORIES } from "@shared/schema";
 import CreateEventForm from "@/components/ui/create-event-form";
+import TabsComponent from "@/components/ui/tabs-component";
+import { useAuth } from "@/hooks/use-auth";
 
 // Define the form TicketTypeInput with the correct availableQuantity type
 interface TicketTypeInput {
@@ -46,6 +48,25 @@ type EventFormValues = z.infer<typeof eventFormSchema>;
 const CreateEvent = () => {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
+  
+  // Get navigation tabs based on user role
+  const getNavTabs = () => {
+    const tabs = [
+      { id: "browse", label: "Browse Events", href: "/" },
+      { id: "tickets", label: "My Tickets", href: "/my-tickets" }
+    ];
+    
+    // Add manager-specific tabs if user has appropriate role
+    if (user && ['eventManager', 'admin'].includes(user.role)) {
+      tabs.push(
+        { id: "managed", label: "Managed Events", href: "/managed-events" },
+        { id: "sales", label: "Sales Reports", href: "/sales-reports" }
+      );
+    }
+    
+    return tabs;
+  };
   
   const form = useForm<EventFormValues>({
     resolver: zodResolver(eventFormSchema),
@@ -57,7 +78,7 @@ const CreateEvent = () => {
       startDate: new Date(),
       endDate: undefined,
       imageUrl: "",
-      organizer: 1, // Default user
+      organizer: user?.id || 0, // Use current user's ID
       featured: false,
       ticketTypes: [
         {
@@ -101,7 +122,12 @@ const CreateEvent = () => {
   
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <TabsComponent
+        tabs={getNavTabs()}
+        activeTab="managed"
+      />
+    
+      <div className="bg-white rounded-lg shadow-md p-6 mt-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-6">Create Event</h1>
         
         <CreateEventForm 

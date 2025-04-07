@@ -109,7 +109,7 @@ const Header = () => {
               href="/" 
               className={`${location === '/' ? 'text-primary' : 'text-gray-700'} hover:text-primary px-3 py-2 rounded-md text-sm font-medium`}
             >
-              Events
+              Browse Events
             </Link>
             {user && (
               <Link 
@@ -120,12 +120,20 @@ const Header = () => {
               </Link>
             )}
             {showManagerOptions && (
-              <Link 
-                href="/managed-events" 
-                className={`${location === '/managed-events' ? 'text-primary' : 'text-gray-700'} hover:text-primary px-3 py-2 rounded-md text-sm font-medium`}
-              >
-                My Events
-              </Link>
+              <>
+                <Link 
+                  href="/managed-events" 
+                  className={`${location === '/managed-events' ? 'text-primary' : 'text-gray-700'} hover:text-primary px-3 py-2 rounded-md text-sm font-medium`}
+                >
+                  Managed Events
+                </Link>
+                <Link 
+                  href={`/sales/${user.id}`}
+                  className={`${location.startsWith('/sales/') ? 'text-primary' : 'text-gray-700'} hover:text-primary px-3 py-2 rounded-md text-sm font-medium`}
+                >
+                  Sales Reports
+                </Link>
+              </>
             )}
           </div>
           
@@ -157,7 +165,7 @@ const Header = () => {
               className={`${location === '/' ? 'text-primary' : 'text-gray-700'} block px-3 py-2 rounded-md text-base font-medium`}
               onClick={() => setIsMenuOpen(false)}
             >
-              Events
+              Browse Events
             </Link>
             {user && (
               <Link 
@@ -175,7 +183,7 @@ const Header = () => {
                   className={`${location === '/managed-events' ? 'text-primary' : 'text-gray-700'} block px-3 py-2 rounded-md text-base font-medium`}
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  My Events
+                  Managed Events
                 </Link>
                 <Link 
                   href={`/sales/${user.id}`}

@@ -7,6 +7,8 @@ import TabsComponent from "@/components/ui/tabs-component";
 import { format } from "date-fns";
 import { Event, TicketType } from "@shared/schema";
 import type { Ticket } from "@shared/schema";
+import { useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
 
 interface ExpandedTicket extends Ticket {
   event?: Event;
@@ -14,6 +16,7 @@ interface ExpandedTicket extends Ticket {
 }
 
 const MyTickets = () => {
+  const { user } = useAuth();
   // Fetch user tickets
   const ticketsQuery = useQuery<ExpandedTicket[]>({
     queryKey: ["/api/tickets/user"],
@@ -23,6 +26,24 @@ const MyTickets = () => {
       return res.json();
     }
   });
+  
+  // Get navigation tabs based on user role
+  const getNavTabs = () => {
+    const tabs = [
+      { id: "browse", label: "Browse Events", href: "/" },
+      { id: "tickets", label: "My Tickets", href: "/my-tickets" }
+    ];
+    
+    // Add manager-specific tabs if user has appropriate role
+    if (user && ['eventManager', 'admin'].includes(user.role)) {
+      tabs.push(
+        { id: "managed", label: "Managed Events", href: "/managed-events" },
+        { id: "sales", label: "Sales Reports", href: "/sales-reports" }
+      );
+    }
+    
+    return tabs;
+  };
   
   // Group tickets by order ID for display
   const groupTicketsByOrder = (tickets: ExpandedTicket[]) => {
@@ -43,11 +64,37 @@ const MyTickets = () => {
     return eventDate > new Date();
   };
   
+  // Function to fetch QR code
+  const fetchQrCode = async (ticketId: number) => {
+    try {
+      const res = await fetch(`/api/tickets/${ticketId}/qr`);
+      if (!res.ok) throw new Error('Failed to fetch QR code');
+      const data = await res.json();
+      return data.qrCode;
+    } catch (error) {
+      console.error('Error fetching QR code:', error);
+      return null;
+    }
+  };
+
   const renderTicket = (ticket: ExpandedTicket) => {
     if (!ticket.event || !ticket.ticketType) return null;
     
     const eventDate = new Date(ticket.event.startDate);
     const isPast = eventDate < new Date();
+    
+    // Create state for QR code display
+    const [showQR, setShowQR] = useState(false);
+    const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+    
+    // Function to toggle QR code display
+    const toggleQR = async () => {
+      if (!showQR && !qrCodeUrl) {
+        const qrData = await fetchQrCode(ticket.id);
+        setQrCodeUrl(qrData);
+      }
+      setShowQR(!showQR);
+    };
     
     return (
       <Card key={ticket.id} className="mb-4">
@@ -69,13 +116,24 @@ const MyTickets = () => {
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="sm:w-1/4">
-              <div className="h-24 w-full bg-gray-200 rounded overflow-hidden">
-                <img 
-                  src={ticket.event.imageUrl || "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"} 
-                  alt={ticket.event.title}
-                  className="w-full h-full object-cover"
-                />
-              </div>
+              {showQR && qrCodeUrl ? (
+                <div className="p-2 bg-white border rounded">
+                  <img 
+                    src={qrCodeUrl} 
+                    alt="Ticket QR Code" 
+                    className="w-full"
+                  />
+                  <p className="text-xs text-center mt-1 text-gray-500">Scan at entry</p>
+                </div>
+              ) : (
+                <div className="h-24 w-full bg-gray-200 rounded overflow-hidden">
+                  <img 
+                    src={ticket.event.imageUrl || "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"} 
+                    alt={ticket.event.title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
             </div>
             
             <div className="sm:w-3/4">
@@ -99,11 +157,18 @@ const MyTickets = () => {
                   <div className="text-sm mb-1">Purchased on {format(new Date(ticket.purchaseDate), "MMMM d, yyyy")}</div>
                   <div className="font-semibold mb-3">Total: ${Number(ticket.totalPrice).toFixed(2)}</div>
                   
-                  {!isPast && (
-                    <Link href={`/events/${ticket.event.id}`}>
-                      <Button size="sm" variant="outline">View Event</Button>
-                    </Link>
-                  )}
+                  <div className="space-x-2">
+                    {!isPast && (
+                      <>
+                        <Button size="sm" variant="outline" onClick={toggleQR}>
+                          {showQR ? "Hide QR" : "Show QR"}
+                        </Button>
+                        <Link href={`/events/${ticket.event.id}`}>
+                          <Button size="sm" variant="outline">View Event</Button>
+                        </Link>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -117,12 +182,7 @@ const MyTickets = () => {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <TabsComponent
-          tabs={[
-            { id: "browse", label: "Browse Events", href: "/" },
-            { id: "tickets", label: "My Tickets", href: "/my-tickets" },
-            { id: "managed", label: "Managed Events", href: "/managed-events" },
-            { id: "sales", label: "Sales Reports", href: "/managed-events" }
-          ]}
+          tabs={getNavTabs()}
           activeTab="tickets"
         />
         
@@ -150,12 +210,7 @@ const MyTickets = () => {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <TabsComponent
-          tabs={[
-            { id: "browse", label: "Browse Events", href: "/" },
-            { id: "tickets", label: "My Tickets", href: "/my-tickets" },
-            { id: "managed", label: "Managed Events", href: "/managed-events" },
-            { id: "sales", label: "Sales Reports", href: "/managed-events" }
-          ]}
+          tabs={getNavTabs()}
           activeTab="tickets"
         />
         
@@ -175,12 +230,7 @@ const MyTickets = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <TabsComponent
-        tabs={[
-          { id: "browse", label: "Browse Events", href: "/" },
-          { id: "tickets", label: "My Tickets", href: "/my-tickets" },
-          { id: "managed", label: "Managed Events", href: "/managed-events" },
-          { id: "sales", label: "Sales Reports", href: "/managed-events" }
-        ]}
+        tabs={getNavTabs()}
         activeTab="tickets"
       />
       

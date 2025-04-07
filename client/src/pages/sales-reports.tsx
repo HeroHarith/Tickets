@@ -4,8 +4,11 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, PieC
 import { Calendar, MapPin, DollarSign, Users, Ticket, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import TabsComponent from "@/components/ui/tabs-component";
 import { format } from "date-fns";
 import { Event } from "@shared/schema";
+import { useAuth } from "@/hooks/use-auth";
+import { useState } from "react";
 
 interface SalesData {
   event: Event;
@@ -19,8 +22,27 @@ interface SalesData {
 }
 
 const SalesReports = () => {
+  const { user } = useAuth();
   const [match, params] = useRoute<{ id: string }>("/sales/:id");
   const eventId = match ? parseInt(params.id) : -1;
+  
+  // Get navigation tabs based on user role
+  const getNavTabs = () => {
+    const tabs = [
+      { id: "browse", label: "Browse Events", href: "/" },
+      { id: "tickets", label: "My Tickets", href: "/my-tickets" }
+    ];
+    
+    // Add manager-specific tabs if user has appropriate role
+    if (user && ['eventManager', 'admin'].includes(user.role)) {
+      tabs.push(
+        { id: "managed", label: "Managed Events", href: "/managed-events" },
+        { id: "sales", label: "Sales Reports", href: "/sales-reports" }
+      );
+    }
+    
+    return tabs;
+  };
   
   // Fetch sales data
   const salesQuery = useQuery<SalesData>({
@@ -36,7 +58,12 @@ const SalesReports = () => {
   if (salesQuery.isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="animate-pulse">
+        <TabsComponent
+          tabs={getNavTabs()}
+          activeTab="sales"
+        />
+        
+        <div className="animate-pulse mt-6">
           <div className="h-8 bg-gray-200 rounded w-1/3 mb-6"></div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -66,7 +93,12 @@ const SalesReports = () => {
   if (salesQuery.error || !salesQuery.data) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center py-12 bg-white rounded-lg shadow-md">
+        <TabsComponent
+          tabs={getNavTabs()}
+          activeTab="sales"
+        />
+        
+        <div className="text-center py-12 bg-white rounded-lg shadow-md mt-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Error Loading Sales Data</h2>
           <p className="text-gray-600 mb-6">We couldn't retrieve the sales information for this event.</p>
           <Link href="/managed-events">
@@ -95,7 +127,12 @@ const SalesReports = () => {
   
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-6">
+      <TabsComponent
+        tabs={getNavTabs()}
+        activeTab="sales"
+      />
+      
+      <div className="mb-6 mt-6">
         <Link href="/managed-events">
           <Button variant="ghost" className="mb-4">
             <ChevronLeft className="h-4 w-4 mr-2" />

@@ -9,6 +9,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { Event, TicketType, PurchaseTicketInput } from "@shared/schema";
+import TabsComponent from "@/components/ui/tabs-component";
+import { useAuth } from "@/hooks/use-auth";
 
 type TicketSelection = {
   ticketTypeId: number;
@@ -19,8 +21,27 @@ const EventDetails = () => {
   const [, setLocation] = useLocation();
   const [match, params] = useRoute<{ id: string }>("/events/:id");
   const { toast } = useToast();
+  const { user } = useAuth();
   
   const [ticketSelections, setTicketSelections] = useState<TicketSelection[]>([]);
+  
+  // Get navigation tabs based on user role
+  const getNavTabs = () => {
+    const tabs = [
+      { id: "browse", label: "Browse Events", href: "/" },
+      { id: "tickets", label: "My Tickets", href: "/my-tickets" }
+    ];
+    
+    // Add manager-specific tabs if user has appropriate role
+    if (user && ['eventManager', 'admin'].includes(user.role)) {
+      tabs.push(
+        { id: "managed", label: "Managed Events", href: "/managed-events" },
+        { id: "sales", label: "Sales Reports", href: "/sales-reports" }
+      );
+    }
+    
+    return tabs;
+  };
   
   const eventId = match ? parseInt(params.id) : -1;
   
@@ -125,7 +146,12 @@ const EventDetails = () => {
   if (eventQuery.isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="animate-pulse">
+        <TabsComponent
+          tabs={getNavTabs()}
+          activeTab="browse"
+        />
+        
+        <div className="animate-pulse mt-6">
           <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="md:col-span-1">
@@ -153,7 +179,12 @@ const EventDetails = () => {
   if (eventQuery.error) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center py-12">
+        <TabsComponent
+          tabs={getNavTabs()}
+          activeTab="browse"
+        />
+        
+        <div className="text-center py-12 mt-6">
           <h2 className="text-2xl font-semibold text-gray-900 mb-4">Event Not Found</h2>
           <p className="text-gray-600 mb-6">The event you're looking for doesn't exist or has been removed.</p>
           <Button onClick={() => setLocation("/")}>Browse Events</Button>
@@ -189,7 +220,12 @@ const EventDetails = () => {
   
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <TabsComponent
+        tabs={getNavTabs()}
+        activeTab="browse"
+      />
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
         <div className="md:col-span-1">
           <div className="h-60 bg-gray-200 rounded-lg overflow-hidden mb-4">
             <img 

@@ -11,23 +11,48 @@ import CreateEvent from "@/pages/create-event";
 import MyTickets from "@/pages/my-tickets";
 import ManagedEvents from "@/pages/managed-events";
 import SalesReports from "@/pages/sales-reports";
+import AuthPage from "@/pages/auth-page";
+import { AuthProvider } from "@/hooks/use-auth";
+import { ProtectedRoute } from "@/lib/protected-route";
 
 function Router() {
   return (
     <div className="flex flex-col min-h-screen">
-      <Header />
-      <main className="flex-grow">
-        <Switch>
-          <Route path="/" component={Home} />
-          <Route path="/events/:id" component={EventDetails} />
-          <Route path="/create-event" component={CreateEvent} />
-          <Route path="/my-tickets" component={MyTickets} />
-          <Route path="/managed-events" component={ManagedEvents} />
-          <Route path="/sales/:id" component={SalesReports} />
-          <Route component={NotFound} />
-        </Switch>
-      </main>
-      <Footer />
+      <Switch>
+        <Route path="/auth">
+          <AuthPage />
+        </Route>
+        <Route>
+          <Header />
+          <main className="flex-grow">
+            <Switch>
+              <Route path="/" component={Home} />
+              <Route path="/events/:id" component={EventDetails} />
+              <ProtectedRoute 
+                path="/create-event" 
+                component={CreateEvent} 
+                requiredRoles={["eventManager", "admin"]} 
+              />
+              <ProtectedRoute 
+                path="/my-tickets" 
+                component={MyTickets} 
+              />
+              <ProtectedRoute 
+                path="/managed-events" 
+                component={ManagedEvents} 
+                requiredRoles={["eventManager", "admin"]} 
+              />
+              <ProtectedRoute 
+                path="/sales/:id" 
+                component={SalesReports} 
+                requiredRoles={["eventManager", "admin"]} 
+              />
+              <Route component={NotFound} />
+            </Switch>
+          </main>
+          <Footer />
+        </Route>
+      </Switch>
     </div>
   );
 }
@@ -35,8 +60,10 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router />
-      <Toaster />
+      <AuthProvider>
+        <Router />
+        <Toaster />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

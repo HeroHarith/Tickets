@@ -8,10 +8,16 @@ import {
   users, events, ticketTypes, tickets
 } from "@shared/schema";
 import { nanoid } from "nanoid";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { eq, and, SQL, sql, like, desc, asc, ilike } from "drizzle-orm";
+import session from "express-session";
+import QRCode from "qrcode";
+import connectPgSimple from "connect-pg-simple";
 
 export interface IStorage {
+  // Session store for authentication
+  sessionStore: session.Store;
+  
   // User operations
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
@@ -43,9 +49,25 @@ export interface IStorage {
       revenue: number;
     }[]
   }>;
+  
+  // Ticket validation and QR code operations
+  generateTicketQR(ticketId: number): Promise<string>;
+  validateTicket(ticketId: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
+  sessionStore: session.Store;
+  
+  constructor() {
+    // Initialize session store with PostgreSQL connection
+    const PostgresSessionStore = connectPgSimple(session);
+    this.sessionStore = new PostgresSessionStore({
+      pool,
+      tableName: 'session',
+      createTableIfMissing: true
+    });
+  }
+  
   // User operations
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
@@ -193,9 +215,35 @@ export class DatabaseStorage implements IStorage {
             quantity,
             totalPrice,
             orderId,
-            purchaseDate: new Date()
+            purchaseDate: new Date(),
+            isUsed: false
           })
           .returning();
+        
+        // Generate QR code for the ticket
+        const ticketData = {
+          id: ticket.id,
+          eventId: ticket.eventId,
+          ticketTypeId: ticket.ticketTypeId,
+          orderId: ticket.orderId,
+          timestamp: new Date().toISOString(),
+        };
+        
+        try {
+          // Generate a QR code in data URL format
+          const qrCodeDataURL = await QRCode.toDataURL(JSON.stringify(ticketData));
+          
+          // Update the ticket with the QR code
+          await tx.update(tickets)
+            .set({ qrCode: qrCodeDataURL })
+            .where(eq(tickets.id, ticket.id));
+          
+          // Update our local ticket object with QR code
+          ticket.qrCode = qrCodeDataURL;
+        } catch (error) {
+          console.error('Error generating QR code:', error);
+          // Continue even if QR generation fails
+        }
         
         purchasedTickets.push(ticket);
       }
@@ -260,6 +308,70 @@ export class DatabaseStorage implements IStorage {
       ticketsSold,
       salesByTicketType: Array.from(salesByTicketType.values())
     };
+  }
+  
+  // QR code handling
+  async generateTicketQR(ticketId: number): Promise<string> {
+    try {
+      // Get the ticket to ensure it exists
+      const [ticket] = await db.select()
+        .from(tickets)
+        .where(eq(tickets.id, ticketId));
+      
+      if (!ticket) {
+        throw new Error('Ticket not found');
+      }
+      
+      // Create ticket validation data
+      const ticketData = {
+        id: ticket.id,
+        eventId: ticket.eventId,
+        ticketTypeId: ticket.ticketTypeId,
+        orderId: ticket.orderId,
+        timestamp: new Date().toISOString(),
+      };
+      
+      // Generate a QR code in data URL format
+      const qrCodeDataURL = await QRCode.toDataURL(JSON.stringify(ticketData));
+      
+      // Store the QR code in the database
+      await db.update(tickets)
+        .set({ qrCode: qrCodeDataURL })
+        .where(eq(tickets.id, ticketId));
+      
+      return qrCodeDataURL;
+    } catch (error) {
+      console.error('Error generating QR code:', error);
+      throw new Error('Failed to generate QR code for ticket');
+    }
+  }
+  
+  async validateTicket(ticketId: number): Promise<boolean> {
+    try {
+      // Get the ticket
+      const [ticket] = await db.select()
+        .from(tickets)
+        .where(eq(tickets.id, ticketId));
+      
+      if (!ticket) {
+        throw new Error('Ticket not found');
+      }
+      
+      // Check if the ticket is already used
+      if (ticket.isUsed) {
+        return false; // Ticket already used
+      }
+      
+      // Mark the ticket as used
+      await db.update(tickets)
+        .set({ isUsed: true })
+        .where(eq(tickets.id, ticketId));
+      
+      return true;
+    } catch (error) {
+      console.error('Error validating ticket:', error);
+      throw new Error('Failed to validate ticket');
+    }
   }
 }
 

@@ -2,6 +2,11 @@ import { pgTable, text, serial, integer, boolean, timestamp, varchar, numeric, j
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// User roles
+export const USER_ROLES = ["customer", "eventManager", "admin"] as const;
+export const roleSchema = z.enum(USER_ROLES);
+export type Role = z.infer<typeof roleSchema>;
+
 // User model
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -9,6 +14,7 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
+  role: text("role").default("customer").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -49,6 +55,8 @@ export const tickets = pgTable("tickets", {
   quantity: integer("quantity").notNull(),
   totalPrice: numeric("total_price", { precision: 10, scale: 2 }).notNull(),
   orderId: text("order_id").notNull(), // For grouping tickets in an order
+  qrCode: text("qr_code"), // QR code data for ticket validation
+  isUsed: boolean("is_used").default(false).notNull(), // Track if ticket has been used
 });
 
 // Insert schemas

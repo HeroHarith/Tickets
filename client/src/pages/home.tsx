@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import EventCard from "@/components/ui/event-card";
-import Tabs from "@/components/ui/tabs";
+import TabsComponent from "@/components/ui/tabs-component";
 import EventSearch from "@/components/ui/event-search";
 import { Button } from "@/components/ui/button";
 import { Event, TicketType } from "@shared/schema";
@@ -111,7 +111,7 @@ const Home = () => {
   
   return (
     <div>
-      <Tabs
+      <TabsComponent
         tabs={[
           { id: "browse", label: "Browse Events", href: "/" },
           { id: "tickets", label: "My Tickets", href: "/my-tickets" },

@@ -7,8 +7,19 @@ import {
   purchaseTicketSchema 
 } from "@shared/schema";
 import { ZodError } from "zod";
+import { setupAuth, requireRole } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Setup authentication
+  setupAuth(app);
+  
+  // Helper function to verify user is authenticated
+  function ensureAuthenticated(req: Request): asserts req is Request & { user: Express.User } {
+    if (!req.isAuthenticated() || !req.user) {
+      throw new Error("User is not authenticated");
+    }
+  }
+  
   // Helper for handling validation errors
   const validateRequest = (schema: any, data: any) => {
     try {
@@ -80,16 +91,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/events", async (req: Request, res: Response) => {
+  app.post("/api/events", requireRole(["eventManager", "admin"]), async (req: Request, res: Response) => {
     const { data, error } = validateRequest(createEventSchema, req.body);
     if (error) return res.status(400).json(error);
 
     try {
-      // For demo purposes, create event as the default user (id: 1)
-      const userId = 1;
+      // Ensure user is authenticated and get their ID
+      ensureAuthenticated(req);
+      
       const event = await storage.createEvent({
         ...data,
-        organizer: userId
+        organizer: req.user.id
       });
       
       return res.status(201).json(event);
@@ -100,15 +112,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Ticket routes
-  app.post("/api/tickets/purchase", async (req: Request, res: Response) => {
+  app.post("/api/tickets/purchase", requireRole(["customer", "eventManager", "admin"]), async (req: Request, res: Response) => {
     const { data, error } = validateRequest(purchaseTicketSchema, req.body);
     if (error) return res.status(400).json(error);
 
     try {
-      // For demo purposes, purchase as the default user (id: 1)
-      const userId = 1;
+      // Ensure user is authenticated and get their ID
+      ensureAuthenticated(req);
       
-      const tickets = await storage.purchaseTickets(data, userId);
+      const tickets = await storage.purchaseTickets(data, req.user.id);
       return res.status(201).json(tickets);
     } catch (err: any) {
       console.error("Error purchasing tickets:", err);
@@ -116,12 +128,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/tickets/user", async (req: Request, res: Response) => {
+  app.get("/api/tickets/user", requireRole(["customer", "eventManager", "admin"]), async (req: Request, res: Response) => {
     try {
-      // For demo purposes, fetch tickets for the default user (id: 1)
-      const userId = 1;
+      // Ensure user is authenticated and get their ID
+      ensureAuthenticated(req);
       
-      const tickets = await storage.getUserTickets(userId);
+      const tickets = await storage.getUserTickets(req.user.id);
       
       // Expand ticket information with event and ticket type details
       const expandedTickets = await Promise.all(
@@ -144,7 +156,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/events/:id/sales", async (req: Request, res: Response) => {
+  app.get("/api/events/:id/sales", requireRole(["eventManager", "admin"]), async (req: Request, res: Response) => {
     try {
       const eventId = parseInt(req.params.id);
       const event = await storage.getEvent(eventId);
@@ -153,7 +165,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Event not found" });
       }
       
-      // For demo purposes, allow anyone to see sales data
+      // Ensure user is authenticated and get their ID
+      ensureAuthenticated(req);
+      
+      // Verify the user has permission (is admin or the event organizer)
+      if (req.user.role !== 'admin' && event.organizer !== req.user.id) {
+        return res.status(403).json({ message: "You do not have permission to view sales for this event" });
+      }
+      
       const salesData = await storage.getEventSales(eventId);
       
       return res.json({
@@ -163,6 +182,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err) {
       console.error("Error fetching event sales:", err);
       return res.status(500).json({ message: "Failed to fetch event sales" });
+    }
+  });
+  
+  // QR code generation for ticket
+  app.get("/api/tickets/:id/qr", requireRole(["customer", "eventManager", "admin"]), async (req: Request, res: Response) => {
+    try {
+      const ticketId = parseInt(req.params.id);
+      
+      // Generate or retrieve QR code
+      const qrCodeUrl = await storage.generateTicketQR(ticketId);
+      
+      res.json({ qrCode: qrCodeUrl });
+    } catch (error) {
+      console.error("Error generating QR code:", error);
+      res.status(500).json({ message: "Failed to generate QR code" });
+    }
+  });
+
+  // Ticket validation - requires event manager or admin role
+  app.post("/api/tickets/:id/validate", requireRole(["eventManager", "admin"]), async (req: Request, res: Response) => {
+    try {
+      const ticketId = parseInt(req.params.id);
+      const isValid = await storage.validateTicket(ticketId);
+      
+      if (isValid) {
+        res.json({ valid: true, message: "Ticket successfully validated" });
+      } else {
+        res.json({ valid: false, message: "Ticket already used or invalid" });
+      }
+    } catch (error) {
+      console.error("Error validating ticket:", error);
+      res.status(500).json({ message: "Failed to validate ticket" });
     }
   });
 

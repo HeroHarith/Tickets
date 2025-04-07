@@ -116,7 +116,7 @@ const MyTickets = () => {
   if (ticketsQuery.isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs
+        <TabsComponent
           tabs={[
             { id: "browse", label: "Browse Events", href: "/" },
             { id: "tickets", label: "My Tickets", href: "/my-tickets" },
@@ -149,7 +149,7 @@ const MyTickets = () => {
   if (ticketsQuery.error) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs
+        <TabsComponent
           tabs={[
             { id: "browse", label: "Browse Events", href: "/" },
             { id: "tickets", label: "My Tickets", href: "/my-tickets" },

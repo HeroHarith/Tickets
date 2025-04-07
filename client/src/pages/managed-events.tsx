@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { Calendar, MapPin, Users, Ticket, AlertTriangle, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import Tabs from "@/components/ui/tabs";
+import TabsComponent from "@/components/ui/tabs-component";
 import { format } from "date-fns";
 import { Event, TicketType } from "@shared/schema";
 
@@ -66,7 +66,7 @@ const ManagedEvents = () => {
   if (eventsQuery.isLoading || eventsWithTicketTypesQuery.isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs
+        <TabsComponent
           tabs={[
             { id: "browse", label: "Browse Events", href: "/" },
             { id: "tickets", label: "My Tickets", href: "/my-tickets" },
@@ -104,7 +104,7 @@ const ManagedEvents = () => {
   if (eventsQuery.error) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs
+        <TabsComponent
           tabs={[
             { id: "browse", label: "Browse Events", href: "/" },
             { id: "tickets", label: "My Tickets", href: "/my-tickets" },
@@ -126,7 +126,7 @@ const ManagedEvents = () => {
   
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <Tabs
+      <TabsComponent
         tabs={[
           { id: "browse", label: "Browse Events", href: "/" },
           { id: "tickets", label: "My Tickets", href: "/my-tickets" },

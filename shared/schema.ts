@@ -127,5 +127,46 @@ export const EVENT_CATEGORIES = [
   "Comedy"
 ] as const;
 
+export const EVENT_DATE_FILTERS = [
+  "all", 
+  "today", 
+  "tomorrow", 
+  "this-week", 
+  "this-weekend", 
+  "this-month", 
+  "future"
+] as const;
+
+export const EVENT_PRICE_FILTERS = [
+  "all",
+  "free",
+  "paid",
+  "under-25",
+  "25-to-50",
+  "50-to-100",
+  "over-100"
+] as const;
+
 export const categorySchema = z.enum(EVENT_CATEGORIES);
 export type Category = z.infer<typeof categorySchema>;
+
+export const dateFilterSchema = z.enum(EVENT_DATE_FILTERS);
+export type DateFilter = z.infer<typeof dateFilterSchema>;
+
+export const priceFilterSchema = z.enum(EVENT_PRICE_FILTERS);
+export type PriceFilter = z.infer<typeof priceFilterSchema>;
+
+export const eventSearchSchema = z.object({
+  search: z.string().optional(),
+  category: categorySchema.optional(),
+  dateFilter: dateFilterSchema.optional(),
+  priceFilter: priceFilterSchema.optional(),
+  minDate: z.string().optional(),
+  maxDate: z.string().optional(),
+  location: z.string().optional(),
+  featured: z.boolean().optional(),
+  organizer: z.number().optional(),
+  sortBy: z.enum(['date-asc', 'date-desc', 'price-asc', 'price-desc']).optional().default('date-desc')
+});
+
+export type EventSearchParams = z.infer<typeof eventSearchSchema>;

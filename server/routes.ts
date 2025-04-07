@@ -4,7 +4,8 @@ import { storage } from "./storage";
 import { 
   createEventSchema, 
   insertUserSchema, 
-  purchaseTicketSchema 
+  purchaseTicketSchema,
+  eventSearchSchema
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { setupAuth, requireRole } from "./auth";
@@ -57,14 +58,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Event routes
   app.get("/api/events", async (req: Request, res: Response) => {
     try {
-      const { category, featured, search, organizer } = req.query;
+      const { 
+        category, 
+        featured, 
+        search, 
+        organizer, 
+        dateFilter, 
+        priceFilter, 
+        minDate, 
+        maxDate, 
+        location,
+        sortBy
+      } = req.query;
       
-      const events = await storage.getEvents({
-        category: category as string,
+      // Validate the params using our eventSearchSchema
+      const { data, error } = validateRequest(eventSearchSchema, {
+        category,
         featured: featured === "true",
-        search: search as string,
-        organizer: organizer ? parseInt(organizer as string) : undefined
+        search,
+        organizer: organizer ? parseInt(organizer as string) : undefined,
+        dateFilter,
+        priceFilter,
+        minDate,
+        maxDate,
+        location,
+        sortBy
       });
+      
+      if (error) {
+        return res.status(400).json(error);
+      }
+      
+      const events = await storage.getEvents(data);
+      
+      // If we need to filter by price, we need to do it here after fetching ticket types
+      // since the price is in the ticket_types table, not in the events table
+      if (data.priceFilter && data.priceFilter !== 'all') {
+        // Fetch ticket types for each event to determine price ranges
+        const eventIds = events.map(e => e.id);
+        const ticketTypesPromises = eventIds.map(id => storage.getTicketTypes(id));
+        const ticketTypesResults = await Promise.all(ticketTypesPromises);
+        
+        // Create a map of event ID to min/max prices
+        const eventPrices = new Map<number, { min: number, max: number }>();
+        
+        events.forEach((event, index) => {
+          const eventTicketTypes = ticketTypesResults[index];
+          if (eventTicketTypes.length > 0) {
+            const prices = eventTicketTypes.map(tt => Number(tt.price));
+            eventPrices.set(event.id, {
+              min: Math.min(...prices),
+              max: Math.max(...prices)
+            });
+          } else {
+            // If no ticket types, consider it a free event
+            eventPrices.set(event.id, { min: 0, max: 0 });
+          }
+        });
+        
+        // Filter events based on price filter
+        const filteredEvents = events.filter(event => {
+          const price = eventPrices.get(event.id);
+          if (!price) return false;
+          
+          switch (data.priceFilter) {
+            case 'free':
+              return price.min === 0;
+            case 'paid':
+              return price.min > 0;
+            case 'under-25':
+              return price.min < 25;
+            case '25-to-50':
+              return price.min >= 25 && price.min <= 50;
+            case '50-to-100':
+              return price.min > 50 && price.min <= 100;
+            case 'over-100':
+              return price.min > 100;
+            default:
+              return true;
+          }
+        });
+        
+        // If we have a price sort, apply it
+        if (data.sortBy === 'price-asc' || data.sortBy === 'price-desc') {
+          filteredEvents.sort((a, b) => {
+            const priceA = eventPrices.get(a.id)?.min || 0;
+            const priceB = eventPrices.get(b.id)?.min || 0;
+            return data.sortBy === 'price-asc' ? priceA - priceB : priceB - priceA;
+          });
+        }
+        
+        return res.json(filteredEvents);
+      }
       
       return res.json(events);
     } catch (err) {

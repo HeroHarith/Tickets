@@ -13,12 +13,26 @@ export const fetchEvents = async (options?: {
   category?: string; 
   featured?: boolean; 
   search?: string;
+  dateFilter?: string;
+  priceFilter?: string;
+  minDate?: string;
+  maxDate?: string;
+  location?: string;
+  organizer?: number;
+  sortBy?: 'date-asc' | 'date-desc' | 'price-asc' | 'price-desc';
 }) => {
   const params = new URLSearchParams();
   
   if (options?.category) params.append("category", options.category);
   if (options?.featured !== undefined) params.append("featured", options.featured.toString());
   if (options?.search) params.append("search", options.search);
+  if (options?.dateFilter) params.append("dateFilter", options.dateFilter);
+  if (options?.priceFilter) params.append("priceFilter", options.priceFilter);
+  if (options?.minDate) params.append("minDate", options.minDate);
+  if (options?.maxDate) params.append("maxDate", options.maxDate);
+  if (options?.location) params.append("location", options.location);
+  if (options?.organizer) params.append("organizer", options.organizer.toString());
+  if (options?.sortBy) params.append("sortBy", options.sortBy);
   
   const url = `/api/events${params.toString() ? `?${params.toString()}` : ''}`;
   const res = await fetch(url);

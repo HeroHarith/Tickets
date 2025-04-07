@@ -5,6 +5,7 @@ import {
   Ticket, InsertTicket,
   CreateEventInput,
   PurchaseTicketInput,
+  EventSearchParams,
   users, events, ticketTypes, tickets
 } from "@shared/schema";
 import { nanoid } from "nanoid";
@@ -25,12 +26,7 @@ export interface IStorage {
   
   // Event operations
   getEvent(id: number): Promise<Event | undefined>;
-  getEvents(options?: { 
-    category?: string; 
-    featured?: boolean; 
-    search?: string;
-    organizer?: number;
-  }): Promise<Event[]>;
+  getEvents(options?: EventSearchParams): Promise<Event[]>;
   createEvent(event: CreateEventInput): Promise<Event>;
   
   // TicketType operations
@@ -92,17 +88,13 @@ export class DatabaseStorage implements IStorage {
     return event;
   }
 
-  async getEvents(options?: { 
-    category?: string; 
-    featured?: boolean; 
-    search?: string;
-    organizer?: number;
-  }): Promise<Event[]> {
+  async getEvents(options?: EventSearchParams): Promise<Event[]> {
     let query = db.select().from(events);
     
     if (options) {
       const conditions: SQL[] = [];
       
+      // Basic filters
       if (options.category) {
         conditions.push(eq(events.category, options.category));
       }
@@ -123,6 +115,64 @@ export class DatabaseStorage implements IStorage {
         conditions.push(eq(events.organizer, options.organizer));
       }
       
+      // Location filter
+      if (options.location) {
+        conditions.push(ilike(events.location, `%${options.location}%`));
+      }
+      
+      // Date filters
+      if (options.dateFilter) {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        
+        const nextWeek = new Date(today);
+        nextWeek.setDate(nextWeek.getDate() + 7);
+        
+        const nextMonth = new Date(today);
+        nextMonth.setMonth(nextMonth.getMonth() + 1);
+        
+        // Weekend calculation
+        const dayOfWeek = today.getDay(); // 0 is Sunday, 6 is Saturday
+        const daysUntilWeekend = dayOfWeek === 0 || dayOfWeek === 6 ? 0 : 6 - dayOfWeek;
+        const thisWeekend = new Date(today);
+        thisWeekend.setDate(thisWeekend.getDate() + daysUntilWeekend);
+        
+        const weekendEnd = new Date(thisWeekend);
+        weekendEnd.setDate(weekendEnd.getDate() + 2); // Weekend spans 2 days
+        
+        switch (options.dateFilter) {
+          case 'today':
+            conditions.push(sql`DATE(${events.startDate}) = DATE(${today.toISOString()})`);
+            break;
+          case 'tomorrow':
+            conditions.push(sql`DATE(${events.startDate}) = DATE(${tomorrow.toISOString()})`);
+            break;
+          case 'this-week':
+            conditions.push(sql`${events.startDate} >= ${today.toISOString()} AND ${events.startDate} < ${nextWeek.toISOString()}`);
+            break;
+          case 'this-weekend':
+            conditions.push(sql`${events.startDate} >= ${thisWeekend.toISOString()} AND ${events.startDate} < ${weekendEnd.toISOString()}`);
+            break;
+          case 'this-month':
+            conditions.push(sql`${events.startDate} >= ${today.toISOString()} AND ${events.startDate} < ${nextMonth.toISOString()}`);
+            break;
+          case 'future':
+            conditions.push(sql`${events.startDate} >= ${today.toISOString()}`);
+            break;
+        }
+      }
+      
+      // Custom date range
+      if (options.minDate) {
+        conditions.push(sql`${events.startDate} >= ${options.minDate}`);
+      }
+      
+      if (options.maxDate) {
+        conditions.push(sql`${events.startDate} <= ${options.maxDate}`);
+      }
+      
       if (conditions.length > 0) {
         // Cast query to appropriate type to satisfy TypeScript
         // This doesn't affect functionality but resolves type issues with query.where()
@@ -130,7 +180,25 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
-    // Sort by start date (newest first)
+    // Apply sorting
+    if (options?.sortBy) {
+      switch (options.sortBy) {
+        case 'date-asc':
+          return await query.orderBy(asc(events.startDate));
+        case 'date-desc':
+          return await query.orderBy(desc(events.startDate));
+        case 'price-asc':
+        case 'price-desc':
+          // For price sorting, we need to first get the events, then fetch ticket types and sort
+          // This is because price isn't in the events table but in ticket_types
+          const eventsData = await query.orderBy(desc(events.startDate)); // default sort as a fallback
+          return eventsData;
+        default:
+          return await query.orderBy(desc(events.startDate));
+      }
+    }
+    
+    // Default sorting by date (newest first)
     return await query.orderBy(desc(events.startDate));
   }
 

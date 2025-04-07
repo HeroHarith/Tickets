@@ -12,7 +12,12 @@ const Home = () => {
   const [searchParams, setSearchParams] = useState({
     search: "",
     category: "",
-    date: ""
+    dateFilter: "",
+    priceFilter: "",
+    minDate: "",
+    maxDate: "",
+    location: "",
+    sortBy: "date-desc"
   });
   
   const [sortBy, setSortBy] = useState("date");
@@ -50,8 +55,16 @@ const Home = () => {
     queryKey: ["/api/events", searchParams],
     queryFn: async () => {
       const params = new URLSearchParams();
+      
+      // Add all search parameters
       if (searchParams.search) params.append("search", searchParams.search);
       if (searchParams.category) params.append("category", searchParams.category);
+      if (searchParams.dateFilter) params.append("dateFilter", searchParams.dateFilter);
+      if (searchParams.priceFilter) params.append("priceFilter", searchParams.priceFilter);
+      if (searchParams.minDate) params.append("minDate", searchParams.minDate);
+      if (searchParams.maxDate) params.append("maxDate", searchParams.maxDate);
+      if (searchParams.location) params.append("location", searchParams.location);
+      if (searchParams.sortBy) params.append("sortBy", searchParams.sortBy);
       
       const res = await fetch(`/api/events?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch events");
@@ -123,8 +136,20 @@ const Home = () => {
     });
   };
   
-  const handleSearch = (params: typeof searchParams) => {
-    setSearchParams(params);
+  const handleSearch = (params: {
+    search: string;
+    category: string;
+    dateFilter?: string;
+    priceFilter?: string;
+    minDate?: string;
+    maxDate?: string;
+    location?: string;
+    sortBy?: string;
+  }) => {
+    setSearchParams({
+      ...searchParams,
+      ...params
+    });
   };
   
   const isLoading = featuredEventsQuery.isLoading || eventsQuery.isLoading || ticketTypesQueries.isLoading;

@@ -36,6 +36,7 @@ export interface IStorage {
   getTicketType(id: number): Promise<TicketType | undefined>;
   
   // Ticket operations
+  getTicket(id: number): Promise<Ticket | undefined>;
   purchaseTickets(purchase: PurchaseTicketInput, userId: number): Promise<Ticket[]>;
   getUserTickets(userId: number): Promise<Ticket[]>;
   getEventSales(eventId: number): Promise<{ 
@@ -243,6 +244,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Ticket operations
+  async getTicket(id: number): Promise<Ticket | undefined> {
+    const [ticket] = await db.select()
+      .from(tickets)
+      .where(eq(tickets.id, id));
+    return ticket;
+  }
   async purchaseTickets(purchase: PurchaseTicketInput, userId: number): Promise<Ticket[]> {
     const { eventId, ticketSelections, customerDetails } = purchase;
     const orderId = nanoid(10);

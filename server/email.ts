@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { Event, Ticket, TicketType } from '@shared/schema';
+import { generateAppleWalletPassUrl, generateGooglePayPassUrl } from './wallet';
 
 // Create a transporter for Gmail
 const transporter = nodemailer.createTransport({
@@ -42,6 +43,23 @@ export async function sendTicketConfirmationEmail(details: TicketDetails): Promi
   // Generate a random ticket number for display purposes
   const ticketNumber = `T-${ticket.id}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
   
+  // Generate wallet pass URLs
+  const appleWalletUrl = generateAppleWalletPassUrl({
+    event,
+    ticket,
+    ticketType,
+    attendeeName,
+    qrCodeDataUrl
+  });
+  
+  const googlePayUrl = generateGooglePayPassUrl({
+    event,
+    ticket,
+    ticketType,
+    attendeeName,
+    qrCodeDataUrl
+  });
+  
   // Email content with both HTML and plain text versions
   const emailContent = {
     from: `"Event Ticketing" <${process.env.GMAIL_EMAIL}>`,
@@ -57,7 +75,11 @@ export async function sendTicketConfirmationEmail(details: TicketDetails): Promi
       TICKET TYPE: ${ticketType.name}
       TICKET #: ${ticketNumber}
       
-      Please show the QR code in the attached email when you arrive at the event.
+      Please show the QR code when you arrive at the event.
+      
+      You can add this ticket to your mobile wallet:
+      - Apple Wallet: ${appleWalletUrl}
+      - Google Pay: ${googlePayUrl}
       
       We look forward to seeing you!
     `,
@@ -81,6 +103,20 @@ export async function sendTicketConfirmationEmail(details: TicketDetails): Promi
           <p style="margin-bottom: 10px; font-weight: bold;">Your Ticket QR Code</p>
           <img src="${qrCodeDataUrl}" alt="Ticket QR Code" style="max-width: 200px; border: 1px solid #e1e1e1; padding: 10px; border-radius: 4px;"/>
           <p style="font-size: 14px; color: #6b7280; margin-top: 10px;">Please show this QR code when you arrive at the event</p>
+        </div>
+        
+        <div style="text-align: center; margin-bottom: 20px;">
+          <p style="margin-bottom: 10px; font-weight: bold;">Add to Your Mobile Wallet</p>
+          <div>
+            <a href="${appleWalletUrl}" style="display: inline-block; margin: 10px; text-decoration: none;">
+              <img src="https://developer.apple.com/wallet/add-to-apple-wallet-guidelines/images/add-to-apple-wallet-badge.svg" alt="Add to Apple Wallet" style="height: 44px;">
+            </a>
+          </div>
+          <div>
+            <a href="${googlePayUrl}" style="display: inline-block; margin: 10px; text-decoration: none;">
+              <img src="https://developers.google.com/static/pay/api/images/brand-guidelines/google-pay-mark.svg" alt="Add to Google Pay" style="height: 36px; background-color: #000; padding: 8px; border-radius: 4px;">
+            </a>
+          </div>
         </div>
         
         <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e1e1e1; text-align: center; color: #6b7280; font-size: 14px;">

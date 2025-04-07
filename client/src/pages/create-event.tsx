@@ -22,8 +22,13 @@ interface TicketTypeInput {
 // Extended schema with form-specific validation
 const eventFormSchema = createEventSchema.extend({
   imageUrl: z.string().optional(),
-  startDate: z.string().min(1, "Start date is required"),
-  endDate: z.string().optional(),
+  // Use a string in the form that will be transformed to a Date object
+  startDate: z.string().min(1, "Start date is required").transform(
+    (str) => str ? new Date(str) : undefined
+  ),
+  endDate: z.string().optional().transform(
+    (str) => str ? new Date(str) : undefined
+  ),
   // Override the ticketTypes to ensure availableQuantity is required
   ticketTypes: z.array(z.object({
     name: z.string(),
@@ -65,14 +70,13 @@ const CreateEvent = () => {
         }
       ]
     }
-  });
+  } as any);
   
   const createEventMutation = useMutation({
     mutationFn: (data: EventFormValues) => 
       apiRequest("POST", "/api/events", {
         ...data,
-        startDate: new Date(data.startDate).toISOString(),
-        endDate: data.endDate ? new Date(data.endDate).toISOString() : undefined,
+        // The startDate and endDate are now already Date objects thanks to zod transform
       }),
     onSuccess: () => {
       toast({

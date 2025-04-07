@@ -29,8 +29,8 @@ interface EventFormValues {
   description: string;
   location: string;
   category: string;
-  startDate: string;
-  endDate?: string;
+  startDate: string | Date;
+  endDate?: string | Date;
   imageUrl?: string;
   featured: boolean;
   organizer: number;
@@ -180,6 +180,8 @@ const CreateEventForm = ({ form, onSubmit, isPending, categories }: CreateEventF
                     <Input 
                       type="date" 
                       {...field} 
+                      value={typeof field.value === 'string' ? field.value : 
+                            field.value instanceof Date ? field.value.toISOString().split('T')[0] : ''}
                     />
                   </FormControl>
                   <FormMessage />
@@ -199,7 +201,8 @@ const CreateEventForm = ({ form, onSubmit, isPending, categories }: CreateEventF
                     <Input 
                       type="date" 
                       {...field} 
-                      value={field.value || ""}
+                      value={typeof field.value === 'string' ? field.value : 
+                            field.value instanceof Date ? field.value.toISOString().split('T')[0] : ''}
                     />
                   </FormControl>
                   <FormMessage />

@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, ChevronDown, ChevronUp } from "lucide-react";
 
 interface TicketTypeInput {
   name: string;
@@ -268,23 +268,51 @@ const CreateEventForm = ({ form, onSubmit, isPending, categories }: CreateEventF
         <Separator />
         
         <div>
-          <h3 className="text-lg font-medium mb-4">Ticket Types</h3>
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h3 className="text-lg font-medium">Ticket Types</h3>
+              <p className="text-sm text-gray-500 mt-1">Create one or more ticket types for your event</p>
+            </div>
+            <div className="text-sm text-gray-500">
+              {watchTicketTypes.length} {watchTicketTypes.length === 1 ? 'type' : 'types'} defined
+            </div>
+          </div>
           
           <div className="space-y-4">
             {watchTicketTypes.map((_, index) => (
-              <div key={index} className="border rounded-md">
+              <div key={index} className="border rounded-md shadow-sm hover:shadow-md transition-shadow duration-200">
                 <div 
-                  className="flex justify-between items-center p-4 cursor-pointer"
+                  className="flex justify-between items-center p-4 cursor-pointer hover:bg-gray-50 transition-colors duration-200"
                   onClick={() => toggleExpandTicketType(index)}
                 >
-                  <div>
+                  <div className="flex flex-col">
                     <FormField
                       control={form.control}
                       name={`ticketTypes.${index}.name`}
                       render={({ field }) => (
-                        <span className="font-medium">{field.value || `Ticket Type ${index + 1}`}</span>
+                        <span className="font-medium text-base">{field.value || `Ticket Type ${index + 1}`}</span>
                       )}
                     />
+                    <div className="flex gap-3 mt-1">
+                      <FormField
+                        control={form.control}
+                        name={`ticketTypes.${index}.price`}
+                        render={({ field }) => (
+                          <span className="text-sm text-gray-600">
+                            <span className="font-semibold">Price:</span> ${Number(field.value).toFixed(2)}
+                          </span>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`ticketTypes.${index}.quantity`}
+                        render={({ field }) => (
+                          <span className="text-sm text-gray-600">
+                            <span className="font-semibold">Quantity:</span> {field.value}
+                          </span>
+                        )}
+                      />
+                    </div>
                   </div>
                   <div className="flex items-center space-x-2">
                     <Button
@@ -299,11 +327,21 @@ const CreateEventForm = ({ form, onSubmit, isPending, categories }: CreateEventF
                     >
                       <Trash2 className="h-4 w-4 text-gray-500" />
                     </Button>
+                    {expandedTicketType === index ? (
+                      <ChevronUp className="h-5 w-5 text-gray-500" />
+                    ) : (
+                      <ChevronDown className="h-5 w-5 text-gray-500" />
+                    )}
                   </div>
                 </div>
                 
                 {expandedTicketType === index && (
-                  <div className="p-4 border-t">
+                  <div className="p-4 border-t bg-gray-50">
+                    <div className="mb-3">
+                      <h4 className="text-sm font-medium text-gray-700">Edit Ticket Details</h4>
+                      <p className="text-xs text-gray-500">Customize this ticket type's information</p>
+                    </div>
+                    
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <FormField
                         control={form.control}
@@ -315,6 +353,7 @@ const CreateEventForm = ({ form, onSubmit, isPending, categories }: CreateEventF
                               <Input 
                                 placeholder="e.g. General Admission" 
                                 {...field} 
+                                className="bg-white"
                               />
                             </FormControl>
                             <FormMessage />
@@ -333,6 +372,7 @@ const CreateEventForm = ({ form, onSubmit, isPending, categories }: CreateEventF
                                 placeholder="e.g. Standard entry ticket" 
                                 {...field}
                                 value={field.value || ""}
+                                className="bg-white"
                               />
                             </FormControl>
                             <FormMessage />
@@ -352,6 +392,7 @@ const CreateEventForm = ({ form, onSubmit, isPending, categories }: CreateEventF
                                 min="0" 
                                 step="0.01"
                                 {...field}
+                                className="bg-white"
                                 // Convert to string to match Postgres numeric type
                                 onChange={(e) => field.onChange(e.target.value)}
                               />
@@ -372,6 +413,7 @@ const CreateEventForm = ({ form, onSubmit, isPending, categories }: CreateEventF
                                 type="number" 
                                 min="1"
                                 {...field}
+                                className="bg-white"
                                 onChange={(e) => {
                                   const value = parseInt(e.target.value);
                                   field.onChange(value);
@@ -395,10 +437,10 @@ const CreateEventForm = ({ form, onSubmit, isPending, categories }: CreateEventF
             type="button"
             variant="outline"
             onClick={addTicketType}
-            className="mt-4"
+            className="mt-4 border-dashed border-2 w-full py-6 flex justify-center items-center hover:bg-gray-50"
           >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Ticket Type
+            <Plus className="h-5 w-5 mr-2 text-primary" />
+            <span className="font-medium">Add Ticket Type</span>
           </Button>
         </div>
         

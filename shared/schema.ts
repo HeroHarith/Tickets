@@ -86,6 +86,8 @@ export type InsertTicket = z.infer<typeof insertTicketSchema>;
 
 // Extended schemas for validation
 export const createEventSchema = insertEventSchema.extend({
+  startDate: z.coerce.date(),
+  endDate: z.coerce.date().optional().nullable(),
   ticketTypes: z.array(
     insertTicketTypeSchema.omit({ eventId: true })
   ).min(1, "At least one ticket type is required"),

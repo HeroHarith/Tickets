@@ -41,7 +41,15 @@ export const fetchEventById = async (id: number) => {
 };
 
 export const createEvent = async (eventData: InsertEvent & { ticketTypes: InsertTicketType[] }) => {
-  const res = await apiRequest("POST", "/api/events", eventData);
+  // Make sure dates are properly formatted
+  const formattedData = {
+    ...eventData,
+    startDate: eventData.startDate instanceof Date ? eventData.startDate : new Date(eventData.startDate as any),
+    endDate: eventData.endDate instanceof Date ? eventData.endDate : 
+            eventData.endDate ? new Date(eventData.endDate as any) : null
+  };
+  
+  const res = await apiRequest("POST", "/api/events", formattedData);
   
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));

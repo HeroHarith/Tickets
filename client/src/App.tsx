@@ -43,7 +43,7 @@ function Router() {
                 requiredRoles={["eventManager", "admin"]} 
               />
               <ProtectedRoute 
-                path="/sales/:id" 
+                path="/sales-reports/:id" 
                 component={SalesReports} 
                 requiredRoles={["eventManager", "admin"]} 
               />

@@ -115,12 +115,12 @@ const SalesReports = () => {
   const barChartData = salesByTicketType.map(item => ({
     name: item.name,
     Sold: item.sold,
-    Revenue: Number(item.revenue.toFixed(2))
+    Revenue: parseFloat(Number(item.revenue).toFixed(2))
   }));
   
   const pieChartData = salesByTicketType.map(item => ({
     name: item.name,
-    value: item.sold
+    value: Number(item.revenue)
   }));
   
   const COLORS = ['#6366F1', '#EC4899', '#F59E0B', '#34D399', '#3B82F6', '#A855F7'];
@@ -161,7 +161,7 @@ const SalesReports = () => {
           <CardContent>
             <div className="flex items-center">
               <DollarSign className="h-5 w-5 text-primary mr-2" />
-              <div className="text-2xl font-bold">${totalSales.toFixed(2)}</div>
+              <div className="text-2xl font-bold">${Number(totalSales).toFixed(2)}</div>
             </div>
           </CardContent>
         </Card>
@@ -205,13 +205,15 @@ const SalesReports = () => {
                 >
                   <XAxis dataKey="name" />
                   <YAxis />
-                  <Tooltip formatter={(value) => {
-                    return typeof value === 'number' 
-                      ? value.toString() 
-                      : value;
+                  <Tooltip formatter={(value, name) => {
+                    if (name === 'Revenue') {
+                      return [`$${value}`, name];
+                    }
+                    return [value.toString(), name];
                   }} />
                   <Legend />
                   <Bar dataKey="Sold" fill="#6366F1" />
+                  <Bar dataKey="Revenue" fill="#EC4899" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -240,7 +242,7 @@ const SalesReports = () => {
                     ))}
                   </Pie>
                   <Tooltip formatter={(value) => {
-                    return [`${value} tickets`, ''];
+                    return [`$${Number(value).toFixed(2)} revenue`, ''];
                   }} />
                 </PieChart>
               </ResponsiveContainer>
@@ -266,13 +268,15 @@ const SalesReports = () => {
             {salesByTicketType.map((type, index) => (
               <div key={index} className="grid grid-cols-12 p-4 border-t">
                 <div className="col-span-4 font-medium">{type.name}</div>
-                <div className="col-span-2 text-center">${Number(type.revenue / type.sold).toFixed(2)}</div>
+                <div className="col-span-2 text-center">
+                  ${type.sold > 0 ? Number(Number(type.revenue) / type.sold).toFixed(2) : '0.00'}
+                </div>
                 <div className="col-span-2 text-center">
                   {/* This is an estimate as we don't have the total available in this response */}
                   {type.sold === 0 ? '-' : 'Limited'}
                 </div>
                 <div className="col-span-2 text-center">{type.sold}</div>
-                <div className="col-span-2 text-right">${type.revenue.toFixed(2)}</div>
+                <div className="col-span-2 text-right">${Number(type.revenue).toFixed(2)}</div>
               </div>
             ))}
           </div>

@@ -14,7 +14,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Trash2, Plus, ChevronDown, ChevronUp } from "lucide-react";
+import { Trash2, Plus, ChevronDown, ChevronUp, MapPin, Calendar, Tag, Users } from "lucide-react";
+import { EVENT_TYPES } from "@shared/schema";
 
 interface TicketTypeInput {
   name: string;
@@ -34,6 +35,8 @@ interface EventFormValues {
   imageUrl?: string;
   featured: boolean;
   organizer: number;
+  eventType?: "general" | "conference" | "seated"; // Typed to match EVENT_TYPES
+  seatingMap?: Record<string, any> | null; // For seated events
   ticketTypes: TicketTypeInput[];
 }
 
@@ -48,6 +51,7 @@ const CreateEventForm = ({ form, onSubmit, isPending, categories }: CreateEventF
   const [expandedTicketType, setExpandedTicketType] = useState<number | null>(null);
   
   const watchTicketTypes = form.watch("ticketTypes");
+  const watchEventType = form.watch("eventType");
   
   const addTicketType = () => {
     const currentTicketTypes = form.getValues("ticketTypes");
@@ -172,6 +176,36 @@ const CreateEventForm = ({ form, onSubmit, isPending, categories }: CreateEventF
           <div className="sm:col-span-3">
             <FormField
               control={form.control}
+              name="eventType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Event Type</FormLabel>
+                  <Select 
+                    onValueChange={field.onChange} 
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select event type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {EVENT_TYPES.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type.charAt(0).toUpperCase() + type.slice(1)} Event
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          
+          <div className="sm:col-span-3">
+            <FormField
+              control={form.control}
               name="startDate"
               render={({ field }) => (
                 <FormItem>
@@ -267,6 +301,260 @@ const CreateEventForm = ({ form, onSubmit, isPending, categories }: CreateEventF
         
         <Separator />
         
+        {watchEventType === "seated" && (
+          <div className="mb-6">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h3 className="text-lg font-medium">Seating Configuration</h3>
+                <p className="text-sm text-gray-500 mt-1">Configure seating layout for your venue</p>
+              </div>
+            </div>
+            
+            <div className="bg-gray-50 p-6 rounded-lg border">
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div>
+                  <h4 className="text-base font-medium mb-2 flex items-center">
+                    <MapPin className="h-4 w-4 mr-2 text-gray-500" />
+                    Seating Map Configuration
+                  </h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    For seated events, you can define rows, sections, and seat numbers.
+                  </p>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Rows</label>
+                      <Input 
+                        type="number" 
+                        min="1"
+                        placeholder="e.g. 10"
+                        className="bg-white"
+                        onChange={(e) => {
+                          const rows = parseInt(e.target.value);
+                          form.setValue("seatingMap", {
+                            ...form.getValues("seatingMap"),
+                            rows
+                          });
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Seats Per Row</label>
+                      <Input 
+                        type="number" 
+                        min="1"
+                        placeholder="e.g. 20"
+                        className="bg-white"
+                        onChange={(e) => {
+                          const seatsPerRow = parseInt(e.target.value);
+                          form.setValue("seatingMap", {
+                            ...form.getValues("seatingMap"),
+                            seatsPerRow
+                          });
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className="text-base font-medium mb-2 flex items-center">
+                    <Users className="h-4 w-4 mr-2 text-gray-500" />
+                    Sections
+                  </h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Define sections in your venue (e.g., Orchestra, Mezzanine, Balcony)
+                  </p>
+                  
+                  <div className="space-y-2">
+                    <div className="flex gap-2 items-center">
+                      <Input 
+                        placeholder="Section name" 
+                        className="bg-white"
+                        id="sectionNameInput"
+                      />
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          const sectionName = (document.getElementById('sectionNameInput') as HTMLInputElement)?.value;
+                          if (sectionName) {
+                            const sections = form.getValues("seatingMap")?.sections || [];
+                            form.setValue("seatingMap", {
+                              ...form.getValues("seatingMap"),
+                              sections: [...sections, sectionName]
+                            });
+                            // Clear the input field after adding
+                            (document.getElementById('sectionNameInput') as HTMLInputElement).value = '';
+                          }
+                        }}
+                      >
+                        Add
+                      </Button>
+                    </div>
+                    
+                    {/* Show added sections */}
+                    {form.getValues("seatingMap")?.sections?.length > 0 && (
+                      <div className="mt-3">
+                        <h5 className="text-sm font-medium mb-2">Defined Sections:</h5>
+                        <div className="flex flex-wrap gap-2">
+                          {form.getValues("seatingMap")?.sections?.map((section: string, i: number) => (
+                            <div 
+                              key={i} 
+                              className="px-2 py-1 bg-white rounded border flex items-center gap-1"
+                            >
+                              <span className="text-sm">{section}</span>
+                              <button 
+                                type="button"
+                                className="text-gray-500 hover:text-red-500 transition-colors"
+                                onClick={() => {
+                                  const sections = form.getValues("seatingMap")?.sections || [];
+                                  form.setValue("seatingMap", {
+                                    ...form.getValues("seatingMap"),
+                                    sections: sections.filter((_, index) => index !== i)
+                                  });
+                                }}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="text-xs text-gray-500 italic mt-3">
+                      Note: For complex seating arrangements, additional configuration will be available after event creation.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {watchEventType === "conference" && (
+          <div className="mb-6">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h3 className="text-lg font-medium">Conference Details</h3>
+                <p className="text-sm text-gray-500 mt-1">Additional information for conference events</p>
+              </div>
+            </div>
+            
+            <div className="bg-gray-50 p-6 rounded-lg border">
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div>
+                  <h4 className="text-base font-medium mb-2 flex items-center">
+                    <Calendar className="h-4 w-4 mr-2 text-gray-500" />
+                    Session Information
+                  </h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Define sessions, speakers, and schedules for your conference
+                  </p>
+                  
+                  <div className="space-y-2">
+                    <div className="flex gap-2 items-center">
+                      <Input 
+                        placeholder="Session name" 
+                        className="bg-white"
+                        id="sessionNameInput"
+                      />
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          const sessionName = (document.getElementById('sessionNameInput') as HTMLInputElement)?.value;
+                          if (sessionName) {
+                            const currentMap = form.getValues("seatingMap") || {};
+                            const sessions = currentMap.sessions || [];
+                            form.setValue("seatingMap", {
+                              ...currentMap,
+                              sessions: [...sessions, sessionName]
+                            });
+                            // Clear the input field after adding
+                            (document.getElementById('sessionNameInput') as HTMLInputElement).value = '';
+                          }
+                        }}
+                      >
+                        Add
+                      </Button>
+                    </div>
+                    
+                    {/* Show added sessions */}
+                    {form.getValues("seatingMap")?.sessions?.length > 0 && (
+                      <div className="mt-3">
+                        <h5 className="text-sm font-medium mb-2">Defined Sessions:</h5>
+                        <div className="flex flex-wrap gap-2">
+                          {form.getValues("seatingMap")?.sessions?.map((session: string, i: number) => (
+                            <div 
+                              key={i} 
+                              className="px-2 py-1 bg-white rounded border flex items-center gap-1"
+                            >
+                              <span className="text-sm">{session}</span>
+                              <button 
+                                type="button"
+                                className="text-gray-500 hover:text-red-500 transition-colors"
+                                onClick={() => {
+                                  const currentMap = form.getValues("seatingMap") || {};
+                                  const sessions = currentMap.sessions || [];
+                                  form.setValue("seatingMap", {
+                                    ...currentMap,
+                                    sessions: sessions.filter((_: string, index: number) => index !== i)
+                                  });
+                                }}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="text-xs text-gray-500 italic mt-3">
+                      Note: Detailed session scheduling will be available after event creation.
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className="text-base font-medium mb-2 flex items-center">
+                    <Tag className="h-4 w-4 mr-2 text-gray-500" />
+                    Registration Options
+                  </h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Set registration options for conference attendees
+                  </p>
+                  
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <input type="checkbox" id="earlyBird" className="rounded text-primary" />
+                      <label htmlFor="earlyBird" className="text-sm text-gray-700">Enable early bird pricing</label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input type="checkbox" id="groupDiscount" className="rounded text-primary" />
+                      <label htmlFor="groupDiscount" className="text-sm text-gray-700">Enable group discounts</label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input type="checkbox" id="workshops" className="rounded text-primary" />
+                      <label htmlFor="workshops" className="text-sm text-gray-700">Include workshops</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
         <div>
           <div className="flex justify-between items-center mb-4">
             <div>
@@ -279,7 +567,7 @@ const CreateEventForm = ({ form, onSubmit, isPending, categories }: CreateEventF
           </div>
           
           <div className="space-y-4">
-            {watchTicketTypes.map((_, index) => (
+            {watchTicketTypes.map((_: any, index: number) => (
               <div key={index} className="border rounded-md shadow-sm hover:shadow-md transition-shadow duration-200">
                 <div 
                   className="flex justify-between items-center p-4 cursor-pointer hover:bg-gray-50 transition-colors duration-200"

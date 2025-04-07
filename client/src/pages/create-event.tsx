@@ -7,7 +7,7 @@ import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
-import { createEventSchema, EVENT_CATEGORIES } from "@shared/schema";
+import { createEventSchema, EVENT_CATEGORIES, EVENT_TYPES } from "@shared/schema";
 import CreateEventForm from "@/components/ui/create-event-form";
 import TabsComponent from "@/components/ui/tabs-component";
 import { useAuth } from "@/hooks/use-auth";
@@ -42,8 +42,21 @@ const eventFormSchema = createEventSchema.extend({
   featured: z.boolean().default(false)
 });
 
-// Define the type for form values
-type EventFormValues = z.infer<typeof eventFormSchema>;
+// Define the EventFormValues interface to match the one in create-event-form.tsx
+interface EventFormValues {
+  title: string;
+  description: string;
+  location: string;
+  category: string;
+  startDate: Date;
+  endDate?: Date;
+  imageUrl?: string;
+  featured: boolean;
+  organizer: number;
+  eventType?: "general" | "conference" | "seated"; // Typed to match EVENT_TYPES
+  seatingMap?: Record<string, any> | null; // For seated events
+  ticketTypes: TicketTypeInput[];
+};
 
 const CreateEvent = () => {
   const [, setLocation] = useLocation();
@@ -69,7 +82,6 @@ const CreateEvent = () => {
   };
   
   const form = useForm<EventFormValues>({
-    resolver: zodResolver(eventFormSchema),
     defaultValues: {
       title: "",
       description: "",
@@ -80,6 +92,8 @@ const CreateEvent = () => {
       imageUrl: "",
       organizer: user?.id || 0, // Use current user's ID
       featured: false,
+      eventType: "general", // Default to general event type
+      seatingMap: null, // No seating map by default
       ticketTypes: [
         {
           name: "General Admission",

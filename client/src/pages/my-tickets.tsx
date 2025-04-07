@@ -1,14 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Calendar, MapPin, Tag, Check, AlertTriangle, Ticket as TicketIcon } from "lucide-react";
+import { Calendar, MapPin, Tag, AlertTriangle, Ticket as TicketIcon, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import TabsComponent from "@/components/ui/tabs-component";
 import { format } from "date-fns";
 import { Event, TicketType } from "@shared/schema";
 import type { Ticket } from "@shared/schema";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 interface ExpandedTicket extends Ticket {
   event?: Event;
@@ -17,6 +18,10 @@ interface ExpandedTicket extends Ticket {
 
 const MyTickets = () => {
   const { user } = useAuth();
+  const [selectedTicket, setSelectedTicket] = useState<ExpandedTicket | null>(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+  const [addToWalletLoading, setAddToWalletLoading] = useState(false);
+  
   // Fetch user tickets
   const ticketsQuery = useQuery<ExpandedTicket[]>({
     queryKey: ["/api/tickets/user"],
@@ -65,7 +70,7 @@ const MyTickets = () => {
   };
   
   // Function to fetch QR code
-  const fetchQrCode = async (ticketId: number) => {
+  const fetchQrCode = useCallback(async (ticketId: number) => {
     try {
       const res = await fetch(`/api/tickets/${ticketId}/qr`);
       if (!res.ok) throw new Error('Failed to fetch QR code');
@@ -75,75 +80,81 @@ const MyTickets = () => {
       console.error('Error fetching QR code:', error);
       return null;
     }
-  };
+  }, []);
+  
+  // Function to handle viewing a ticket
+  const handleViewTicket = useCallback(async (ticket: ExpandedTicket) => {
+    setSelectedTicket(ticket);
+    
+    // Fetch QR code if not already loaded
+    if (!qrCodeUrl) {
+      const qrData = await fetchQrCode(ticket.id);
+      setQrCodeUrl(qrData);
+    }
+  }, [fetchQrCode, qrCodeUrl]);
+  
+  // Function to handle adding to wallet
+  const handleAddToWallet = useCallback(async () => {
+    if (!selectedTicket) return;
+    
+    setAddToWalletLoading(true);
+    
+    // Simulate adding to wallet (in a real app, this would integrate with the wallet API)
+    setTimeout(() => {
+      setAddToWalletLoading(false);
+      // In a real implementation, we would redirect to the wallet app or show a success message
+      alert('Ticket added to wallet successfully!');
+    }, 1500);
+  }, [selectedTicket]);
 
-  const renderTicket = (ticket: ExpandedTicket) => {
+  // Function to close ticket modal
+  const closeTicketModal = useCallback(() => {
+    setSelectedTicket(null);
+    setQrCodeUrl(null);
+  }, []);
+
+  // Function to render ticket cards in the list
+  const renderTicketCard = useCallback((ticket: ExpandedTicket) => {
     if (!ticket.event || !ticket.ticketType) return null;
     
     const eventDate = new Date(ticket.event.startDate);
+    const eventTime = format(eventDate, "HH:mm");
     const isPast = eventDate < new Date();
     
-    // Create state for QR code display
-    const [showQR, setShowQR] = useState(false);
-    const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
-    
-    // Function to toggle QR code display
-    const toggleQR = async () => {
-      if (!showQR && !qrCodeUrl) {
-        const qrData = await fetchQrCode(ticket.id);
-        setQrCodeUrl(qrData);
-      }
-      setShowQR(!showQR);
-    };
-    
     return (
-      <Card key={ticket.id} className="mb-4">
-        <CardHeader className="flex flex-row items-start justify-between pb-2">
-          <div>
-            <CardTitle className="text-xl">{ticket.event.title}</CardTitle>
-            <div className="text-sm text-gray-500">{ticket.orderId}</div>
-          </div>
-          {isPast ? (
-            <div className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded">
-              PAST
-            </div>
-          ) : (
-            <div className="px-2 py-1 bg-success/10 text-success text-xs font-medium rounded">
-              UPCOMING
-            </div>
-          )}
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="sm:w-1/4">
-              {showQR && qrCodeUrl ? (
-                <div className="p-2 bg-white border rounded">
-                  <img 
-                    src={qrCodeUrl} 
-                    alt="Ticket QR Code" 
-                    className="w-full"
-                  />
-                  <p className="text-xs text-center mt-1 text-gray-500">Scan at entry</p>
-                </div>
-              ) : (
-                <div className="h-24 w-full bg-gray-200 rounded overflow-hidden">
-                  <img 
-                    src={ticket.event.imageUrl || "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"} 
-                    alt={ticket.event.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              )}
+      <Card key={ticket.id} className="mb-4 hover:shadow-md transition-shadow">
+        <CardContent className="p-0 overflow-hidden">
+          <div className="flex flex-col sm:flex-row">
+            {/* Left side: Image */}
+            <div className="sm:w-1/4 h-24 sm:h-auto bg-gray-200">
+              <img 
+                src={ticket.event.imageUrl || "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"} 
+                alt={ticket.event.title}
+                className="w-full h-full object-cover"
+              />
             </div>
             
-            <div className="sm:w-3/4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Right side: Details */}
+            <div className="sm:w-3/4 p-4">
+              <div className="flex flex-row justify-between items-start">
                 <div>
-                  <div className="flex items-center text-sm mb-2">
-                    <Calendar className="h-4 w-4 mr-1 text-gray-500" />
-                    <span>{format(eventDate, "MMMM d, yyyy")}</span>
+                  <h3 className="font-semibold text-lg mb-1">{ticket.event.title}</h3>
+                  <div className="text-sm text-gray-500 mb-2">{format(eventDate, "dd MMM yyyy")} • {eventTime}</div>
+                </div>
+                {isPast ? (
+                  <div className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded">
+                    PAST
                   </div>
-                  <div className="flex items-center text-sm mb-2">
+                ) : (
+                  <div className="px-2 py-1 bg-success/10 text-success text-xs font-medium rounded">
+                    UPCOMING
+                  </div>
+                )}
+              </div>
+              
+              <div className="md:flex md:justify-between md:items-end">
+                <div>
+                  <div className="flex items-center text-sm mb-1">
                     <MapPin className="h-4 w-4 mr-1 text-gray-500" />
                     <span>{ticket.event.location}</span>
                   </div>
@@ -153,22 +164,16 @@ const MyTickets = () => {
                   </div>
                 </div>
                 
-                <div className="md:text-right">
-                  <div className="text-sm mb-1">Purchased on {format(new Date(ticket.purchaseDate), "MMMM d, yyyy")}</div>
-                  <div className="font-semibold mb-3">Total: ${Number(ticket.totalPrice).toFixed(2)}</div>
-                  
-                  <div className="space-x-2">
-                    {!isPast && (
-                      <>
-                        <Button size="sm" variant="outline" onClick={toggleQR}>
-                          {showQR ? "Hide QR" : "Show QR"}
-                        </Button>
-                        <Link href={`/events/${ticket.event.id}`}>
-                          <Button size="sm" variant="outline">View Event</Button>
-                        </Link>
-                      </>
-                    )}
-                  </div>
+                <div className="mt-3 md:mt-0 md:ml-4">
+                  {!isPast && (
+                    <Button 
+                      size="sm"
+                      variant="default"
+                      onClick={() => handleViewTicket(ticket)}
+                    >
+                      View Ticket
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -176,7 +181,7 @@ const MyTickets = () => {
         </CardContent>
       </Card>
     );
-  };
+  }, [handleViewTicket]);
   
   if (ticketsQuery.isLoading) {
     return (
@@ -227,6 +232,16 @@ const MyTickets = () => {
   const upcomingTickets = ticketsQuery.data?.filter(isUpcomingEvent) || [];
   const pastTickets = ticketsQuery.data?.filter(ticket => !isUpcomingEvent(ticket)) || [];
   
+  // Format date for the ticket
+  const formatTicketDate = (date: Date) => {
+    return format(date, "dd MMM yyyy");
+  };
+  
+  // Format time for the ticket
+  const formatTicketTime = (date: Date) => {
+    return format(date, "HH:mm");
+  };
+  
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <TabsComponent
@@ -253,19 +268,118 @@ const MyTickets = () => {
             {upcomingTickets.length > 0 && (
               <div className="mb-8">
                 <h2 className="text-xl font-semibold mb-4">Upcoming Events</h2>
-                {upcomingTickets.map(renderTicket)}
+                {upcomingTickets.map(renderTicketCard)}
               </div>
             )}
             
             {pastTickets.length > 0 && (
               <div>
                 <h2 className="text-xl font-semibold mb-4">Past Events</h2>
-                {pastTickets.map(renderTicket)}
+                {pastTickets.map(renderTicketCard)}
               </div>
             )}
           </>
         )}
       </div>
+      
+      {/* Ticket Detail Modal */}
+      <Dialog open={selectedTicket !== null} onOpenChange={() => selectedTicket && closeTicketModal()}>
+        <DialogContent className="max-w-md p-0 overflow-hidden bg-white rounded-lg shadow-xl">
+          {selectedTicket && selectedTicket.event && (
+            <>
+              {/* Top section with event image */}
+              <div className="relative h-40 bg-gray-200">
+                <img 
+                  src={selectedTicket.event.imageUrl || "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"} 
+                  alt={selectedTicket.event.title}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent">
+                  <div className="absolute bottom-4 left-4 text-white">
+                    <h3 className="text-xl font-bold">{selectedTicket.event.title}</h3>
+                    <p className="text-sm opacity-90">{selectedTicket.event.category}</p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Ticket content */}
+              <div className="p-4 border-b">
+                <div className="flex justify-between mb-4">
+                  <div>
+                    <div className="text-sm text-gray-500">Date</div>
+                    <div className="font-medium">
+                      {formatTicketDate(new Date(selectedTicket.event.startDate))}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div className="text-sm text-gray-500">Time</div>
+                    <div className="font-medium">
+                      {formatTicketTime(new Date(selectedTicket.event.startDate))}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex justify-between mb-4">
+                  <div>
+                    <div className="text-sm text-gray-500">Cinema</div>
+                    <div className="font-medium">{selectedTicket.event.location}</div>
+                  </div>
+                  
+                  <div>
+                    <div className="text-sm text-gray-500">Seat</div>
+                    <div className="font-medium">
+                      {selectedTicket.ticketType?.name} (×{selectedTicket.quantity})
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* QR Code section */}
+              <div className="p-4 flex flex-col items-center">
+                {qrCodeUrl ? (
+                  <div className="p-3 bg-white rounded border w-64 h-64 mb-2">
+                    <img 
+                      src={qrCodeUrl} 
+                      alt="Ticket QR Code" 
+                      className="w-full h-full"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-64 h-64 bg-gray-200 animate-pulse rounded"></div>
+                )}
+                <p className="text-sm text-center text-gray-500 mt-2">
+                  Scan the Barcode to Print Your Tickets
+                </p>
+                <p className="text-sm font-mono text-center mt-1">
+                  Booking Code: {selectedTicket.orderId.slice(-8).toUpperCase()}
+                </p>
+                
+                <Button 
+                  className="mt-4 w-full"
+                  onClick={handleAddToWallet}
+                  disabled={addToWalletLoading}
+                >
+                  {addToWalletLoading ? (
+                    <span className="flex items-center">
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Processing...
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center">
+                      <Wallet className="mr-2 h-4 w-4" />
+                      Add to Wallet
+                    </span>
+                  )}
+                </Button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

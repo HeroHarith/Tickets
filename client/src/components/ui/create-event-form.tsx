@@ -18,9 +18,10 @@ import { Trash2, Plus } from "lucide-react";
 
 interface TicketTypeInput {
   name: string;
-  description?: string;
-  price: number;
+  description?: string | null;
+  price: string; // String to match numeric in Postgres
   quantity: number;
+  availableQuantity: number; // Required field
 }
 
 interface EventFormValues {
@@ -55,8 +56,9 @@ const CreateEventForm = ({ form, onSubmit, isPending, categories }: CreateEventF
       {
         name: `Ticket Type ${currentTicketTypes.length + 1}`,
         description: "",
-        price: 0,
+        price: "0", // Using string for price to match Postgres numeric type
         quantity: 100,
+        availableQuantity: 100 // Set the available quantity to match the total quantity
       }
     ]);
     setExpandedTicketType(currentTicketTypes.length);
@@ -337,7 +339,8 @@ const CreateEventForm = ({ form, onSubmit, isPending, categories }: CreateEventF
                                 min="0" 
                                 step="0.01"
                                 {...field}
-                                onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                                // Convert to string to match Postgres numeric type
+                                onChange={(e) => field.onChange(e.target.value)}
                               />
                             </FormControl>
                             <FormMessage />
@@ -356,7 +359,12 @@ const CreateEventForm = ({ form, onSubmit, isPending, categories }: CreateEventF
                                 type="number" 
                                 min="1"
                                 {...field}
-                                onChange={(e) => field.onChange(parseInt(e.target.value))}
+                                onChange={(e) => {
+                                  const value = parseInt(e.target.value);
+                                  field.onChange(value);
+                                  // Update availableQuantity to match quantity
+                                  form.setValue(`ticketTypes.${index}.availableQuantity`, value);
+                                }}
                               />
                             </FormControl>
                             <FormMessage />

@@ -102,7 +102,9 @@ export class DatabaseStorage implements IStorage {
       }
       
       if (conditions.length > 0) {
-        query = query.where(and(...conditions));
+        // Cast query to appropriate type to satisfy TypeScript
+        // This doesn't affect functionality but resolves type issues with query.where()
+        query = query.where(and(...conditions)) as any;
       }
     }
     
@@ -178,6 +180,10 @@ export class DatabaseStorage implements IStorage {
           .set({ availableQuantity: ticketType.availableQuantity - quantity })
           .where(eq(ticketTypes.id, ticketTypeId));
         
+        // Calculate total price - convert price to number for calculation, then back to string
+        const pricePerTicket = Number(ticketType.price);
+        const totalPrice = String(pricePerTicket * quantity);
+        
         // Create ticket purchase record
         const [ticket] = await tx.insert(tickets)
           .values({
@@ -185,7 +191,7 @@ export class DatabaseStorage implements IStorage {
             eventId,
             userId,
             quantity,
-            totalPrice: Number(ticketType.price) * quantity,
+            totalPrice,
             orderId,
             purchaseDate: new Date()
           })

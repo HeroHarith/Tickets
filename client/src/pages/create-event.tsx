@@ -10,13 +10,33 @@ import { queryClient } from "@/lib/queryClient";
 import { createEventSchema, EVENT_CATEGORIES } from "@shared/schema";
 import CreateEventForm from "@/components/ui/create-event-form";
 
+// Define the form TicketTypeInput with the correct availableQuantity type
+interface TicketTypeInput {
+  name: string;
+  description?: string | null;
+  price: string; // String to match numeric in Postgres
+  quantity: number;
+  availableQuantity: number; // Required field
+}
+
 // Extended schema with form-specific validation
 const eventFormSchema = createEventSchema.extend({
   imageUrl: z.string().optional(),
   startDate: z.string().min(1, "Start date is required"),
-  endDate: z.string().optional()
+  endDate: z.string().optional(),
+  // Override the ticketTypes to ensure availableQuantity is required
+  ticketTypes: z.array(z.object({
+    name: z.string(),
+    description: z.string().nullable().optional(),
+    price: z.string(),
+    quantity: z.number(),
+    availableQuantity: z.number()
+  })),
+  // Make sure featured is always required and a boolean
+  featured: z.boolean().default(false)
 });
 
+// Define the type for form values
 type EventFormValues = z.infer<typeof eventFormSchema>;
 
 const CreateEvent = () => {
@@ -39,7 +59,7 @@ const CreateEvent = () => {
         {
           name: "General Admission",
           description: "Standard entry ticket",
-          price: 0,
+          price: "0", // Changed to string to match Postgres numeric type
           quantity: 100,
           availableQuantity: 100
         }

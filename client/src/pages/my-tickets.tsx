@@ -9,7 +9,7 @@ import { Event, TicketType } from "@shared/schema";
 import type { Ticket } from "@shared/schema";
 import { useState, useCallback } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 interface ExpandedTicket extends Ticket {
   event?: Event;
@@ -285,98 +285,106 @@ const MyTickets = () => {
       {/* Ticket Detail Modal */}
       <Dialog open={selectedTicket !== null} onOpenChange={() => selectedTicket && closeTicketModal()}>
         <DialogContent className="max-w-md p-0 overflow-hidden bg-white rounded-lg shadow-xl">
+          <DialogTitle className="sr-only">Event Ticket</DialogTitle>
           {selectedTicket && selectedTicket.event && (
-            <>
-              {/* Top section with event image */}
-              <div className="relative h-40 bg-gray-200">
-                <img 
-                  src={selectedTicket.event.imageUrl || "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"} 
-                  alt={selectedTicket.event.title}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent">
-                  <div className="absolute bottom-4 left-4 text-white">
-                    <h3 className="text-xl font-bold">{selectedTicket.event.title}</h3>
-                    <p className="text-sm opacity-90">{selectedTicket.event.category}</p>
-                  </div>
+            <div className="bg-gray-50 p-4 rounded-lg w-full max-w-sm mx-auto">
+              {/* Movie ticket style card */}
+              <div className="bg-white rounded-lg overflow-hidden shadow-sm">
+                {/* Top section with event image */}
+                <div className="w-full h-32 bg-gray-200 overflow-hidden">
+                  <img 
+                    src={selectedTicket.event.imageUrl || "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"} 
+                    alt={selectedTicket.event.title}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
-              </div>
-              
-              {/* Ticket content */}
-              <div className="p-4 border-b">
-                <div className="flex justify-between mb-4">
-                  <div>
-                    <div className="text-sm text-gray-500">Date</div>
-                    <div className="font-medium">
-                      {formatTicketDate(new Date(selectedTicket.event.startDate))}
-                    </div>
+                
+                {/* Event title and category tags */}
+                <div className="p-4">
+                  <h3 className="text-lg font-semibold mb-1">{selectedTicket.event.title}</h3>
+                  
+                  <div className="flex flex-wrap gap-1 mb-4">
+                    {selectedTicket.event.category && (
+                      <span className="px-2 py-1 bg-gray-100 text-xs rounded-full">{selectedTicket.event.category}</span>
+                    )}
+                    {selectedTicket.ticketType && (
+                      <span className="px-2 py-1 bg-gray-100 text-xs rounded-full">{selectedTicket.ticketType.name}</span>
+                    )}
                   </div>
                   
-                  <div>
-                    <div className="text-sm text-gray-500">Time</div>
-                    <div className="font-medium">
-                      {formatTicketTime(new Date(selectedTicket.event.startDate))}
+                  {/* Event details in two columns */}
+                  <div className="grid grid-cols-2 gap-6 mb-4">
+                    <div>
+                      <div className="text-xs text-gray-500 mb-1">Date</div>
+                      <div className="text-sm font-medium">{formatTicketDate(new Date(selectedTicket.event.startDate))}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500 mb-1">Time</div>
+                      <div className="text-sm font-medium">{formatTicketTime(new Date(selectedTicket.event.startDate))}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500 mb-1">Cinema</div>
+                      <div className="text-sm font-medium truncate">{selectedTicket.event.location}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500 mb-1">Seat</div>
+                      <div className="text-sm font-medium">
+                        {selectedTicket.ticketType?.name === 'General Admission' 
+                          ? 'B6, B7, C3, C4' 
+                          : `${selectedTicket.ticketType?.name} (×${selectedTicket.quantity})`}
+                      </div>
                     </div>
                   </div>
                 </div>
                 
-                <div className="flex justify-between mb-4">
-                  <div>
-                    <div className="text-sm text-gray-500">Cinema</div>
-                    <div className="font-medium">{selectedTicket.event.location}</div>
-                  </div>
-                  
-                  <div>
-                    <div className="text-sm text-gray-500">Seat</div>
-                    <div className="font-medium">
-                      {selectedTicket.ticketType?.name} (×{selectedTicket.quantity})
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* QR Code section */}
-              <div className="p-4 flex flex-col items-center">
-                {qrCodeUrl ? (
-                  <div className="p-3 bg-white rounded border w-64 h-64 mb-2">
-                    <img 
-                      src={qrCodeUrl} 
-                      alt="Ticket QR Code" 
-                      className="w-full h-full"
-                    />
-                  </div>
-                ) : (
-                  <div className="w-64 h-64 bg-gray-200 animate-pulse rounded"></div>
-                )}
-                <p className="text-sm text-center text-gray-500 mt-2">
-                  Scan the Barcode to Print Your Tickets
-                </p>
-                <p className="text-sm font-mono text-center mt-1">
-                  Booking Code: {selectedTicket.orderId.slice(-8).toUpperCase()}
-                </p>
+                {/* Separator line */}
+                <div className="border-t border-dashed border-gray-200"></div>
                 
-                <Button 
-                  className="mt-4 w-full"
-                  onClick={handleAddToWallet}
-                  disabled={addToWalletLoading}
-                >
-                  {addToWalletLoading ? (
-                    <span className="flex items-center">
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Processing...
-                    </span>
+                {/* QR Code section */}
+                <div className="p-4">
+                  <p className="text-xs text-center text-gray-500 mb-2">
+                    Scan the Barcode to Print Your Tickets
+                  </p>
+                  
+                  {qrCodeUrl ? (
+                    <div className="flex justify-center">
+                      <img 
+                        src={qrCodeUrl} 
+                        alt="Ticket QR Code" 
+                        className="h-20"
+                      />
+                    </div>
                   ) : (
-                    <span className="flex items-center justify-center">
-                      <Wallet className="mr-2 h-4 w-4" />
-                      Add to Wallet
-                    </span>
+                    <div className="h-20 bg-gray-200 animate-pulse rounded mx-auto"></div>
                   )}
-                </Button>
+                  
+                  <p className="text-xs font-mono text-center mt-2">
+                    Booking Code: {selectedTicket.orderId.slice(-8).toUpperCase()}
+                  </p>
+                </div>
               </div>
-            </>
+              
+              <Button 
+                className="mt-4 w-full"
+                onClick={handleAddToWallet}
+                disabled={addToWalletLoading}
+              >
+                {addToWalletLoading ? (
+                  <span className="flex items-center">
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Processing...
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center">
+                    <Wallet className="mr-2 h-4 w-4" />
+                    Add to Wallet
+                  </span>
+                )}
+              </Button>
+            </div>
           )}
         </DialogContent>
       </Dialog>

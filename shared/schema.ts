@@ -3,7 +3,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // User roles
-export const USER_ROLES = ["customer", "eventManager", "admin"] as const;
+export const USER_ROLES = ["customer", "eventManager", "admin", "center"] as const;
 export const roleSchema = z.enum(USER_ROLES);
 export type Role = z.infer<typeof roleSchema>;
 
@@ -196,3 +196,71 @@ export const eventSearchSchema = z.object({
 });
 
 export type EventSearchParams = z.infer<typeof eventSearchSchema>;
+
+// Venue model
+export const venues = pgTable("venues", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  location: text("location").notNull(),
+  capacity: integer("capacity"),
+  hourlyRate: numeric("hourly_rate", { precision: 10, scale: 2 }).notNull(),
+  dailyRate: numeric("daily_rate", { precision: 10, scale: 2 }),
+  facilities: jsonb("facilities"), // List of available facilities like projector, AC, etc.
+  availabilityHours: jsonb("availability_hours"), // Operating hours
+  ownerId: integer("owner_id").notNull(), // References users.id with role "center"
+  images: jsonb("images"), // Array of image URLs
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Rental model (bookings for venues)
+export const rentals = pgTable("rentals", {
+  id: serial("id").primaryKey(),
+  venueId: integer("venue_id").notNull(), // References venues.id
+  customerId: integer("customer_id").notNull(), // References users.id
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time").notNull(),
+  totalPrice: numeric("total_price", { precision: 10, scale: 2 }).notNull(),
+  status: text("status").default("pending").notNull(), // pending, confirmed, canceled, completed
+  paymentStatus: text("payment_status").default("unpaid").notNull(), // unpaid, paid, refunded
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Insert schemas for venues and rentals
+export const insertVenueSchema = createInsertSchema(venues).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertRentalSchema = createInsertSchema(rentals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Types
+export type Venue = typeof venues.$inferSelect;
+export type InsertVenue = z.infer<typeof insertVenueSchema>;
+
+export type Rental = typeof rentals.$inferSelect;
+export type InsertRental = z.infer<typeof insertRentalSchema>;
+
+// Rental status and payment status options
+export const RENTAL_STATUS = ["pending", "confirmed", "canceled", "completed"] as const;
+export const rentalStatusSchema = z.enum(RENTAL_STATUS);
+export type RentalStatus = z.infer<typeof rentalStatusSchema>;
+
+export const PAYMENT_STATUS = ["unpaid", "paid", "refunded"] as const;
+export const paymentStatusSchema = z.enum(PAYMENT_STATUS);
+export type PaymentStatus = z.infer<typeof paymentStatusSchema>;
+
+// Extended schema for rental creation
+export const createRentalSchema = insertRentalSchema.extend({
+  startTime: z.coerce.date(),
+  endTime: z.coerce.date(),
+});
+
+export type CreateRentalInput = z.infer<typeof createRentalSchema>;

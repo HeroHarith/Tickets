@@ -174,12 +174,13 @@ export function setupAuth(app: Express): void {
       
       // Create user with hashed password
       const hashedPassword = await hashPassword(password);
+      // Always enforce customer role for regular registration (admin panel can change it later)
       const user = await storage.createUser({
         username,
         password: hashedPassword,
         email,
         name,
-        role: role || "customer", // Default to customer
+        role: "customer", // Always default to customer role for regular registration
       });
       
       // Auto-login after registration

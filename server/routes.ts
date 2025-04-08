@@ -783,6 +783,367 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== Venue Management Routes (Center Role) =====
+  
+  // Get all venues owned by current center
+  app.get("/api/venues", requireRole(["center", "admin"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      // For center users, only show their own venues
+      // For admins, show all venues
+      const venues = req.user.role === "center" 
+        ? await storage.getVenues(req.user.id)  
+        : await storage.getVenues();
+        
+      res.json(venues);
+    } catch (error) {
+      console.error("Error fetching venues:", error);
+      res.status(500).json({ message: "Error fetching venues" });
+    }
+  });
+  
+  // Get a specific venue by ID
+  app.get("/api/venues/:id", requireRole(["center", "admin", "customer"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      const venueId = parseInt(req.params.id);
+      const venue = await storage.getVenue(venueId);
+      
+      if (!venue) {
+        return res.status(404).json({ message: "Venue not found" });
+      }
+      
+      // Check permissions - centers can only view their own venues
+      if (req.user.role === "center" && venue.ownerId !== req.user.id) {
+        return res.status(403).json({ message: "You don't have permission to view this venue" });
+      }
+      
+      res.json(venue);
+    } catch (error) {
+      console.error("Error fetching venue:", error);
+      res.status(500).json({ message: "Error fetching venue" });
+    }
+  });
+  
+  // Create a new venue
+  app.post("/api/venues", requireRole(["center"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      // Validate venue data
+      const venueData = schema.insertVenueSchema.parse({
+        ...req.body,
+        ownerId: req.user.id // Set the logged-in center as the owner
+      });
+      
+      const venue = await storage.createVenue(venueData);
+      res.status(201).json(venue);
+    } catch (error) {
+      console.error("Error creating venue:", error);
+      
+      if (error instanceof ZodError) {
+        return res.status(400).json({ 
+          message: "Invalid venue data", 
+          errors: error.errors 
+        });
+      }
+      
+      res.status(500).json({ message: "Error creating venue" });
+    }
+  });
+  
+  // Update a venue
+  app.put("/api/venues/:id", requireRole(["center"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      const venueId = parseInt(req.params.id);
+      const venue = await storage.getVenue(venueId);
+      
+      if (!venue) {
+        return res.status(404).json({ message: "Venue not found" });
+      }
+      
+      // Check ownership - centers can only update their own venues
+      if (venue.ownerId !== req.user.id) {
+        return res.status(403).json({ message: "You don't have permission to update this venue" });
+      }
+      
+      // Validate venue update data
+      const venueData = schema.insertVenueSchema.partial().parse(req.body);
+      
+      const updatedVenue = await storage.updateVenue(venueId, venueData);
+      res.json(updatedVenue);
+    } catch (error) {
+      console.error("Error updating venue:", error);
+      
+      if (error instanceof ZodError) {
+        return res.status(400).json({ 
+          message: "Invalid venue data", 
+          errors: error.errors 
+        });
+      }
+      
+      res.status(500).json({ message: "Error updating venue" });
+    }
+  });
+  
+  // Delete a venue
+  app.delete("/api/venues/:id", requireRole(["center"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      const venueId = parseInt(req.params.id);
+      const venue = await storage.getVenue(venueId);
+      
+      if (!venue) {
+        return res.status(404).json({ message: "Venue not found" });
+      }
+      
+      // Check ownership - centers can only delete their own venues
+      if (venue.ownerId !== req.user.id) {
+        return res.status(403).json({ message: "You don't have permission to delete this venue" });
+      }
+      
+      // Check if venue has active rentals
+      const rentals = await storage.getRentals({ venueId });
+      const activeRentals = rentals.filter(r => r.status !== "canceled" && r.status !== "completed");
+      
+      if (activeRentals.length > 0) {
+        return res.status(400).json({ 
+          message: "Cannot delete venue with active rentals. Cancel all rentals first." 
+        });
+      }
+      
+      await storage.deleteVenue(venueId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting venue:", error);
+      res.status(500).json({ message: "Error deleting venue" });
+    }
+  });
+  
+  // ===== Rental Management Routes =====
+  
+  // Get rentals with various filters
+  app.get("/api/rentals", requireRole(["center", "admin", "customer"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      const filters: any = {};
+      
+      // Parse query parameters
+      if (req.query.venueId) {
+        filters.venueId = parseInt(req.query.venueId as string);
+      }
+      
+      if (req.query.startDate) {
+        filters.startDate = new Date(req.query.startDate as string);
+      }
+      
+      if (req.query.endDate) {
+        filters.endDate = new Date(req.query.endDate as string);
+      }
+      
+      if (req.query.status && schema.RENTAL_STATUS.includes(req.query.status as any)) {
+        filters.status = req.query.status;
+      }
+      
+      // Apply role-based filtering
+      if (req.user.role === "center") {
+        // Centers can only see rentals for their venues
+        filters.centerId = req.user.id;
+      } else if (req.user.role === "customer") {
+        // Customers can only see their own rentals
+        filters.customerId = req.user.id;
+      }
+      // Admins can see all rentals
+      
+      const rentals = await storage.getRentals(filters);
+      res.json(rentals);
+    } catch (error) {
+      console.error("Error fetching rentals:", error);
+      res.status(500).json({ message: "Error fetching rentals" });
+    }
+  });
+  
+  // Get a specific rental
+  app.get("/api/rentals/:id", requireRole(["center", "admin", "customer"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      const rentalId = parseInt(req.params.id);
+      const rental = await storage.getRental(rentalId);
+      
+      if (!rental) {
+        return res.status(404).json({ message: "Rental not found" });
+      }
+      
+      // Get venue details to check permission
+      const venue = await storage.getVenue(rental.venueId);
+      
+      if (!venue) {
+        return res.status(404).json({ message: "Venue not found" });
+      }
+      
+      // Check permissions
+      if (
+        (req.user.role === "center" && venue.ownerId !== req.user.id) ||
+        (req.user.role === "customer" && rental.customerId !== req.user.id)
+      ) {
+        return res.status(403).json({ message: "You don't have permission to view this rental" });
+      }
+      
+      res.json(rental);
+    } catch (error) {
+      console.error("Error fetching rental:", error);
+      res.status(500).json({ message: "Error fetching rental" });
+    }
+  });
+  
+  // Create a new rental
+  app.post("/api/rentals", requireRole(["center", "admin", "customer"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      // Calculate total price based on duration and hourly rate
+      const venue = await storage.getVenue(req.body.venueId);
+      
+      if (!venue) {
+        return res.status(404).json({ message: "Venue not found" });
+      }
+      
+      const startTime = new Date(req.body.startTime);
+      const endTime = new Date(req.body.endTime);
+      
+      // Validate dates
+      if (startTime >= endTime) {
+        return res.status(400).json({ message: "End time must be after start time" });
+      }
+      
+      if (startTime < new Date()) {
+        return res.status(400).json({ message: "Start time cannot be in the past" });
+      }
+      
+      // Calculate duration in hours
+      const durationMs = endTime.getTime() - startTime.getTime();
+      const durationHours = Math.ceil(durationMs / (1000 * 60 * 60));
+      
+      // Calculate price
+      const totalPrice = durationHours * Number(venue.hourlyRate);
+      
+      // Set the current user as the customer
+      const customerId = req.user.id;
+      
+      // Validate rental data
+      const rentalData = schema.createRentalSchema.parse({
+        ...req.body,
+        customerId,
+        totalPrice: totalPrice.toString(),
+        status: "pending",
+        paymentStatus: "unpaid"
+      });
+      
+      const rental = await storage.createRental(rentalData);
+      res.status(201).json(rental);
+    } catch (error) {
+      console.error("Error creating rental:", error);
+      
+      if (error instanceof ZodError) {
+        return res.status(400).json({ 
+          message: "Invalid rental data", 
+          errors: error.errors 
+        });
+      }
+      
+      if (error instanceof Error) {
+        return res.status(400).json({ message: error.message });
+      }
+      
+      res.status(500).json({ message: "Error creating rental" });
+    }
+  });
+  
+  // Update rental status (centers only)
+  app.patch("/api/rentals/:id/status", requireRole(["center", "admin"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      const rentalId = parseInt(req.params.id);
+      const status = req.body.status;
+      
+      // Validate status
+      if (!schema.RENTAL_STATUS.includes(status)) {
+        return res.status(400).json({ message: "Invalid rental status" });
+      }
+      
+      const rental = await storage.getRental(rentalId);
+      
+      if (!rental) {
+        return res.status(404).json({ message: "Rental not found" });
+      }
+      
+      // Get venue details to check permission
+      const venue = await storage.getVenue(rental.venueId);
+      
+      if (!venue) {
+        return res.status(404).json({ message: "Venue not found" });
+      }
+      
+      // Check permissions for center users
+      if (req.user.role === "center" && venue.ownerId !== req.user.id) {
+        return res.status(403).json({ message: "You don't have permission to update this rental" });
+      }
+      
+      const updatedRental = await storage.updateRentalStatus(rentalId, status);
+      res.json(updatedRental);
+    } catch (error) {
+      console.error("Error updating rental status:", error);
+      res.status(500).json({ message: "Error updating rental status" });
+    }
+  });
+  
+  // Update payment status (centers only)
+  app.patch("/api/rentals/:id/payment", requireRole(["center", "admin"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      const rentalId = parseInt(req.params.id);
+      const paymentStatus = req.body.paymentStatus;
+      
+      // Validate payment status
+      if (!schema.PAYMENT_STATUS.includes(paymentStatus)) {
+        return res.status(400).json({ message: "Invalid payment status" });
+      }
+      
+      const rental = await storage.getRental(rentalId);
+      
+      if (!rental) {
+        return res.status(404).json({ message: "Rental not found" });
+      }
+      
+      // Get venue details to check permission
+      const venue = await storage.getVenue(rental.venueId);
+      
+      if (!venue) {
+        return res.status(404).json({ message: "Venue not found" });
+      }
+      
+      // Check permissions for center users
+      if (req.user.role === "center" && venue.ownerId !== req.user.id) {
+        return res.status(403).json({ message: "You don't have permission to update this rental" });
+      }
+      
+      const updatedRental = await storage.updatePaymentStatus(rentalId, paymentStatus);
+      res.json(updatedRental);
+    } catch (error) {
+      console.error("Error updating payment status:", error);
+      res.status(500).json({ message: "Error updating payment status" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

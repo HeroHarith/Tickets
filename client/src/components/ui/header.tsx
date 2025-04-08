@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Ticket, MenuIcon, X, LogOut } from "lucide-react";
+import { Ticket, MenuIcon, X, LogOut, Building2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import {
   DropdownMenu,
@@ -74,6 +74,14 @@ const UserProfile = () => {
             </DropdownMenuItem>
           </>
         )}
+        {user.role === 'center' && (
+          <DropdownMenuItem asChild>
+            <Link href="/center" className="w-full cursor-pointer flex items-center">
+              <Building2 className="h-4 w-4 mr-2" />
+              Venue Dashboard
+            </Link>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem 
           className="text-red-500 focus:text-red-500 cursor-pointer"
@@ -92,6 +100,7 @@ const Header = () => {
   const { user } = useAuth();
 
   const showManagerOptions = user && ['eventManager', 'admin'].includes(user.role);
+  const isCenter = user && user.role === 'center';
 
   return (
     <header className="bg-white shadow-sm">
@@ -142,6 +151,15 @@ const Header = () => {
                   </Link>
                 )}
               </>
+            )}
+            {isCenter && (
+              <Link 
+                href="/center"
+                className={`${location === '/center' ? 'text-primary' : 'text-gray-700'} hover:text-primary px-3 py-2 rounded-md text-sm font-medium flex items-center`}
+              >
+                <Building2 className="h-4 w-4 mr-1" />
+                Venue Dashboard
+              </Link>
             )}
           </div>
           
@@ -203,6 +221,16 @@ const Header = () => {
                   </Link>
                 )}
               </>
+            )}
+            {isCenter && (
+              <Link 
+                href="/center"
+                className={`${location === '/center' ? 'text-primary' : 'text-gray-700'} flex items-center px-3 py-2 rounded-md text-base font-medium`}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <Building2 className="h-4 w-4 mr-2" />
+                Venue Dashboard
+              </Link>
             )}
           </div>
         )}

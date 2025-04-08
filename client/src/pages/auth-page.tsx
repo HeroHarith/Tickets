@@ -33,7 +33,7 @@ const registerSchema = z.object({
   confirmPassword: z.string().min(6, "Password must be at least 6 characters"),
   email: z.string().email("Please enter a valid email address"),
   name: z.string().min(2, "Name must be at least 2 characters"),
-  role: z.enum(["customer", "eventManager", "admin"]).default("customer"),
+  // Role is handled by the server and always defaults to "customer"
 })
 .refine((data) => data.password === data.confirmPassword, {
   message: "Passwords do not match",
@@ -64,7 +64,6 @@ export default function AuthPage() {
       confirmPassword: "",
       email: "",
       name: "",
-      role: "customer", // Default role
     },
   });
 
@@ -253,23 +252,7 @@ export default function AuthPage() {
                     />
                   </div>
 
-                  <FormField
-                    control={registerForm.control}
-                    name="role"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Account Type</FormLabel>
-                        <select
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                          {...field}
-                        >
-                          <option value="customer">Customer</option>
-                          <option value="eventManager">Event Manager</option>
-                        </select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {/* Role is always set to 'customer' by default on the server */}
 
                   <Button
                     type="submit"

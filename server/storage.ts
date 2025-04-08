@@ -7,11 +7,17 @@ import {
   PurchaseTicketInput,
   EventSearchParams,
   AttendeeDetails,
-  users, events, ticketTypes, tickets
+  users, events, ticketTypes, tickets,
+  // Venue and Rental types
+  Venue, InsertVenue,
+  Rental, InsertRental,
+  CreateRentalInput,
+  RentalStatus, PaymentStatus,
+  venues, rentals
 } from "@shared/schema";
 import { nanoid } from "nanoid";
 import { db, pool } from "./db";
-import { eq, and, SQL, sql, like, desc, asc, ilike } from "drizzle-orm";
+import { eq, and, or, ne, gt, lt, gte, lte, SQL, sql, like, desc, asc, ilike } from "drizzle-orm";
 import session from "express-session";
 import QRCode from "qrcode";
 import connectPgSimple from "connect-pg-simple";
@@ -54,6 +60,27 @@ export interface IStorage {
   // Ticket validation and QR code operations
   generateTicketQR(ticketId: number): Promise<string>;
   validateTicket(ticketId: number): Promise<boolean>;
+  
+  // Venue operations
+  getVenue(id: number): Promise<Venue | undefined>;
+  getVenues(centerId?: number): Promise<Venue[]>;
+  createVenue(venue: InsertVenue): Promise<Venue>;
+  updateVenue(id: number, venue: Partial<InsertVenue>): Promise<Venue>;
+  deleteVenue(id: number): Promise<void>;
+  
+  // Rental operations
+  getRental(id: number): Promise<Rental | undefined>;
+  getRentals(filters?: { 
+    venueId?: number; 
+    customerId?: number; 
+    centerId?: number; 
+    startDate?: Date; 
+    endDate?: Date;
+    status?: RentalStatus; 
+  }): Promise<Rental[]>;
+  createRental(rental: CreateRentalInput): Promise<Rental>;
+  updateRentalStatus(id: number, status: RentalStatus): Promise<Rental>;
+  updatePaymentStatus(id: number, status: PaymentStatus): Promise<Rental>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -503,6 +530,183 @@ export class DatabaseStorage implements IStorage {
       console.error('Error validating ticket:', error);
       throw new Error('Failed to validate ticket');
     }
+  }
+
+  // Venue operations
+  async getVenue(id: number): Promise<Venue | undefined> {
+    const [venue] = await db.select()
+      .from(venues)
+      .where(eq(venues.id, id));
+    return venue;
+  }
+
+  async getVenues(centerId?: number): Promise<Venue[]> {
+    let query = db.select().from(venues);
+    
+    if (centerId) {
+      query = query.where(eq(venues.ownerId, centerId));
+    }
+    
+    return await query.orderBy(asc(venues.name));
+  }
+
+  async createVenue(venue: InsertVenue): Promise<Venue> {
+    const [newVenue] = await db.insert(venues)
+      .values(venue)
+      .returning();
+    return newVenue;
+  }
+
+  async updateVenue(id: number, venue: Partial<InsertVenue>): Promise<Venue> {
+    const [updatedVenue] = await db.update(venues)
+      .set(venue)
+      .where(eq(venues.id, id))
+      .returning();
+    return updatedVenue;
+  }
+
+  async deleteVenue(id: number): Promise<void> {
+    await db.delete(venues)
+      .where(eq(venues.id, id));
+  }
+
+  // Rental operations
+  async getRental(id: number): Promise<Rental | undefined> {
+    const [rental] = await db.select()
+      .from(rentals)
+      .where(eq(rentals.id, id));
+    return rental;
+  }
+
+  async getRentals(filters?: { 
+    venueId?: number; 
+    customerId?: number; 
+    centerId?: number; 
+    startDate?: Date; 
+    endDate?: Date;
+    status?: RentalStatus; 
+  }): Promise<Rental[]> {
+    let query = db.select({
+      rental: rentals,
+      venue: venues
+    })
+    .from(rentals)
+    .innerJoin(venues, eq(rentals.venueId, venues.id));
+    
+    if (filters) {
+      const conditions: SQL[] = [];
+      
+      if (filters.venueId) {
+        conditions.push(eq(rentals.venueId, filters.venueId));
+      }
+      
+      if (filters.customerId) {
+        conditions.push(eq(rentals.customerId, filters.customerId));
+      }
+      
+      if (filters.centerId) {
+        conditions.push(eq(venues.ownerId, filters.centerId));
+      }
+      
+      if (filters.startDate) {
+        conditions.push(gte(rentals.startTime, filters.startDate.toISOString()));
+      }
+      
+      if (filters.endDate) {
+        conditions.push(lte(rentals.endTime, filters.endDate.toISOString()));
+      }
+      
+      if (filters.status) {
+        conditions.push(eq(rentals.status, filters.status));
+      }
+      
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions)) as any;
+      }
+    }
+    
+    const results = await query.orderBy(desc(rentals.startTime));
+    
+    // Extract the rental objects from the joined results
+    return results.map(result => ({ 
+      ...result.rental,
+      venueName: result.venue.name // Add venue name for convenience
+    } as unknown as Rental));
+  }
+
+  async createRental(rental: CreateRentalInput): Promise<Rental> {
+    // First, check venue availability for the requested time
+    const venue = await this.getVenue(rental.venueId);
+    if (!venue) {
+      throw new Error('Venue not found');
+    }
+    
+    // Check if there are overlapping rentals
+    const overlappingRentals = await db.select()
+      .from(rentals)
+      .where(
+        and(
+          eq(rentals.venueId, rental.venueId),
+          ne(rentals.status, 'canceled'), // Ignore canceled rentals
+          or(
+            // New rental starts during an existing rental
+            and(
+              gte(sql`${rental.startTime.toISOString()}`, rentals.startTime),
+              lt(sql`${rental.startTime.toISOString()}`, rentals.endTime)
+            ),
+            // New rental ends during an existing rental
+            and(
+              gt(sql`${rental.endTime.toISOString()}`, rentals.startTime),
+              lte(sql`${rental.endTime.toISOString()}`, rentals.endTime)
+            ),
+            // New rental completely contains an existing rental
+            and(
+              lte(sql`${rental.startTime.toISOString()}`, rentals.startTime),
+              gte(sql`${rental.endTime.toISOString()}`, rentals.endTime)
+            )
+          )
+        )
+      );
+    
+    if (overlappingRentals.length > 0) {
+      throw new Error('Venue is already booked during the requested time');
+    }
+    
+    // Create the rental
+    const [newRental] = await db.insert(rentals)
+      .values({
+        ...rental,
+        status: rental.status || 'pending',
+        paymentStatus: rental.paymentStatus || 'unpaid',
+        updatedAt: new Date()
+      })
+      .returning();
+    
+    return newRental;
+  }
+
+  async updateRentalStatus(id: number, status: RentalStatus): Promise<Rental> {
+    const [updatedRental] = await db.update(rentals)
+      .set({ 
+        status, 
+        updatedAt: new Date() 
+      })
+      .where(eq(rentals.id, id))
+      .returning();
+    
+    return updatedRental;
+  }
+
+  async updatePaymentStatus(id: number, paymentStatus: PaymentStatus): Promise<Rental> {
+    const [updatedRental] = await db.update(rentals)
+      .set({ 
+        paymentStatus, 
+        updatedAt: new Date() 
+      })
+      .where(eq(rentals.id, id))
+      .returning();
+    
+    return updatedRental;
   }
 }
 

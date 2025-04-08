@@ -7,11 +7,13 @@ import {
   Calendar, 
   Clock, 
   Home, 
-  LayoutGrid, 
+  LayoutGrid,
+  Grid,
   LogOut, 
   Menu, 
   Settings, 
-  UsersRound 
+  UsersRound,
+  Building2 
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -46,9 +48,14 @@ export function CenterSidebar({ className }: SidebarNavProps) {
       icon: <Calendar className="mr-2 h-4 w-4" />,
     },
     {
-      title: "Venues",
+      title: "Manage Venues",
       href: "/center/venues",
       icon: <LayoutGrid className="mr-2 h-4 w-4" />,
+    },
+    {
+      title: "All Venues",
+      href: "/center/all-venues",
+      icon: <Building2 className="mr-2 h-4 w-4" />,
     },
     {
       title: "Schedule",

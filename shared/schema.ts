@@ -218,7 +218,7 @@ export const venues = pgTable("venues", {
 export const rentals = pgTable("rentals", {
   id: serial("id").primaryKey(),
   venueId: integer("venue_id").notNull(), // References venues.id
-  customerId: integer("customer_id").notNull(), // References users.id
+  customerName: text("customer_name").notNull(), // Customer name as direct string
   startTime: timestamp("start_time").notNull(),
   endTime: timestamp("end_time").notNull(),
   totalPrice: numeric("total_price", { precision: 10, scale: 2 }).notNull(),
@@ -257,7 +257,6 @@ export type RentalBase = typeof rentals.$inferSelect;
 // Extended type with UI-specific fields that are not in the database schema
 export type Rental = RentalBase & {
   venueName?: string;
-  customerName?: string;
 };
 export type InsertRental = z.infer<typeof insertRentalSchema>;
 

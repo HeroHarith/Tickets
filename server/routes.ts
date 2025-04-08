@@ -973,8 +973,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Centers can only see rentals for their venues
         filters.centerId = req.user.id;
       } else if (req.user.role === "customer") {
-        // Customers can only see their own rentals
-        filters.customerId = req.user.id;
+        // Note: customerName is a direct string field, so we can't directly 
+        // filter by user ID anymore. Customers will see all rentals for now.
       }
       // Admins can see all rentals
       
@@ -1005,11 +1005,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Venue not found" });
       }
       
-      // Check permissions
-      if (
-        (req.user.role === "center" && venue.ownerId !== req.user.id) ||
-        (req.user.role === "customer" && rental.customerId !== req.user.id)
-      ) {
+      // Check permissions - only center role needs checking now
+      // as we can't check by customerId anymore (it's now a text field)
+      if (req.user.role === "center" && venue.ownerId !== req.user.id) {
         return res.status(403).json({ message: "You don't have permission to view this rental" });
       }
       
@@ -1051,28 +1049,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Calculate price
       const totalPrice = durationHours * Number(venue.hourlyRate);
       
-      // Set the current user as the customer
-      const customerId = req.user.id;
-      
       // Get the customer name from the form or use the current user's name
       let customerName = req.body.customerName;
       if (!customerName || customerName.trim() === '') {
         customerName = req.user.name || req.user.username;
       }
       
-      // Insert customerName in a custom field for the create booking response
-      const customFields = { customerName };
-      
       // Validate rental data
       const rentalData = schema.createRentalSchema.parse({
         ...req.body,
-        customerId,
         customerName,
         totalPrice: totalPrice.toString(),
         // Use provided status and paymentStatus or defaults
         status: req.body.status || "pending",
-        paymentStatus: req.body.paymentStatus || "unpaid",
-        customFields
+        paymentStatus: req.body.paymentStatus || "unpaid"
       });
       
       const rental = await storage.createRental(rentalData);

@@ -747,32 +747,18 @@ export class DatabaseStorage implements IStorage {
       throw new Error('Venue is already booked during the requested time');
     }
     
-    // Store customer name in the notes field if provided
-    let notesToStore = rental.notes || "";
-    let nameToUse = "";
-    
-    if (rental.customerName) {
-      // Prepend the customer name to notes with a marker
-      nameToUse = rental.customerName;
-      notesToStore = `[CustomerName:${rental.customerName}]${notesToStore}`;
-    } else if (rental.customerId) {
-      try {
-        const user = await this.getUser(rental.customerId);
-        nameToUse = user ? (user.name || user.username) : `Customer #${rental.customerId}`;
-      } catch (err) {
-        console.error("Error fetching customer for new rental:", err);
-        nameToUse = `Customer #${rental.customerId}`;
-      }
-    }
-    
     // Extract any customFields before inserting into database
-    const { customerName, customFields, ...rentalData } = rental as any;
+    const { customFields, ...rentalData } = rental as any;
+
+    // Ensure we have a customerName
+    if (!rentalData.customerName) {
+      rentalData.customerName = "Guest";
+    }
 
     // Create the rental
     const [newRental] = await db.insert(rentals)
       .values({
         ...rentalData,
-        notes: notesToStore,
         status: rental.status || 'pending',
         paymentStatus: rental.paymentStatus || 'unpaid',
         updatedAt: new Date()
@@ -784,8 +770,7 @@ export class DatabaseStorage implements IStorage {
     
     return {
       ...newRental,
-      venueName,
-      customerName: nameToUse
+      venueName
     };
   }
 
@@ -815,7 +800,7 @@ export class DatabaseStorage implements IStorage {
     return this.enrichRental(updatedRental);
   }
   
-  // Helper method to enrich rental with venue and customer names
+  // Helper method to enrich rental with venue name
   private async enrichRental(rental: Rental): Promise<Rental> {
     if (!rental) return rental;
     
@@ -824,32 +809,10 @@ export class DatabaseStorage implements IStorage {
       const venue = await this.getVenue(rental.venueId);
       const venueName = venue ? venue.name : `Venue #${rental.venueId}`;
       
-      // Extract customer name from notes field if present
-      let customerName = "";
-      
-      // Check if notes contains a customer name tag
-      if (rental.notes) {
-        const match = rental.notes.match(/\[CustomerName:(.*?)\]/);
-        if (match && match[1]) {
-          customerName = match[1];
-        }
-      }
-      
-      // If no customer name found in notes, fall back to the user's name
-      if (!customerName) {
-        try {
-          const user = await this.getUser(rental.customerId);
-          customerName = user ? user.name || user.username : `Customer #${rental.customerId}`;
-        } catch (err) {
-          console.error("Error fetching customer for rental:", err);
-          customerName = `Customer #${rental.customerId}`;
-        }
-      }
-      
+      // Return rental with venue name (customerName is already on the rental object)
       return {
         ...rental,
-        venueName,
-        customerName
+        venueName
       };
     } catch (err) {
       console.error("Error enriching rental:", err);

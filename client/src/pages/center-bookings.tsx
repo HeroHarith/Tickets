@@ -158,7 +158,7 @@ export default function CenterBookingsPage() {
       
       const rentalData = {
         venueId: parseInt(formData.venueId),
-        customerId: user?.id,
+        // No customerId needed, using customerName directly
         customerName: formData.customerName,
         startTime: startDateTime.toISOString(),
         endTime: endDateTime.toISOString(),
@@ -439,7 +439,7 @@ export default function CenterBookingsPage() {
                             {rental.venueName || `Venue #${rental.venueId}`}
                           </td>
                           <td className="py-4 px-6">
-                            {rental.customerName || `Customer #${rental.customerId}`}
+                            {rental.customerName || "Guest"}
                           </td>
                           <td className="py-4 px-6">
                             <div className="text-sm">
@@ -539,7 +539,7 @@ export default function CenterBookingsPage() {
                 <div className="space-y-1.5">
                   <Label className="text-xs text-muted-foreground">Customer</Label>
                   <div className="font-medium">
-                    {selectedRental.customerName || `Customer #${selectedRental.customerId}`}
+                    {selectedRental.customerName || "Guest"}
                   </div>
                 </div>
                 

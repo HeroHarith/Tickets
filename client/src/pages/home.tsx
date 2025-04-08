@@ -17,7 +17,9 @@ const Home = () => {
     minDate: "",
     maxDate: "",
     location: "",
-    sortBy: "date-desc"
+    sortBy: "date-desc",
+    eventType: "",
+    featured: false
   });
   
   const [sortBy, setSortBy] = useState("date");
@@ -65,6 +67,8 @@ const Home = () => {
       if (searchParams.maxDate) params.append("maxDate", searchParams.maxDate);
       if (searchParams.location) params.append("location", searchParams.location);
       if (searchParams.sortBy) params.append("sortBy", searchParams.sortBy);
+      if (searchParams.eventType) params.append("eventType", searchParams.eventType);
+      if (searchParams.featured) params.append("featured", searchParams.featured.toString());
       
       const res = await fetch(`/api/events?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch events");
@@ -145,6 +149,8 @@ const Home = () => {
     maxDate?: string;
     location?: string;
     sortBy?: string;
+    eventType?: string;
+    featured?: boolean;
   }) => {
     setSearchParams({
       ...searchParams,

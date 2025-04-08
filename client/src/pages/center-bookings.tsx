@@ -151,9 +151,9 @@ export default function CenterBookingsPage() {
       const selectedVenue = venues.find(v => v.id === parseInt(formData.venueId));
       const hourlyRate = selectedVenue?.hourlyRate ? parseFloat(selectedVenue.hourlyRate) : 0;
       
-      // Calculate duration in hours
+      // Calculate duration in hours, rounded up to nearest hour
       const durationMs = endDateTime.getTime() - startDateTime.getTime();
-      const durationHours = durationMs / (1000 * 60 * 60);
+      const durationHours = Math.ceil(durationMs / (1000 * 60 * 60));
       const totalPrice = hourlyRate * durationHours;
       
       const rentalData = {

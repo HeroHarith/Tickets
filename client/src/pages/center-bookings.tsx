@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { useAuth } from "@/hooks/use-auth";
 import { CenterLayout } from "@/components/ui/center-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +17,14 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { 
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage
+} from "@/components/ui/form";
+import { 
   MoreHorizontal, 
   Loader2, 
   UserPlus, 
@@ -25,10 +36,12 @@ import {
   CreditCard
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
+import { format, parse, isValid, parseISO } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { Venue, Rental } from "@/lib/types";
@@ -62,6 +75,28 @@ function PaymentStatusBadge({ status }: { status: string }) {
   );
 }
 
+// Form validation schema for bookings
+const bookingFormSchema = z.object({
+  venueId: z.string().min(1, "Venue is required"),
+  customerName: z.string().min(1, "Customer name is required"),
+  startDate: z.string().min(1, "Start date is required"),
+  startTime: z.string().min(1, "Start time is required"),
+  endDate: z.string().min(1, "End date is required"),
+  endTime: z.string().min(1, "End time is required"),
+  notes: z.string().optional(),
+  status: z.enum(["pending", "confirmed"]).default("pending"),
+  paymentStatus: z.enum(["unpaid", "paid"]).default("unpaid"),
+}).refine(data => {
+  const startDateTime = new Date(`${data.startDate}T${data.startTime}`);
+  const endDateTime = new Date(`${data.endDate}T${data.endTime}`);
+  return endDateTime > startDateTime;
+}, {
+  message: "End time must be after start time",
+  path: ["endTime"], 
+});
+
+type BookingFormValues = z.infer<typeof bookingFormSchema>;
+
 export default function CenterBookingsPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -70,6 +105,22 @@ export default function CenterBookingsPage() {
   const [selectedRental, setSelectedRental] = useState<Rental | null>(null);
   const [isRentalDetailsDialogOpen, setIsRentalDetailsDialogOpen] = useState(false);
   const [isNewBookingDialogOpen, setIsNewBookingDialogOpen] = useState(false);
+  
+  // Form setup for creating a new booking
+  const form = useForm<BookingFormValues>({
+    resolver: zodResolver(bookingFormSchema),
+    defaultValues: {
+      venueId: "",
+      customerName: "",
+      startDate: format(new Date(), "yyyy-MM-dd"),
+      startTime: "09:00",
+      endDate: format(new Date(), "yyyy-MM-dd"),
+      endTime: "10:00",
+      notes: "",
+      status: "pending",
+      paymentStatus: "unpaid",
+    },
+  });
   
   // Load venues for the dropdown
   const { 
@@ -87,6 +138,58 @@ export default function CenterBookingsPage() {
   } = useQuery<Rental[]>({
     queryKey: ["/api/rentals"],
     enabled: user?.role === "center"
+  });
+  
+  // Create booking mutation
+  const createBookingMutation = useMutation({
+    mutationFn: async (formData: BookingFormValues) => {
+      // Format the dates and times correctly
+      const startDateTime = new Date(`${formData.startDate}T${formData.startTime}`);
+      const endDateTime = new Date(`${formData.endDate}T${formData.endTime}`);
+      
+      // Calculate total price based on venue rate and duration
+      const selectedVenue = venues.find(v => v.id === parseInt(formData.venueId));
+      const hourlyRate = selectedVenue?.hourlyRate ? parseFloat(selectedVenue.hourlyRate) : 0;
+      
+      // Calculate duration in hours
+      const durationMs = endDateTime.getTime() - startDateTime.getTime();
+      const durationHours = durationMs / (1000 * 60 * 60);
+      const totalPrice = hourlyRate * durationHours;
+      
+      const rentalData = {
+        venueId: parseInt(formData.venueId),
+        customerId: user?.id,
+        customerName: formData.customerName,
+        startTime: startDateTime.toISOString(),
+        endTime: endDateTime.toISOString(),
+        totalPrice: totalPrice.toFixed(2),
+        status: formData.status,
+        paymentStatus: formData.paymentStatus,
+        notes: formData.notes || undefined,
+      };
+      
+      const res = await apiRequest("POST", "/api/rentals", rentalData);
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Booking created",
+        description: "The booking has been created successfully.",
+      });
+      // Reset form and close dialog
+      form.reset();
+      setIsNewBookingDialogOpen(false);
+      // Refresh rentals list
+      queryClient.invalidateQueries({ queryKey: ["/api/rentals"] });
+    },
+    onError: (error) => {
+      console.error("Error creating booking:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create booking. Please try again.",
+        variant: "destructive",
+      });
+    }
   });
   
   // Update rental status mutation
@@ -507,62 +610,204 @@ export default function CenterBookingsPage() {
               </DialogDescription>
             </DialogHeader>
             
-            <div className="space-y-4 py-2">
-              <div className="space-y-2">
-                <Label htmlFor="venue">Venue</Label>
-                <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
-                  <option value="">Select a venue</option>
-                  {venues.map(venue => (
-                    <option key={venue.id} value={venue.id}>{venue.name}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="customer">Customer</Label>
-                <Input id="customer" placeholder="Customer name or ID" />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="startDate">Start Date</Label>
-                  <Input id="startDate" type="date" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="startTime">Start Time</Label>
-                  <Input id="startTime" type="time" />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="endDate">End Date</Label>
-                  <Input id="endDate" type="date" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="endTime">End Time</Label>
-                  <Input id="endTime" type="time" />
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="notes">Notes</Label>
-                <textarea 
-                  id="notes"
-                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  placeholder="Any special requirements or notes"
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(data => createBookingMutation.mutate(data))} className="space-y-4 py-2">
+                <FormField
+                  control={form.control}
+                  name="venueId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Venue</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a venue" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {venues.map(venue => (
+                            <SelectItem key={venue.id} value={venue.id.toString()}>
+                              {venue.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-            </div>
-            
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsNewBookingDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit">
-                Create Booking
-              </Button>
-            </DialogFooter>
+                
+                <FormField
+                  control={form.control}
+                  name="customerName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Customer Name</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Enter customer name" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="startDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Start Date</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="startTime"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Start Time</FormLabel>
+                        <FormControl>
+                          <Input type="time" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="endDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>End Date</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="endTime"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>End Time</FormLabel>
+                        <FormControl>
+                          <Input type="time" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notes</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          {...field} 
+                          placeholder="Any special requirements or notes"
+                          className="min-h-[80px]"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Booking Status</FormLabel>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="confirmed">Confirmed</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="paymentStatus"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Payment Status</FormLabel>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select payment status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="unpaid">Unpaid</SelectItem>
+                            <SelectItem value="paid">Paid</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                <DialogFooter className="pt-4">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setIsNewBookingDialogOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="submit"
+                    disabled={createBookingMutation.isPending}
+                  >
+                    {createBookingMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      "Create Booking"
+                    )}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
           </DialogContent>
         </Dialog>
       </div>

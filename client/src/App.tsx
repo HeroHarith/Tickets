@@ -12,6 +12,7 @@ import MyTickets from "@/pages/my-tickets";
 import ManagedEvents from "@/pages/managed-events";
 import SalesReports from "@/pages/sales-reports";
 import TicketManagement from "@/pages/ticket-management";
+import AdminDashboard from "@/pages/admin-dashboard";
 import AuthPage from "@/pages/auth-page";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
@@ -57,6 +58,11 @@ function Router() {
                 path="/ticket-management/:id" 
                 component={TicketManagement} 
                 requiredRoles={["eventManager", "admin"]} 
+              />
+              <ProtectedRoute
+                path="/admin"
+                component={AdminDashboard}
+                requiredRoles={["admin"]}
               />
               <Route component={NotFound} />
             </Switch>

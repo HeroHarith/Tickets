@@ -133,6 +133,14 @@ const Header = () => {
                 >
                   Sales Reports
                 </Link>
+                {user.role === 'admin' && (
+                  <Link 
+                    href="/admin"
+                    className={`${location === '/admin' ? 'text-primary' : 'text-gray-700'} hover:text-primary px-3 py-2 rounded-md text-sm font-medium`}
+                  >
+                    Admin Dashboard
+                  </Link>
+                )}
               </>
             )}
           </div>
@@ -185,6 +193,15 @@ const Header = () => {
                 >
                   Sales Reports
                 </Link>
+                {user.role === 'admin' && (
+                  <Link 
+                    href="/admin"
+                    className={`${location === '/admin' ? 'text-primary' : 'text-gray-700'} block px-3 py-2 rounded-md text-base font-medium`}
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Admin Dashboard
+                  </Link>
+                )}
               </>
             )}
           </div>

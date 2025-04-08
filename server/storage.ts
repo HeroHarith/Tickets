@@ -747,6 +747,24 @@ export class DatabaseStorage implements IStorage {
       throw new Error('Venue is already booked during the requested time');
     }
     
+    // Store customer name in the notes field if provided
+    let notesToStore = rental.notes || "";
+    let nameToUse = "";
+    
+    if (rental.customerName) {
+      // Prepend the customer name to notes with a marker
+      nameToUse = rental.customerName;
+      notesToStore = `[CustomerName:${rental.customerName}]${notesToStore}`;
+    } else if (rental.customerId) {
+      try {
+        const user = await this.getUser(rental.customerId);
+        nameToUse = user ? (user.name || user.username) : `Customer #${rental.customerId}`;
+      } catch (err) {
+        console.error("Error fetching customer for new rental:", err);
+        nameToUse = `Customer #${rental.customerId}`;
+      }
+    }
+    
     // Extract any customFields before inserting into database
     const { customerName, customFields, ...rentalData } = rental as any;
 
@@ -754,6 +772,7 @@ export class DatabaseStorage implements IStorage {
     const [newRental] = await db.insert(rentals)
       .values({
         ...rentalData,
+        notes: notesToStore,
         status: rental.status || 'pending',
         paymentStatus: rental.paymentStatus || 'unpaid',
         updatedAt: new Date()
@@ -763,24 +782,10 @@ export class DatabaseStorage implements IStorage {
     // Enrich the rental with venue name and customer name for immediate use
     const venueName = venue.name;
     
-    // Use provided customerName first, if available
-    let actualCustomerName = customerName;
-    
-    // If no customerName was provided, get it from the customer record
-    if (!actualCustomerName && rental.customerId) {
-      try {
-        const user = await this.getUser(rental.customerId);
-        actualCustomerName = user ? (user.name || user.username) : `Customer #${rental.customerId}`;
-      } catch (err) {
-        console.error("Error fetching customer for new rental:", err);
-        actualCustomerName = `Customer #${rental.customerId}`;
-      }
-    }
-    
     return {
       ...newRental,
       venueName,
-      customerName: actualCustomerName
+      customerName: nameToUse
     };
   }
 
@@ -819,8 +824,18 @@ export class DatabaseStorage implements IStorage {
       const venue = await this.getVenue(rental.venueId);
       const venueName = venue ? venue.name : `Venue #${rental.venueId}`;
       
-      // Get customer name
-      let customerName = (rental as any).customerName;
+      // Extract customer name from notes field if present
+      let customerName = "";
+      
+      // Check if notes contains a customer name tag
+      if (rental.notes) {
+        const match = rental.notes.match(/\[CustomerName:(.*?)\]/);
+        if (match && match[1]) {
+          customerName = match[1];
+        }
+      }
+      
+      // If no customer name found in notes, fall back to the user's name
       if (!customerName) {
         try {
           const user = await this.getUser(rental.customerId);

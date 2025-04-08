@@ -740,12 +740,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
       
-      // Prepare update data - storage interface would need to be extended for this
-      // For now, we'll return a placeholder response
-      res.json({ ...existingUser, ...req.body, id: userId });
+      // Update the user
+      const updatedUser = await storage.updateUser(userId, req.body);
+      res.json(updatedUser);
     } catch (error: any) {
       console.error("Error updating user:", error);
-      res.status(500).json({ message: "Failed to update user" });
+      res.status(500).json({ message: error.message || "Failed to update user" });
     }
   });
   
@@ -759,17 +759,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
       
-      // Protect the main admin user
-      if (existingUser.role === "admin" && userId === 5) {
+      // Protect the main admin users
+      if (existingUser.role === "admin" && (userId === 5 || userId === 10)) {
         return res.status(403).json({ message: "Cannot delete the main admin user" });
       }
       
-      // Storage interface would need to be extended for delete functionality
-      // For now, we'll return a success response
-      res.json({ message: "User deleted successfully" });
+      // Delete the user
+      const success = await storage.deleteUser(userId);
+      
+      if (success) {
+        res.json({ message: "User deleted successfully" });
+      } else {
+        res.status(500).json({ message: "Failed to delete user" });
+      }
     } catch (error: any) {
       console.error("Error deleting user:", error);
-      res.status(500).json({ message: "Failed to delete user" });
+      res.status(500).json({ message: error.message || "Failed to delete user" });
     }
   });
   

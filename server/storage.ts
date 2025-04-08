@@ -31,6 +31,8 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: number, userData: Partial<Omit<InsertUser, "id">>): Promise<User>;
+  deleteUser(id: number): Promise<boolean>;
   
   // Event operations
   getEvent(id: number): Promise<Event | undefined>;
@@ -112,6 +114,27 @@ export class DatabaseStorage implements IStorage {
       .values(user)
       .returning();
     return newUser;
+  }
+  
+  async updateUser(id: number, userData: Partial<Omit<InsertUser, "id">>): Promise<User> {
+    const [updatedUser] = await db.update(users)
+      .set(userData)
+      .where(eq(users.id, id))
+      .returning();
+      
+    if (!updatedUser) {
+      throw new Error(`User with ID ${id} not found`);
+    }
+    
+    return updatedUser;
+  }
+  
+  async deleteUser(id: number): Promise<boolean> {
+    const result = await db.delete(users)
+      .where(eq(users.id, id))
+      .returning({ id: users.id });
+      
+    return result.length > 0;
   }
 
   // Event operations

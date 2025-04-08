@@ -23,7 +23,7 @@ interface SalesData {
 
 const SalesReports = () => {
   const { user } = useAuth();
-  const [match, params] = useRoute<{ id: string }>("/sales/:id");
+  const [match, params] = useRoute<{ id: string }>("/sales-reports/:id");
   const eventId = match ? parseInt(params.id) : -1;
   
   // Get navigation tabs based on user role
@@ -37,7 +37,7 @@ const SalesReports = () => {
     if (user && ['eventManager', 'admin'].includes(user.role)) {
       tabs.push(
         { id: "managed", label: "Managed Events", href: "/managed-events" },
-        { id: "sales", label: "Sales Reports", href: "/sales-reports" }
+        { id: "sales", label: "Sales Reports", href: "/managed-events" }
       );
     }
     
@@ -48,11 +48,7 @@ const SalesReports = () => {
   const salesQuery = useQuery<SalesData>({
     queryKey: [`/api/events/${eventId}/sales`],
     enabled: eventId > 0,
-    queryFn: async () => {
-      const res = await fetch(`/api/events/${eventId}/sales`);
-      if (!res.ok) throw new Error("Failed to fetch sales data");
-      return res.json();
-    }
+    // Use the default query function from queryClient
   });
   
   if (salesQuery.isLoading) {
@@ -91,6 +87,7 @@ const SalesReports = () => {
   }
   
   if (salesQuery.error || !salesQuery.data) {
+    console.error('Sales query error:', salesQuery.error);
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <TabsComponent
@@ -100,10 +97,22 @@ const SalesReports = () => {
         
         <div className="text-center py-12 bg-white rounded-lg shadow-md mt-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Error Loading Sales Data</h2>
-          <p className="text-gray-600 mb-6">We couldn't retrieve the sales information for this event.</p>
-          <Link href="/managed-events">
-            <Button>Back to Managed Events</Button>
-          </Link>
+          <p className="text-gray-600 mb-6">
+            {salesQuery.error 
+              ? `Error: ${salesQuery.error.message}` 
+              : "We couldn't retrieve the sales information for this event."}
+          </p>
+          <div className="flex gap-4 justify-center">
+            <Link href="/managed-events">
+              <Button>Back to Managed Events</Button>
+            </Link>
+            <Button 
+              variant="outline" 
+              onClick={() => salesQuery.refetch()}
+            >
+              Try Again
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -115,7 +124,7 @@ const SalesReports = () => {
   const barChartData = salesByTicketType.map(item => ({
     name: item.name,
     Sold: item.sold,
-    Revenue: parseFloat(Number(item.revenue).toFixed(2))
+    Revenue: Number(Number(item.revenue).toFixed(2))
   }));
   
   const pieChartData = salesByTicketType.map(item => ({

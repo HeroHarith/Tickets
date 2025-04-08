@@ -38,10 +38,47 @@ async function hashPassword(password: string): Promise<string> {
 
 // Helper to compare password
 async function comparePasswords(supplied: string, stored: string): Promise<boolean> {
-  const [hashed, salt] = stored.split(".");
-  const hashedBuf = Buffer.from(hashed, "hex");
-  const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
-  return timingSafeEqual(hashedBuf, suppliedBuf);
+  try {
+    // Handle simple passwords with SIMPLE: prefix
+    if (stored.startsWith('SIMPLE:')) {
+      return supplied === stored.substring(7); // 7 = length of 'SIMPLE:'
+    }
+    
+    // Safety check for malformed hash
+    if (!stored.includes('.')) {
+      console.warn('Malformed password hash (no salt separator)');
+      return false;
+    }
+    
+    const [hashed, salt] = stored.split(".");
+    
+    // For our special admin accounts with simple SHA hashing
+    if (salt === 'admin-salt-123') {
+      const crypto = require('crypto');
+      const suppliedHash = crypto.createHash('sha256').update(supplied + salt).digest('hex');
+      return suppliedHash === hashed;
+    }
+    
+    // Standard scrypt comparison
+    try {
+      const hashedBuf = Buffer.from(hashed, "hex");
+      const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
+      
+      // Safety check for buffer length
+      if (hashedBuf.length !== suppliedBuf.length) {
+        console.warn(`Buffer length mismatch: ${hashedBuf.length} vs ${suppliedBuf.length}`);
+        return false;
+      }
+      
+      return timingSafeEqual(hashedBuf, suppliedBuf);
+    } catch (error) {
+      console.error('Error during password comparison:', error);
+      return false;
+    }
+  } catch (error) {
+    console.error('Error in comparePasswords:', error);
+    return false;
+  }
 }
 
 // Role-based middleware

@@ -223,11 +223,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ticketTypes = await storage.getTicketTypes(eventId);
       const ticketTypesMap = new Map(ticketTypes.map(tt => [tt.id, tt]));
       
-      // Add ticket type information to each ticket
-      const ticketsWithDetails = eventTickets.map(ticket => ({
-        ...ticket,
-        ticketType: ticketTypesMap.get(ticket.ticketTypeId)
-      }));
+      // Add ticket type information to each ticket and format attendee details
+      const ticketsWithDetails = eventTickets.map(ticket => {
+        // Prepare the ticket with additional information
+        const formattedTicket = {
+          ...ticket,
+          ticketType: ticketTypesMap.get(ticket.ticketTypeId),
+          attendeeDetails: Array.isArray(ticket.attendeeDetails) 
+            ? ticket.attendeeDetails 
+            : (ticket.attendeeDetails ? [ticket.attendeeDetails] : [])
+        };
+        
+        return formattedTicket;
+      });
       
       return res.json(ticketsWithDetails);
     } catch (err) {

@@ -2,7 +2,7 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { Express, Request, Response, NextFunction } from "express";
 import session from "express-session";
-import { scrypt, randomBytes, timingSafeEqual } from "crypto";
+import { scrypt, randomBytes, timingSafeEqual, createHash } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as UserType, USER_ROLES } from "@shared/schema";
@@ -54,8 +54,7 @@ async function comparePasswords(supplied: string, stored: string): Promise<boole
     
     // For our special admin accounts with simple SHA hashing
     if (salt === 'admin-salt-123') {
-      const crypto = require('crypto');
-      const suppliedHash = crypto.createHash('sha256').update(supplied + salt).digest('hex');
+      const suppliedHash = createHash('sha256').update(supplied + salt).digest('hex');
       return suppliedHash === hashed;
     }
     

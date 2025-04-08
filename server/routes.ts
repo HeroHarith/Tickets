@@ -697,7 +697,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Get all users from the database via a raw SQL query since storage doesn't offer this method
       const result = await db.execute("SELECT * FROM users");
-      res.json(result);
+      // Extract the rows array from the query result object
+      res.json(Array.isArray(result.rows) ? result.rows : []);
     } catch (error: any) {
       console.error("Error fetching users:", error);
       res.status(500).json({ message: "Failed to fetch users" });

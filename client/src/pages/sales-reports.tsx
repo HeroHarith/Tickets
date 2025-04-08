@@ -86,6 +86,28 @@ const SalesReports = () => {
     );
   }
   
+  // If no event ID is provided, redirect to managed events
+  if (!match || eventId <= 0) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <TabsComponent
+          tabs={getNavTabs()}
+          activeTab="sales"
+        />
+        
+        <div className="text-center py-12 bg-white rounded-lg shadow-md mt-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">No Event Selected</h2>
+          <p className="text-gray-600 mb-6">
+            Please select an event from your managed events to view its sales report.
+          </p>
+          <Link href="/managed-events">
+            <Button>Go to Managed Events</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   if (salesQuery.error || !salesQuery.data) {
     console.error('Sales query error:', salesQuery.error);
     return (

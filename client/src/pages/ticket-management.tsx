@@ -20,7 +20,8 @@ interface AttendeeTicket extends Ticket {
     email: string;
   }[];
   ticketType?: TicketType;
-  createdAt: Date;
+  // Use purchaseDate instead of createdAt
+  purchaseDate: Date;
 }
 
 const TicketManagement = () => {
@@ -53,12 +54,28 @@ const TicketManagement = () => {
   const eventQuery = useQuery<Event>({
     queryKey: [`/api/events/${eventId}`],
     enabled: eventId > 0,
+    queryFn: async () => {
+      const result = await apiRequest("GET", `/api/events/${eventId}`);
+      if (!result.ok) {
+        const errorData = await result.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to fetch event");
+      }
+      return result.json();
+    }
   });
   
   // Fetch tickets for the event
   const ticketsQuery = useQuery<AttendeeTicket[]>({
     queryKey: [`/api/events/${eventId}/tickets`],
     enabled: eventId > 0,
+    queryFn: async () => {
+      const result = await apiRequest("GET", `/api/events/${eventId}/tickets`);
+      if (!result.ok) {
+        const errorData = await result.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to fetch tickets");
+      }
+      return result.json();
+    }
   });
   
   // Mutation to remove a ticket
@@ -303,7 +320,7 @@ const TicketManagement = () => {
                         {ticket.ticketType?.name || "Unknown"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {format(new Date(ticket.createdAt), "MMM d, yyyy")}
+                        {format(new Date(ticket.purchaseDate), "MMM d, yyyy")}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <Button

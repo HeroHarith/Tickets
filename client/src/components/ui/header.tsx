@@ -138,13 +138,6 @@ const Header = () => {
           </div>
           
           <div className="flex items-center">
-            {showManagerOptions && (
-              <Link href="/create-event">
-                <Button className="bg-primary text-white hover:bg-primary/90 mr-4">
-                  Create Event
-                </Button>
-              </Link>
-            )}
             <div className="relative">
               <UserProfile />
             </div>

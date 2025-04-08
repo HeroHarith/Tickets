@@ -14,6 +14,10 @@ import SalesReports from "@/pages/sales-reports";
 import TicketManagement from "@/pages/ticket-management";
 import AdminDashboard from "@/pages/admin-dashboard";
 import CenterDashboard from "@/pages/center-dashboard";
+import CenterHomePage from "@/pages/center-home";
+import CenterBookingsPage from "@/pages/center-bookings";
+import CenterVenuesPage from "@/pages/center-venues";
+import CenterSchedulePage from "@/pages/center-schedule";
 import AuthPage from "@/pages/auth-page";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
@@ -66,8 +70,28 @@ function Router() {
                 requiredRoles={["admin"]}
               />
               <ProtectedRoute
-                path="/center"
+                path="/center-old"
                 component={CenterDashboard}
+                requiredRoles={["center"]}
+              />
+              <ProtectedRoute
+                path="/center"
+                component={CenterHomePage}
+                requiredRoles={["center"]}
+              />
+              <ProtectedRoute
+                path="/center/bookings"
+                component={CenterBookingsPage}
+                requiredRoles={["center"]}
+              />
+              <ProtectedRoute
+                path="/center/venues"
+                component={CenterVenuesPage}
+                requiredRoles={["center"]}
+              />
+              <ProtectedRoute
+                path="/center/schedule"
+                component={CenterSchedulePage}
                 requiredRoles={["center"]}
               />
               <Route component={NotFound} />

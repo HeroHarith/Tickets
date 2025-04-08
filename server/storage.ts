@@ -39,6 +39,8 @@ export interface IStorage {
   getTicket(id: number): Promise<Ticket | undefined>;
   purchaseTickets(purchase: PurchaseTicketInput, userId: number): Promise<Ticket[]>;
   getUserTickets(userId: number): Promise<Ticket[]>;
+  getEventTickets(eventId: number): Promise<Ticket[]>;
+  removeTicket(ticketId: number): Promise<void>;
   getEventSales(eventId: number): Promise<{ 
     totalSales: number; 
     ticketsSold: number;
@@ -372,6 +374,20 @@ export class DatabaseStorage implements IStorage {
       .from(tickets)
       .where(eq(tickets.userId, userId))
       .orderBy(desc(tickets.purchaseDate));
+  }
+  
+  // Get all tickets for a specific event
+  async getEventTickets(eventId: number): Promise<Ticket[]> {
+    return await db.select()
+      .from(tickets)
+      .where(eq(tickets.eventId, eventId))
+      .orderBy(desc(tickets.purchaseDate));
+  }
+  
+  // Remove a ticket
+  async removeTicket(ticketId: number): Promise<void> {
+    await db.delete(tickets)
+      .where(eq(tickets.id, ticketId));
   }
 
   async getEventSales(eventId: number): Promise<{ 

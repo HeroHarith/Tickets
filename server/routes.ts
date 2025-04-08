@@ -197,6 +197,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get tickets for an event (for event managers)
+  app.get("/api/events/:id/tickets", requireRole(["eventManager", "admin"]), async (req: Request, res: Response) => {
+    try {
+      const eventId = parseInt(req.params.id);
+      
+      // Check if event exists
+      const event = await storage.getEvent(eventId);
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+      
+      // Ensure user is authenticated
+      ensureAuthenticated(req);
+      
+      // Verify the user has permission (is admin or the event organizer)
+      if (req.user.role !== 'admin' && event.organizer !== req.user.id) {
+        return res.status(403).json({ message: "You do not have permission to view tickets for this event" });
+      }
+      
+      // Get tickets for the event
+      const eventTickets = await storage.getEventTickets(eventId);
+      
+      // Get ticket types to include in response
+      const ticketTypes = await storage.getTicketTypes(eventId);
+      const ticketTypesMap = new Map(ticketTypes.map(tt => [tt.id, tt]));
+      
+      // Add ticket type information to each ticket
+      const ticketsWithDetails = eventTickets.map(ticket => ({
+        ...ticket,
+        ticketType: ticketTypesMap.get(ticket.ticketTypeId)
+      }));
+      
+      return res.json(ticketsWithDetails);
+    } catch (err) {
+      console.error("Error fetching event tickets:", err);
+      return res.status(500).json({ message: "Failed to fetch event tickets" });
+    }
+  });
+  
+  // Delete a ticket (for event managers)
+  app.delete("/api/tickets/:id", requireRole(["eventManager", "admin"]), async (req: Request, res: Response) => {
+    try {
+      const ticketId = parseInt(req.params.id);
+      
+      // Get the ticket to ensure it exists and to get the event ID
+      const ticket = await storage.getTicket(ticketId);
+      if (!ticket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+      
+      // Get the event to check permissions
+      const event = await storage.getEvent(ticket.eventId);
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+      
+      // Ensure user is authenticated
+      ensureAuthenticated(req);
+      
+      // Verify the user has permission (is admin or the event organizer)
+      if (req.user.role !== 'admin' && event.organizer !== req.user.id) {
+        return res.status(403).json({ message: "You do not have permission to delete tickets for this event" });
+      }
+      
+      // Delete the ticket
+      await storage.removeTicket(ticketId);
+      
+      return res.status(200).json({ message: "Ticket successfully removed" });
+    } catch (err) {
+      console.error("Error removing ticket:", err);
+      return res.status(500).json({ message: "Failed to remove ticket" });
+    }
+  });
+
   // Ticket routes
   app.post("/api/tickets/purchase", requireRole(["customer", "eventManager", "admin"]), async (req: Request, res: Response) => {
     const { data, error } = validateRequest(purchaseTicketSchema, req.body);

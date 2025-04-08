@@ -11,6 +11,7 @@ import CreateEvent from "@/pages/create-event";
 import MyTickets from "@/pages/my-tickets";
 import ManagedEvents from "@/pages/managed-events";
 import SalesReports from "@/pages/sales-reports";
+import TicketManagement from "@/pages/ticket-management";
 import AuthPage from "@/pages/auth-page";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
@@ -50,6 +51,11 @@ function Router() {
               <ProtectedRoute 
                 path="/sales-reports/:id" 
                 component={SalesReports} 
+                requiredRoles={["eventManager", "admin"]} 
+              />
+              <ProtectedRoute 
+                path="/ticket-management/:id" 
+                component={TicketManagement} 
                 requiredRoles={["eventManager", "admin"]} 
               />
               <Route component={NotFound} />

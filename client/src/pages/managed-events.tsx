@@ -209,14 +209,24 @@ const ManagedEvents = () => {
                     </div>
                   </div>
                   
-                  <Link href={`/sales-reports/${event.id}`}>
-                    <Button 
-                      variant="outline" 
-                      className="w-full"
-                    >
-                      View Sales Report
-                    </Button>
-                  </Link>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <Link href={`/sales-reports/${event.id}`}>
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                      >
+                        View Sales Report
+                      </Button>
+                    </Link>
+                    <Link href={`/ticket-management/${event.id}`}>
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                      >
+                        Manage Tickets
+                      </Button>
+                    </Link>
+                  </div>
                 </CardContent>
               </Card>
             ))}

@@ -252,7 +252,13 @@ export const insertRentalSchema = createInsertSchema(rentals).omit({
 export type Venue = typeof venues.$inferSelect;
 export type InsertVenue = z.infer<typeof insertVenueSchema>;
 
-export type Rental = typeof rentals.$inferSelect;
+// Base Drizzle type
+export type RentalBase = typeof rentals.$inferSelect;
+// Extended type with UI-specific fields that are not in the database schema
+export type Rental = RentalBase & {
+  venueName?: string;
+  customerName?: string;
+};
 export type InsertRental = z.infer<typeof insertRentalSchema>;
 
 // Rental status and payment status options

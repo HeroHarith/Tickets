@@ -182,11 +182,27 @@ export default function CenterBookingsPage() {
       // Refresh rentals list
       queryClient.invalidateQueries({ queryKey: ["/api/rentals"] });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error("Error creating booking:", error);
+      let errorMessage = "Failed to create booking. Please try again.";
+      
+      // Try to extract the more specific error message from the server response
+      if (error.message && typeof error.message === 'string') {
+        errorMessage = error.message;
+      } else if (error.response) {
+        try {
+          const responseData = error.response.json();
+          if (responseData && responseData.message) {
+            errorMessage = responseData.message;
+          }
+        } catch (e) {
+          console.error("Error parsing error response:", e);
+        }
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to create booking. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -206,11 +222,27 @@ export default function CenterBookingsPage() {
       setIsRentalDetailsDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ["/api/rentals"] });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error("Error updating rental status:", error);
+      let errorMessage = "Failed to update booking status. Please try again.";
+      
+      // Try to extract the more specific error message from the server response
+      if (error.message && typeof error.message === 'string') {
+        errorMessage = error.message;
+      } else if (error.response) {
+        try {
+          const responseData = error.response.json();
+          if (responseData && responseData.message) {
+            errorMessage = responseData.message;
+          }
+        } catch (e) {
+          console.error("Error parsing error response:", e);
+        }
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to update booking status. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -230,11 +262,27 @@ export default function CenterBookingsPage() {
       setIsRentalDetailsDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ["/api/rentals"] });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error("Error updating payment status:", error);
+      let errorMessage = "Failed to update payment status. Please try again.";
+      
+      // Try to extract the more specific error message from the server response
+      if (error.message && typeof error.message === 'string') {
+        errorMessage = error.message;
+      } else if (error.response) {
+        try {
+          const responseData = error.response.json();
+          if (responseData && responseData.message) {
+            errorMessage = responseData.message;
+          }
+        } catch (e) {
+          console.error("Error parsing error response:", e);
+        }
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to update payment status. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -611,7 +659,14 @@ export default function CenterBookingsPage() {
             </DialogHeader>
             
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(data => createBookingMutation.mutate(data))} className="space-y-4 py-2">
+              <form onSubmit={form.handleSubmit(async (data) => {
+                try {
+                  await createBookingMutation.mutateAsync(data);
+                } catch (error) {
+                  // Error handling is already implemented in the mutation
+                  console.error("Form submission error:", error);
+                }
+              })} className="space-y-4 py-2">
                 <FormField
                   control={form.control}
                   name="venueId"

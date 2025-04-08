@@ -628,7 +628,7 @@ export class DatabaseStorage implements IStorage {
     endDate?: Date;
     status?: RentalStatus; 
   }): Promise<Rental[]> {
-    // Simple select with joins done after filtering
+    // First get the base rentals data
     let query = db.select().from(rentals);
     
     if (filters) {
@@ -661,7 +661,7 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
-    const rentalResults = await query.orderBy(desc(rentals.startTime));
+    let rentalResults = await query.orderBy(desc(rentals.startTime));
     
     // If we need to filter by centerId, we need to get venues and check ownership
     if (filters?.centerId) {
@@ -669,11 +669,44 @@ export class DatabaseStorage implements IStorage {
       const venueList = await db.select().from(venues).where(eq(venues.ownerId, filters.centerId));
       const venueIds = venueList.map(v => v.id);
       
-      // Filter rentals by these venue IDs
-      return rentalResults.filter(rental => venueIds.includes(rental.venueId));
+      // Filter rental results to only include those for venues owned by this center
+      rentalResults = rentalResults.filter(rental => venueIds.includes(rental.venueId));
     }
     
-    return rentalResults;
+    // Now enrich with venue and customer names
+    const enrichedRentals = [];
+    
+    for (const rental of rentalResults) {
+      try {
+        // Get venue name
+        const venue = await this.getVenue(rental.venueId);
+        const venueName = venue ? venue.name : `Venue #${rental.venueId}`;
+        
+        // Get customer name
+        let customerName = rental.customerName;
+        if (!customerName) {
+          try {
+            const user = await this.getUser(rental.customerId);
+            customerName = user ? user.name || user.username : `Customer #${rental.customerId}`;
+          } catch (err) {
+            console.error("Error fetching customer:", err);
+            customerName = `Customer #${rental.customerId}`;
+          }
+        }
+        
+        // Add venue and customer names to the rental object
+        enrichedRentals.push({
+          ...rental,
+          venueName,
+          customerName
+        });
+      } catch (err) {
+        console.error("Error enriching rental data:", err);
+        enrichedRentals.push(rental);
+      }
+    }
+    
+    return enrichedRentals;
   }
 
   async createRental(rental: CreateRentalInput): Promise<Rental> {
@@ -724,7 +757,25 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     
-    return newRental;
+    // Enrich the rental with venue name and customer name for immediate use
+    const venueName = venue.name;
+    
+    let customerName = rental.customerName;
+    if (!customerName && rental.customerId) {
+      try {
+        const user = await this.getUser(rental.customerId);
+        customerName = user ? (user.name || user.username) : `Customer #${rental.customerId}`;
+      } catch (err) {
+        console.error("Error fetching customer for new rental:", err);
+        customerName = `Customer #${rental.customerId}`;
+      }
+    }
+    
+    return {
+      ...newRental,
+      venueName,
+      customerName
+    };
   }
 
   async updateRentalStatus(id: number, status: RentalStatus): Promise<Rental> {
@@ -736,7 +787,8 @@ export class DatabaseStorage implements IStorage {
       .where(eq(rentals.id, id))
       .returning();
     
-    return updatedRental;
+    // Enrich with venue and customer details
+    return this.enrichRental(updatedRental);
   }
 
   async updatePaymentStatus(id: number, paymentStatus: PaymentStatus): Promise<Rental> {
@@ -748,7 +800,40 @@ export class DatabaseStorage implements IStorage {
       .where(eq(rentals.id, id))
       .returning();
     
-    return updatedRental;
+    // Enrich with venue and customer details
+    return this.enrichRental(updatedRental);
+  }
+  
+  // Helper method to enrich rental with venue and customer names
+  private async enrichRental(rental: Rental): Promise<Rental> {
+    if (!rental) return rental;
+    
+    try {
+      // Get venue name
+      const venue = await this.getVenue(rental.venueId);
+      const venueName = venue ? venue.name : `Venue #${rental.venueId}`;
+      
+      // Get customer name
+      let customerName = (rental as any).customerName;
+      if (!customerName) {
+        try {
+          const user = await this.getUser(rental.customerId);
+          customerName = user ? user.name || user.username : `Customer #${rental.customerId}`;
+        } catch (err) {
+          console.error("Error fetching customer for rental:", err);
+          customerName = `Customer #${rental.customerId}`;
+        }
+      }
+      
+      return {
+        ...rental,
+        venueName,
+        customerName
+      };
+    } catch (err) {
+      console.error("Error enriching rental:", err);
+      return rental;
+    }
   }
 }
 

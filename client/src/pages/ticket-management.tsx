@@ -117,14 +117,15 @@ const TicketManagement = () => {
   const filteredTickets = ticketsQuery.data ? ticketsQuery.data.filter(ticket => {
     const searchString = searchQuery.toLowerCase();
     
-    // Search through attendee details
-    const attendeeMatch = ticket.attendeeDetails?.some(attendee => 
-      attendee.name.toLowerCase().includes(searchString) ||
-      attendee.email.toLowerCase().includes(searchString)
+    // Search through attendee details - with additional safety checks
+    const attendeeMatch = Array.isArray(ticket.attendeeDetails) && ticket.attendeeDetails.some(attendee => 
+      attendee && 
+      ((attendee.name && attendee.name.toLowerCase().includes(searchString)) || 
+       (attendee.email && attendee.email.toLowerCase().includes(searchString)))
     );
     
     // Search through ticket type name
-    const ticketTypeMatch = ticket.ticketType?.name.toLowerCase().includes(searchString);
+    const ticketTypeMatch = ticket.ticketType?.name?.toLowerCase().includes(searchString);
     
     // Search through ticket ID
     const ticketIdMatch = ticket.id.toString().includes(searchString);
@@ -311,10 +312,10 @@ const TicketManagement = () => {
                         #{ticket.id}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {ticket.attendeeDetails[0]?.name || "N/A"}
+                        {Array.isArray(ticket.attendeeDetails) && ticket.attendeeDetails[0]?.name || "N/A"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {ticket.attendeeDetails[0]?.email || "N/A"}
+                        {Array.isArray(ticket.attendeeDetails) && ticket.attendeeDetails[0]?.email || "N/A"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {ticket.ticketType?.name || "Unknown"}
@@ -347,7 +348,8 @@ const TicketManagement = () => {
           <DialogHeader>
             <DialogTitle>Remove Ticket</DialogTitle>
             <DialogDescription>
-              Are you sure you want to remove ticket #{selectedTicket?.id} for {selectedTicket?.attendeeDetails[0]?.name}?
+              Are you sure you want to remove ticket #{selectedTicket?.id} for 
+              {Array.isArray(selectedTicket?.attendeeDetails) && selectedTicket?.attendeeDetails[0]?.name || "this attendee"}?
               This action cannot be undone.
             </DialogDescription>
           </DialogHeader>

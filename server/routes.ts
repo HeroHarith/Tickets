@@ -1060,6 +1060,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         customerName = req.user.name || req.user.username;
       }
       
+      // Insert customerName in a custom field for the create booking response
+      const customFields = { customerName };
+      
       // Validate rental data
       const rentalData = schema.createRentalSchema.parse({
         ...req.body,
@@ -1068,7 +1071,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalPrice: totalPrice.toString(),
         // Use provided status and paymentStatus or defaults
         status: req.body.status || "pending",
-        paymentStatus: req.body.paymentStatus || "unpaid"
+        paymentStatus: req.body.paymentStatus || "unpaid",
+        customFields
       });
       
       const rental = await storage.createRental(rentalData);

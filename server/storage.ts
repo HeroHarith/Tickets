@@ -747,10 +747,13 @@ export class DatabaseStorage implements IStorage {
       throw new Error('Venue is already booked during the requested time');
     }
     
+    // Extract any customFields before inserting into database
+    const { customerName, customFields, ...rentalData } = rental as any;
+
     // Create the rental
     const [newRental] = await db.insert(rentals)
       .values({
-        ...rental,
+        ...rentalData,
         status: rental.status || 'pending',
         paymentStatus: rental.paymentStatus || 'unpaid',
         updatedAt: new Date()
@@ -760,21 +763,24 @@ export class DatabaseStorage implements IStorage {
     // Enrich the rental with venue name and customer name for immediate use
     const venueName = venue.name;
     
-    let customerName = rental.customerName;
-    if (!customerName && rental.customerId) {
+    // Use provided customerName first, if available
+    let actualCustomerName = customerName;
+    
+    // If no customerName was provided, get it from the customer record
+    if (!actualCustomerName && rental.customerId) {
       try {
         const user = await this.getUser(rental.customerId);
-        customerName = user ? (user.name || user.username) : `Customer #${rental.customerId}`;
+        actualCustomerName = user ? (user.name || user.username) : `Customer #${rental.customerId}`;
       } catch (err) {
         console.error("Error fetching customer for new rental:", err);
-        customerName = `Customer #${rental.customerId}`;
+        actualCustomerName = `Customer #${rental.customerId}`;
       }
     }
     
     return {
       ...newRental,
       venueName,
-      customerName
+      customerName: actualCustomerName
     };
   }
 

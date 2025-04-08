@@ -275,6 +275,7 @@ export const createRentalSchema = insertRentalSchema.extend({
   startTime: z.coerce.date(),
   endTime: z.coerce.date(),
   customerName: z.string().optional(),
+  customFields: z.record(z.string(), z.any()).optional(),
 });
 
 export type CreateRentalInput = z.infer<typeof createRentalSchema>;

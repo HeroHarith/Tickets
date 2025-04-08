@@ -1054,13 +1054,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Set the current user as the customer
       const customerId = req.user.id;
       
+      // Get the customer name from the form or use the current user's name
+      let customerName = req.body.customerName;
+      if (!customerName || customerName.trim() === '') {
+        customerName = req.user.name || req.user.username;
+      }
+      
       // Validate rental data
       const rentalData = schema.createRentalSchema.parse({
         ...req.body,
         customerId,
+        customerName,
         totalPrice: totalPrice.toString(),
-        status: "pending",
-        paymentStatus: "unpaid"
+        // Use provided status and paymentStatus or defaults
+        status: req.body.status || "pending",
+        paymentStatus: req.body.paymentStatus || "unpaid"
       });
       
       const rental = await storage.createRental(rentalData);

@@ -806,6 +806,8 @@ export default function CenterBookingsPage() {
                           <SelectContent>
                             <SelectItem value="pending">Pending</SelectItem>
                             <SelectItem value="confirmed">Confirmed</SelectItem>
+                            <SelectItem value="canceled">Canceled</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -831,6 +833,7 @@ export default function CenterBookingsPage() {
                           <SelectContent>
                             <SelectItem value="unpaid">Unpaid</SelectItem>
                             <SelectItem value="paid">Paid</SelectItem>
+                            <SelectItem value="refunded">Refunded</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />

@@ -574,10 +574,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createVenue(venue: InsertVenue): Promise<Venue> {
-    const [newVenue] = await db.insert(venues)
-      .values(venue)
-      .returning();
-    return newVenue;
+    // The venue object should already have hourlyRate and dailyRate as strings
+    // due to our schema transformation
+    try {
+      const [newVenue] = await db.insert(venues)
+        .values({
+          name: venue.name,
+          description: venue.description,
+          location: venue.location,
+          capacity: venue.capacity,
+          hourlyRate: venue.hourlyRate,
+          dailyRate: venue.dailyRate,
+          facilities: venue.facilities,
+          availabilityHours: venue.availabilityHours,
+          ownerId: venue.ownerId,
+          images: venue.images,
+          isActive: venue.isActive
+        })
+        .returning();
+      return newVenue;
+    } catch (error) {
+      console.error("Error in createVenue:", error);
+      throw error;
+    }
   }
 
   async updateVenue(id: number, venue: Partial<InsertVenue>): Promise<Venue> {
@@ -609,12 +628,8 @@ export class DatabaseStorage implements IStorage {
     endDate?: Date;
     status?: RentalStatus; 
   }): Promise<Rental[]> {
-    let query = db.select({
-      rental: rentals,
-      venue: venues
-    })
-    .from(rentals)
-    .innerJoin(venues, eq(rentals.venueId, venues.id));
+    // Simple select with joins done after filtering
+    let query = db.select().from(rentals);
     
     if (filters) {
       const conditions: SQL[] = [];
@@ -627,16 +642,14 @@ export class DatabaseStorage implements IStorage {
         conditions.push(eq(rentals.customerId, filters.customerId));
       }
       
-      if (filters.centerId) {
-        conditions.push(eq(venues.ownerId, filters.centerId));
-      }
+      // We'll handle centerId filtering separately after initial query
       
       if (filters.startDate) {
-        conditions.push(gte(rentals.startTime, filters.startDate.toISOString()));
+        conditions.push(sql`${rentals.startTime} >= ${filters.startDate.toISOString()}`);
       }
       
       if (filters.endDate) {
-        conditions.push(lte(rentals.endTime, filters.endDate.toISOString()));
+        conditions.push(sql`${rentals.endTime} <= ${filters.endDate.toISOString()}`);
       }
       
       if (filters.status) {
@@ -648,13 +661,19 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
-    const results = await query.orderBy(desc(rentals.startTime));
+    const rentalResults = await query.orderBy(desc(rentals.startTime));
     
-    // Extract the rental objects from the joined results
-    return results.map(result => ({ 
-      ...result.rental,
-      venueName: result.venue.name // Add venue name for convenience
-    } as unknown as Rental));
+    // If we need to filter by centerId, we need to get venues and check ownership
+    if (filters?.centerId) {
+      // Get all venues owned by this center
+      const venueList = await db.select().from(venues).where(eq(venues.ownerId, filters.centerId));
+      const venueIds = venueList.map(v => v.id);
+      
+      // Filter rentals by these venue IDs
+      return rentalResults.filter(rental => venueIds.includes(rental.venueId));
+    }
+    
+    return rentalResults;
   }
 
   async createRental(rental: CreateRentalInput): Promise<Rental> {

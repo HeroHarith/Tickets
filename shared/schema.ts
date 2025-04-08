@@ -233,6 +233,13 @@ export const rentals = pgTable("rentals", {
 export const insertVenueSchema = createInsertSchema(venues).omit({
   id: true,
   createdAt: true,
+}).transform((data) => {
+  // Convert hourlyRate to string for db compatibility
+  return {
+    ...data,
+    hourlyRate: data.hourlyRate !== undefined ? String(data.hourlyRate) : undefined,
+    dailyRate: data.dailyRate !== undefined ? String(data.dailyRate) : undefined
+  };
 });
 
 export const insertRentalSchema = createInsertSchema(rentals).omit({

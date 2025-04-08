@@ -9,7 +9,7 @@ import {
   users as usersSchema
 } from "@shared/schema";
 import * as schema from "@shared/schema";
-import { ZodError } from "zod";
+import { ZodError, z } from "zod";
 import { setupAuth, requireRole } from "./auth";
 import { generateAppleWalletPassUrl, generateGooglePayPassUrl } from "./wallet";
 import { db } from "./db";
@@ -876,8 +876,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "You don't have permission to update this venue" });
       }
       
-      // Validate venue update data
-      const venueData = schema.insertVenueSchema.partial().parse(req.body);
+      // Validate venue update data - since we can't use .partial() on a transformed schema,
+      // we'll create a simplified validation for updates
+      const venueData = z.object({
+        name: z.string().min(1).optional(),
+        description: z.string().optional().nullable(),
+        location: z.string().min(1).optional(),
+        capacity: z.number().optional().nullable(),
+        hourlyRate: z.coerce.number().min(0.01).optional().transform(val => val ? String(val) : undefined),
+        dailyRate: z.coerce.number().optional().nullable().transform(val => val !== null ? String(val) : null),
+        facilities: z.any().optional(),
+        availabilityHours: z.any().optional(),
+        images: z.any().optional(),
+        isActive: z.boolean().optional()
+      }).parse(req.body);
       
       const updatedVenue = await storage.updateVenue(venueId, venueData);
       res.json(updatedVenue);

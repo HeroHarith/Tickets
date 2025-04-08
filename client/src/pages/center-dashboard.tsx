@@ -61,8 +61,10 @@ const venueFormSchema = z.object({
   description: z.string().optional(),
   location: z.string().min(1, "Location is required"),
   capacity: z.coerce.number().optional(),
-  hourlyRate: z.coerce.number().min(0.01, "Hourly rate must be greater than 0"),
-  dailyRate: z.coerce.number().optional(),
+  hourlyRate: z.coerce.number().min(0.01, "Hourly rate must be greater than 0")
+    .transform(val => String(val)), // Convert to string for API compatibility
+  dailyRate: z.coerce.number().optional()
+    .transform(val => val ? String(val) : undefined), // Convert to string for API compatibility
   facilities: z.string().optional().transform(val => 
     val ? val.split(',').map(item => item.trim()) : []
   ),
@@ -99,10 +101,10 @@ export default function CenterDashboard() {
       description: "",
       location: "",
       capacity: undefined,
-      hourlyRate: 0,
+      hourlyRate: "0", // String for API compatibility
       dailyRate: undefined,
-      facilities: "",
-      availabilityHours: "",
+      facilities: "{}",
+      availabilityHours: "{}",
       images: "",
       isActive: true
     }
@@ -274,8 +276,8 @@ export default function CenterDashboard() {
       description: venue.description || "",
       location: venue.location,
       capacity: venue.capacity || undefined,
-      hourlyRate: Number(venue.hourlyRate),
-      dailyRate: venue.dailyRate ? Number(venue.dailyRate) : undefined,
+      hourlyRate: venue.hourlyRate, // Already a string from the API
+      dailyRate: venue.dailyRate,
       facilities: facilitiesString,
       availabilityHours: availabilityHoursString,
       images: imagesString,
@@ -317,10 +319,10 @@ export default function CenterDashboard() {
       description: "",
       location: "",
       capacity: undefined,
-      hourlyRate: 0,
+      hourlyRate: "0", // String for API compatibility
       dailyRate: undefined,
-      facilities: "",
-      availabilityHours: "",
+      facilities: "{}",
+      availabilityHours: "{}",
       images: "",
       isActive: true
     } as any);

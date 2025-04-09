@@ -9,6 +9,7 @@ import { User as UserType, USER_ROLES } from "@shared/schema";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
 import flash from "connect-flash";
+import { sendVerificationEmail } from "./email";
 
 // Extend Express.User interface to include our User type
 declare global {
@@ -22,6 +23,11 @@ declare global {
       name: string;
       role: string;
       createdAt: Date;
+      emailVerified: boolean;
+      verificationToken: string | null;
+      verificationTokenExpires: Date | null;
+      resetToken: string | null;
+      resetTokenExpires: Date | null;
     }
   }
 }
@@ -30,7 +36,7 @@ const PostgresSessionStore = connectPg(session);
 const scryptAsync = promisify(scrypt);
 
 // Helper to hash password
-async function hashPassword(password: string): Promise<string> {
+export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16).toString("hex");
   const buf = (await scryptAsync(password, salt, 64)) as Buffer;
   return `${buf.toString("hex")}.${salt}`;
@@ -182,6 +188,22 @@ export function setupAuth(app: Express): void {
         name,
         role: "customer", // Always default to customer role for regular registration
       });
+      
+      // Generate verification token and send email
+      try {
+        const verificationToken = await storage.createVerificationToken(user.id);
+        
+        // Send verification email
+        await sendVerificationEmail({
+          username: user.username,
+          email: user.email,
+          name: user.name,
+          verificationToken
+        });
+      } catch (emailError) {
+        console.error("Error sending verification email:", emailError);
+        // Continue with login even if email fails
+      }
       
       // Auto-login after registration
       req.login(user, (err) => {

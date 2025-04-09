@@ -16,6 +16,11 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   role: text("role").default("customer").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  emailVerified: boolean("email_verified").default(false).notNull(),
+  verificationToken: text("verification_token"),
+  verificationTokenExpires: timestamp("verification_token_expires"),
+  resetToken: text("reset_token"),
+  resetTokenExpires: timestamp("reset_token_expires"),
 });
 
 // Event Types

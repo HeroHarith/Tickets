@@ -12,6 +12,7 @@ import * as schema from "@shared/schema";
 import { ZodError, z } from "zod";
 import { setupAuth, requireRole } from "./auth";
 import { generateAppleWalletPassUrl, generateGooglePayPassUrl } from "./wallet";
+import { sendVerificationEmail, sendPasswordResetEmail } from "./email";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 
@@ -1160,6 +1161,117 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating payment status:", error);
       res.status(500).json({ message: "Error updating payment status" });
+    }
+  });
+  
+  // Email verification route
+  app.get("/api/verify-email", async (req: Request, res: Response) => {
+    try {
+      const { token } = req.query;
+      
+      if (!token || typeof token !== 'string') {
+        return res.status(400).json({ message: "Invalid verification token" });
+      }
+      
+      const verified = await storage.verifyEmail(token);
+      
+      if (verified) {
+        return res.status(200).json({ message: "Email verified successfully" });
+      } else {
+        return res.status(400).json({ message: "Invalid or expired verification token" });
+      }
+    } catch (error) {
+      console.error("Error verifying email:", error);
+      return res.status(500).json({ message: "Server error during email verification" });
+    }
+  });
+  
+  // Request password reset route
+  app.post("/api/forgot-password", async (req: Request, res: Response) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+      
+      const user = await storage.getUserByEmail(email);
+      
+      if (!user) {
+        // For security reasons, don't reveal that the email doesn't exist
+        return res.status(200).json({ message: "If the email exists, a password reset link has been sent" });
+      }
+      
+      const resetToken = await storage.createPasswordResetToken(email);
+      
+      if (resetToken) {
+        // Send password reset email
+        await sendPasswordResetEmail({
+          username: user.username,
+          email: user.email,
+          name: user.name,
+          resetToken
+        });
+      }
+      
+      return res.status(200).json({ message: "If the email exists, a password reset link has been sent" });
+    } catch (error) {
+      console.error("Error requesting password reset:", error);
+      return res.status(500).json({ message: "Server error during password reset request" });
+    }
+  });
+  
+  // Reset password route
+  app.post("/api/reset-password", async (req: Request, res: Response) => {
+    try {
+      const { token, newPassword } = req.body;
+      
+      if (!token || !newPassword) {
+        return res.status(400).json({ message: "Token and new password are required" });
+      }
+      
+      if (newPassword.length < 8) {
+        return res.status(400).json({ message: "Password must be at least 8 characters" });
+      }
+      
+      const resetSuccess = await storage.resetPassword(token, newPassword);
+      
+      if (resetSuccess) {
+        return res.status(200).json({ message: "Password reset successful" });
+      } else {
+        return res.status(400).json({ message: "Invalid or expired token" });
+      }
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      return res.status(500).json({ message: "Server error during password reset" });
+    }
+  });
+  
+  // Resend verification email
+  app.post("/api/resend-verification", requireRole(["customer", "eventManager", "admin", "center"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      // Check if email already verified
+      if (req.user.emailVerified) {
+        return res.status(400).json({ message: "Email already verified" });
+      }
+      
+      // Create new verification token
+      const token = await storage.createVerificationToken(req.user.id);
+      
+      // Send verification email
+      await sendVerificationEmail({
+        username: req.user.username,
+        email: req.user.email,
+        name: req.user.name,
+        verificationToken: token
+      });
+      
+      return res.status(200).json({ message: "Verification email resent" });
+    } catch (error) {
+      console.error("Error resending verification email:", error);
+      return res.status(500).json({ message: "Server error during email verification" });
     }
   });
 

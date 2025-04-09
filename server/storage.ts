@@ -22,6 +22,8 @@ import session from "express-session";
 import QRCode from "qrcode";
 import connectPgSimple from "connect-pg-simple";
 import { sendTicketConfirmationEmail } from "./email";
+import { hashPassword } from "./auth";
+import { randomBytes } from "crypto";
 
 export interface IStorage {
   // Session store for authentication
@@ -30,9 +32,18 @@ export interface IStorage {
   // User operations
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, userData: Partial<Omit<InsertUser, "id">>): Promise<User>;
   deleteUser(id: number): Promise<boolean>;
+  
+  // Email verification operations
+  createVerificationToken(userId: number): Promise<string>;
+  verifyEmail(token: string): Promise<boolean>;
+  
+  // Password reset operations
+  createPasswordResetToken(email: string): Promise<string | null>;
+  resetPassword(token: string, newPassword: string): Promise<boolean>;
   
   // Event operations
   getEvent(id: number): Promise<Event | undefined>;
@@ -108,6 +119,11 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db.select().from(users).where(eq(users.username, username));
     return user;
   }
+  
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
 
   async createUser(user: InsertUser): Promise<User> {
     const [newUser] = await db.insert(users)
@@ -135,6 +151,130 @@ export class DatabaseStorage implements IStorage {
       .returning({ id: users.id });
       
     return result.length > 0;
+  }
+  
+  // Email verification operations
+  async createVerificationToken(userId: number): Promise<string> {
+    try {
+      // Generate a random token
+      const token = randomBytes(32).toString('hex');
+      
+      // Set token expiration (24 hours from now)
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24);
+      
+      // Update user with verification token
+      await db.update(users)
+        .set({
+          verificationToken: token,
+          verificationTokenExpires: expiresAt
+        })
+        .where(eq(users.id, userId));
+      
+      return token;
+    } catch (error) {
+      console.error('Error creating verification token:', error);
+      throw new Error('Failed to create verification token');
+    }
+  }
+  
+  async verifyEmail(token: string): Promise<boolean> {
+    try {
+      // Find user with this verification token
+      const [user] = await db.select()
+        .from(users)
+        .where(eq(users.verificationToken, token));
+      
+      if (!user) {
+        return false; // Token not found
+      }
+      
+      // Check if token has expired
+      if (user.verificationTokenExpires && user.verificationTokenExpires < new Date()) {
+        return false; // Token expired
+      }
+      
+      // Mark email as verified and clear token
+      await db.update(users)
+        .set({
+          emailVerified: true,
+          verificationToken: null,
+          verificationTokenExpires: null
+        })
+        .where(eq(users.id, user.id));
+      
+      return true;
+    } catch (error) {
+      console.error('Error verifying email:', error);
+      return false;
+    }
+  }
+  
+  // Password reset operations
+  async createPasswordResetToken(email: string): Promise<string | null> {
+    try {
+      // Find user by email
+      const user = await this.getUserByEmail(email);
+      
+      if (!user) {
+        return null; // User not found
+      }
+      
+      // Generate a random token
+      const token = randomBytes(32).toString('hex');
+      
+      // Set token expiration (1 hour from now)
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 1);
+      
+      // Update user with reset token
+      await db.update(users)
+        .set({
+          resetToken: token,
+          resetTokenExpires: expiresAt
+        })
+        .where(eq(users.id, user.id));
+      
+      return token;
+    } catch (error) {
+      console.error('Error creating password reset token:', error);
+      return null;
+    }
+  }
+  
+  async resetPassword(token: string, newPassword: string): Promise<boolean> {
+    try {
+      // Find user with this reset token
+      const [user] = await db.select()
+        .from(users)
+        .where(eq(users.resetToken, token));
+      
+      if (!user) {
+        return false; // Token not found
+      }
+      
+      // Check if token has expired
+      if (user.resetTokenExpires && user.resetTokenExpires < new Date()) {
+        return false; // Token expired
+      }
+      
+      // Hash the new password
+      const hashedPassword = await hashPassword(newPassword);
+      
+      // Update password and clear token
+      await db.update(users)
+        .set({
+          password: hashedPassword,
+          resetToken: null,
+          resetTokenExpires: null
+        })
+        .where(eq(users.id, user.id));
+      
+      return true;
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      return false;
+    }
   }
 
   // Event operations

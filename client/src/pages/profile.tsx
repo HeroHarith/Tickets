@@ -56,66 +56,67 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="container max-w-5xl py-10">
-      <h1 className="text-3xl font-bold mb-8">My Profile</h1>
+    <div className="container py-8">
+      <h1 className="text-2xl font-bold mb-6">My Profile</h1>
       
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Profile Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Account Information</CardTitle>
-            <CardDescription>
-              Your personal account details
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <Label className="text-muted-foreground">Full Name</Label>
-                <div className="font-medium">{user.name}</div>
-              </div>
-              
-              <div>
-                <Label className="text-muted-foreground">Username</Label>
-                <div className="font-medium">{user.username}</div>
-              </div>
-              
-              <div>
-                <Label className="text-muted-foreground">Email</Label>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{user.email}</span>
-                  {user.emailVerified ? (
-                    <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200">
-                      <Check className="h-3 w-3 mr-1" /> Verified
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200">
-                      <AlertTriangle className="h-3 w-3 mr-1" /> Verification Pending
-                    </Badge>
-                  )}
+      <div className="flex flex-col lg:flex-row gap-8">
+        {/* Left Column - Profile Information */}
+        <div className="w-full lg:w-1/3">
+          <Card className="mb-6">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Account Information</CardTitle>
+              <CardDescription>
+                Your personal account details
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pb-4">
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-muted-foreground text-xs">Full Name</Label>
+                  <div className="font-medium">{user.name}</div>
+                </div>
+                
+                <div>
+                  <Label className="text-muted-foreground text-xs">Username</Label>
+                  <div className="font-medium">{user.username}</div>
+                </div>
+                
+                <div>
+                  <Label className="text-muted-foreground text-xs">Email</Label>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{user.email}</span>
+                    {user.emailVerified ? (
+                      <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200 text-xs">
+                        <Check className="h-3 w-3 mr-1" /> Verified
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200 text-xs">
+                        <AlertTriangle className="h-3 w-3 mr-1" /> Verification Pending
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                
+                <div>
+                  <Label className="text-muted-foreground text-xs">Role</Label>
+                  <div className="font-medium capitalize">{user.role}</div>
+                </div>
+                
+                <div>
+                  <Label className="text-muted-foreground text-xs">Member Since</Label>
+                  <div className="font-medium">
+                    {new Date(user.createdAt).toLocaleDateString()}
+                  </div>
                 </div>
               </div>
-              
-              <div>
-                <Label className="text-muted-foreground">Role</Label>
-                <div className="font-medium capitalize">{user.role}</div>
-              </div>
-              
-              <div>
-                <Label className="text-muted-foreground">Member Since</Label>
-                <div className="font-medium">
-                  {new Date(user.createdAt).toLocaleDateString()}
-                </div>
-              </div>
-            </div>
-          </CardContent>
-          <CardFooter className="flex justify-between border-t pt-6">
-            {!user.emailVerified && (
+            </CardContent>
+            <CardFooter className="flex flex-col space-y-2 pt-2 border-t">
               <Button
                 onClick={() => resendVerificationMutation.mutate()}
                 variant="outline"
-                className="gap-2"
-                disabled={resendVerificationMutation.isPending}
+                size="sm"
+                className="w-full gap-2 text-sm"
+                disabled={resendVerificationMutation.isPending || user.emailVerified}
               >
                 {resendVerificationMutation.isPending ? (
                   <>
@@ -129,139 +130,23 @@ export default function ProfilePage() {
                   </>
                 )}
               </Button>
-            )}
-            
-            <Button
-              onClick={() => setIsEditingPassword(true)}
-              disabled={isEditingPassword}
-              variant="outline"
-            >
-              Change Password
-            </Button>
-          </CardFooter>
-        </Card>
-
-        {/* Password Change Form */}
-        {isEditingPassword && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Change Password</CardTitle>
-              <CardDescription>
-                Update your account password
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...passwordChangeForm}>
-                <form
-                  onSubmit={passwordChangeForm.handleSubmit(onPasswordChangeSubmit)}
-                  className="space-y-4"
-                >
-                  <FormField
-                    control={passwordChangeForm.control}
-                    name="currentPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Current Password</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="password"
-                            placeholder="••••••"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={passwordChangeForm.control}
-                    name="newPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>New Password</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="password"
-                            placeholder="••••••"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={passwordChangeForm.control}
-                    name="confirmPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Confirm New Password</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="password"
-                            placeholder="••••••"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <div className="flex gap-2 pt-2">
-                    <Button
-                      type="submit"
-                      disabled={passwordChangeForm.formState.isSubmitting}
-                    >
-                      Update Password
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setIsEditingPassword(false)}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        )}
-        
-        {/* Email Verification Alert if not verified */}
-        {!user.emailVerified && !isEditingPassword && (
-          <Alert className="border-amber-200 bg-amber-50 text-amber-800">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Email verification required</AlertTitle>
-            <AlertDescription>
-              Please verify your email address to access all features. We've sent a verification link to your email.
+              
               <Button
-                onClick={() => resendVerificationMutation.mutate()}
-                variant="link"
-                className="text-amber-700 px-0 mt-2"
-                disabled={resendVerificationMutation.isPending}
+                onClick={() => setIsEditingPassword(true)}
+                disabled={isEditingPassword}
+                variant="outline"
+                size="sm"
+                className="w-full text-sm"
               >
-                {resendVerificationMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Resending...
-                  </>
-                ) : (
-                  "Resend verification email"
-                )}
+                Change Password
               </Button>
-            </AlertDescription>
-          </Alert>
-        )}
-        
-        {/* Account Security Recommendations */}
-        {!isEditingPassword && (
+            </CardFooter>
+          </Card>
+
+          {/* Account Security Recommendations */}
           <Card>
-            <CardHeader>
-              <CardTitle>Account Security</CardTitle>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Account Security</CardTitle>
               <CardDescription>
                 Tips to keep your account secure
               </CardDescription>
@@ -310,7 +195,126 @@ export default function ProfilePage() {
               </ul>
             </CardContent>
           </Card>
-        )}
+        </div>
+        
+        {/* Right Column - Password Change & Alerts */}
+        <div className="w-full lg:w-2/3">
+          {/* Email Verification Alert if not verified */}
+          {!user.emailVerified && (
+            <Alert className="border-amber-200 bg-amber-50 text-amber-800 mb-6">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Email verification required</AlertTitle>
+              <AlertDescription>
+                Please verify your email address to access all features. We've sent a verification link to your email.
+                <Button
+                  onClick={() => resendVerificationMutation.mutate()}
+                  variant="link"
+                  className="text-amber-700 px-0 mt-2"
+                  disabled={resendVerificationMutation.isPending}
+                >
+                  {resendVerificationMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Resending...
+                    </>
+                  ) : (
+                    "Resend verification email"
+                  )}
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          {/* Password Change Form */}
+          {isEditingPassword && (
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg">Change Password</CardTitle>
+                <CardDescription>
+                  Update your account password
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Form {...passwordChangeForm}>
+                  <form
+                    onSubmit={passwordChangeForm.handleSubmit(onPasswordChangeSubmit)}
+                    className="space-y-4"
+                  >
+                    <FormField
+                      control={passwordChangeForm.control}
+                      name="currentPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Current Password</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="password"
+                              placeholder="••••••"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={passwordChangeForm.control}
+                      name="newPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>New Password</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="password"
+                              placeholder="••••••"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={passwordChangeForm.control}
+                      name="confirmPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Confirm New Password</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="password"
+                              placeholder="••••••"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <div className="flex gap-2 pt-2">
+                      <Button
+                        type="submit"
+                        disabled={passwordChangeForm.formState.isSubmitting}
+                      >
+                        Update Password
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsEditingPassword(false)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
     </div>
   );

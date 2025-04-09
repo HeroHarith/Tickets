@@ -142,7 +142,7 @@ export default function AuthPage() {
             toast({
               title: "Email Verified",
               description: "Your email has been successfully verified. You can now log in.",
-              variant: "success"
+              variant: "default"
             });
             setActiveTab("login");
           } else {

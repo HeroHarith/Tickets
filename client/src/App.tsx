@@ -19,6 +19,7 @@ import CenterBookingsPage from "@/pages/center-bookings";
 import CenterVenuesPage from "@/pages/center-venues";
 import CenterSchedulePage from "@/pages/center-schedule";
 import AuthPage from "@/pages/auth-page";
+import ProfilePage from "@/pages/profile";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 
@@ -43,6 +44,10 @@ function Router() {
               <ProtectedRoute 
                 path="/my-tickets" 
                 component={MyTickets} 
+              />
+              <ProtectedRoute 
+                path="/profile" 
+                component={ProfilePage} 
               />
               <ProtectedRoute 
                 path="/managed-events" 

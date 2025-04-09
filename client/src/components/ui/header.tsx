@@ -52,9 +52,17 @@ const UserProfile = () => {
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium">{user.name}</p>
             <p className="text-xs text-muted-foreground">{user.email}</p>
+            {!user.emailVerified && (
+              <span className="text-xs text-amber-500 mt-1">Email verification pending</span>
+            )}
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/profile" className="w-full cursor-pointer">
+            My Profile
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href="/my-tickets" className="w-full cursor-pointer">
             My Tickets
@@ -187,13 +195,22 @@ const Header = () => {
               Browse Events
             </Link>
             {user && (
-              <Link 
-                href="/my-tickets" 
-                className={`${location === '/my-tickets' ? 'text-primary' : 'text-gray-700'} block px-3 py-2 rounded-md text-base font-medium`}
-                onClick={() => setIsMenuOpen(false)}
-              >
-                My Tickets
-              </Link>
+              <>
+                <Link 
+                  href="/profile" 
+                  className={`${location === '/profile' ? 'text-primary' : 'text-gray-700'} block px-3 py-2 rounded-md text-base font-medium`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  My Profile
+                </Link>
+                <Link 
+                  href="/my-tickets" 
+                  className={`${location === '/my-tickets' ? 'text-primary' : 'text-gray-700'} block px-3 py-2 rounded-md text-base font-medium`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  My Tickets
+                </Link>
+              </>
             )}
             {showManagerOptions && (
               <>

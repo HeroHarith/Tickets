@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Redirect } from "wouter";
+import { Redirect, useLocation } from "wouter";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,11 +12,13 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
 import { insertUserSchema } from "@shared/schema";
 import { Loader2 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // Login form schema
 const loginSchema = z.object({
@@ -42,9 +44,36 @@ const registerSchema = z.object({
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
+// Forgot password schema
+const forgotPasswordSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+});
+
+// Reset password schema
+const resetPasswordSchema = z.object({
+  token: z.string().min(1, "Token is required"),
+  newPassword: z.string().min(6, "Password must be at least 6 characters"),
+  confirmPassword: z.string().min(6, "Password must be at least 6 characters"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+});
+
+type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;
+type ResetPasswordValues = z.infer<typeof resetPasswordSchema>;
+
 export default function AuthPage() {
   const [activeTab, setActiveTab] = useState<string>("login");
-  const { user, loginMutation, registerMutation, isLoading } = useAuth();
+  const [resetToken, setResetToken] = useState<string | null>(null);
+  const [location] = useLocation();
+  const { 
+    user, 
+    loginMutation, 
+    registerMutation, 
+    forgotPasswordMutation, 
+    resetPasswordMutation,
+    isLoading 
+  } = useAuth();
 
   // Login form
   const loginForm = useForm<LoginFormValues>({
@@ -66,6 +95,36 @@ export default function AuthPage() {
       name: "",
     },
   });
+  
+  // Forgot password form
+  const forgotPasswordForm = useForm<ForgotPasswordValues>({
+    resolver: zodResolver(forgotPasswordSchema),
+    defaultValues: {
+      email: "",
+    },
+  });
+  
+  // Reset password form
+  const resetPasswordForm = useForm<ResetPasswordValues>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: {
+      token: resetToken || "",
+      newPassword: "",
+      confirmPassword: "",
+    },
+  });
+
+  // Check for token in URL
+  useEffect(() => {
+    // Parse the query parameters from the current location
+    const searchParams = new URLSearchParams(location.split('?')[1] || '');
+    const token = searchParams.get('token');
+    if (token) {
+      setResetToken(token);
+      setActiveTab("forgot-password");
+      resetPasswordForm.setValue("token", token);
+    }
+  }, [location, resetPasswordForm]);
 
   // Form submission handlers
   const onLoginSubmit = (values: LoginFormValues) => {
@@ -76,6 +135,15 @@ export default function AuthPage() {
     // Remove confirmPassword before submitting
     const { confirmPassword, ...registerData } = values;
     registerMutation.mutate(registerData);
+  };
+  
+  const onForgotPasswordSubmit = (values: ForgotPasswordValues) => {
+    forgotPasswordMutation.mutate(values);
+  };
+  
+  const onResetPasswordSubmit = (values: ResetPasswordValues) => {
+    const { confirmPassword, ...resetData } = values;
+    resetPasswordMutation.mutate(resetData);
   };
 
   // Redirect if user is already logged in
@@ -99,9 +167,10 @@ export default function AuthPage() {
             onValueChange={setActiveTab}
             className="w-full"
           >
-            <TabsList className="grid w-full grid-cols-2 mb-8">
+            <TabsList className="grid w-full grid-cols-3 mb-8">
               <TabsTrigger value="login">Login</TabsTrigger>
               <TabsTrigger value="register">Register</TabsTrigger>
+              <TabsTrigger value="forgot-password">Reset Password</TabsTrigger>
             </TabsList>
 
             {/* Login Form */}
@@ -130,7 +199,19 @@ export default function AuthPage() {
                     name="password"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Password</FormLabel>
+                        <div className="flex items-center justify-between">
+                          <FormLabel>Password</FormLabel>
+                          <a 
+                            href="#" 
+                            className="text-sm text-primary hover:underline"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setActiveTab("forgot-password");
+                            }}
+                          >
+                            Forgot password?
+                          </a>
+                        </div>
                         <FormControl>
                           <Input
                             type="password"
@@ -270,6 +351,142 @@ export default function AuthPage() {
                   </Button>
                 </form>
               </Form>
+            </TabsContent>
+
+            {/* Forgot Password / Reset Password Form */}
+            <TabsContent value="forgot-password">
+              {resetToken ? (
+                /* Reset Password Form (with token) */
+                <div className="space-y-6">
+                  <Alert className="mb-6">
+                    <AlertTitle>Enter your new password</AlertTitle>
+                    <AlertDescription>
+                      Please enter a new password for your account.
+                    </AlertDescription>
+                  </Alert>
+                  
+                  <Form {...resetPasswordForm}>
+                    <form
+                      onSubmit={resetPasswordForm.handleSubmit(onResetPasswordSubmit)}
+                      className="space-y-6"
+                    >
+                      <FormField
+                        control={resetPasswordForm.control}
+                        name="newPassword"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>New Password</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="password"
+                                placeholder="••••••"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={resetPasswordForm.control}
+                        name="confirmPassword"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Confirm New Password</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="password"
+                                placeholder="••••••"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <Button
+                        type="submit"
+                        className="w-full"
+                        disabled={resetPasswordMutation.isPending}
+                      >
+                        {resetPasswordMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Resetting Password...
+                          </>
+                        ) : (
+                          "Reset Password"
+                        )}
+                      </Button>
+                    </form>
+                  </Form>
+                </div>
+              ) : (
+                /* Forgot Password Form (email only) */
+                <div className="space-y-6">
+                  <Alert className="mb-6">
+                    <AlertTitle>Forgot your password?</AlertTitle>
+                    <AlertDescription>
+                      Enter your email address and we'll send you a link to reset your password.
+                    </AlertDescription>
+                  </Alert>
+                  
+                  <Form {...forgotPasswordForm}>
+                    <form
+                      onSubmit={forgotPasswordForm.handleSubmit(onForgotPasswordSubmit)}
+                      className="space-y-6"
+                    >
+                      <FormField
+                        control={forgotPasswordForm.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="email"
+                                placeholder="john@example.com"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              Enter the email address associated with your account.
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <Button
+                        type="submit"
+                        className="w-full"
+                        disabled={forgotPasswordMutation.isPending}
+                      >
+                        {forgotPasswordMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Sending Reset Email...
+                          </>
+                        ) : (
+                          "Send Reset Link"
+                        )}
+                      </Button>
+                      
+                      <div className="text-center">
+                        <Button
+                          variant="link"
+                          type="button"
+                          onClick={() => setActiveTab("login")}
+                        >
+                          Back to Login
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         </div>

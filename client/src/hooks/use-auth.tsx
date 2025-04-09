@@ -15,6 +15,9 @@ type AuthContextType = {
   loginMutation: UseMutationResult<SelectUser, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
   registerMutation: UseMutationResult<SelectUser, Error, InsertUser>;
+  forgotPasswordMutation: UseMutationResult<void, Error, { email: string }>;
+  resetPasswordMutation: UseMutationResult<void, Error, { token: string; newPassword: string }>;
+  resendVerificationMutation: UseMutationResult<void, Error, void>;
 };
 
 type LoginData = Pick<InsertUser, "username" | "password">;
@@ -93,6 +96,80 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  // Forgot password mutation
+  const forgotPasswordMutation = useMutation({
+    mutationFn: async ({ email }: { email: string }) => {
+      const res = await apiRequest("POST", "/api/forgot-password", { email });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to process forgot password request");
+      }
+      // We don't need to return anything, as we just want to trigger the email
+    },
+    onSuccess: () => {
+      toast({
+        title: "Password reset email sent",
+        description: "If your email exists in our system, you will receive a password reset link",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Password reset request failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Reset password mutation
+  const resetPasswordMutation = useMutation({
+    mutationFn: async ({ token, newPassword }: { token: string; newPassword: string }) => {
+      const res = await apiRequest("POST", "/api/reset-password", { token, newPassword });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to reset password");
+      }
+      // We don't need to return anything as the user will need to log in after reset
+    },
+    onSuccess: () => {
+      toast({
+        title: "Password reset successful",
+        description: "Your password has been reset. Please log in with your new password.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Password reset failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Resend verification email mutation
+  const resendVerificationMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/resend-verification");
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to resend verification email");
+      }
+    },
+    onSuccess: () => {
+      toast({
+        title: "Verification email sent",
+        description: "A new verification email has been sent to your email address",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to send verification email",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   return (
     <AuthContext.Provider
       value={{
@@ -102,6 +179,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loginMutation,
         logoutMutation,
         registerMutation,
+        forgotPasswordMutation,
+        resetPasswordMutation,
+        resendVerificationMutation,
       }}
     >
       {children}

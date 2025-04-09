@@ -2,14 +2,46 @@ import nodemailer from 'nodemailer';
 import { Event, Ticket, TicketType } from '@shared/schema';
 import { generateAppleWalletPassUrl, generateGooglePayPassUrl } from './wallet';
 
-// Create a transporter for Gmail
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.GMAIL_EMAIL,
-    pass: process.env.GMAIL_APP_PASSWORD,
-  },
-});
+// Create a more robust transporter for Gmail
+const createTransporter = () => {
+  // Check if we have the required credentials
+  if (!process.env.GMAIL_EMAIL || !process.env.GMAIL_APP_PASSWORD) {
+    console.error('Missing email credentials. Set GMAIL_EMAIL and GMAIL_APP_PASSWORD environment variables.');
+    return null;
+  }
+
+  // Create a Gmail transporter with additional options
+  return nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true, // Use SSL
+    auth: {
+      user: process.env.GMAIL_EMAIL,
+      pass: process.env.GMAIL_APP_PASSWORD,
+    },
+    debug: true, // Enable debug output
+    tls: {
+      rejectUnauthorized: false // Don't fail on self-signed certificates
+    }
+  });
+};
+
+// Create the transporter
+const transporter = createTransporter();
+
+// Verify transporter configuration
+if (transporter) {
+  transporter.verify((error, success) => {
+    if (error) {
+      console.error('SMTP connection error:', error);
+    } else {
+      console.log('SMTP server is ready to take our messages');
+      console.log(`Using email account: ${process.env.GMAIL_EMAIL}`);
+    }
+  });
+} else {
+  console.error('Failed to create email transporter due to missing credentials');
+}
 
 interface TicketDetails {
   ticket: Ticket;
@@ -44,6 +76,11 @@ interface PasswordResetEmailDetails {
  * Send an email verification email
  */
 export async function sendVerificationEmail(details: VerificationEmailDetails): Promise<boolean> {
+  if (!transporter) {
+    console.error('Email transporter not initialized. Check email credentials.');
+    return false;
+  }
+  
   const { username, email, name, verificationToken } = details;
   
   // Create verification URL - using /auth page with token parameter
@@ -91,11 +128,22 @@ export async function sendVerificationEmail(details: VerificationEmailDetails): 
   };
 
   try {
-    await transporter.sendMail(emailContent);
+    console.log(`Attempting to send verification email to ${email} using ${process.env.GMAIL_EMAIL}`);
+    const info = await transporter.sendMail(emailContent);
     console.log(`Verification email sent to ${email}`);
+    console.log('Email response:', info.response);
+    console.log('Message ID:', info.messageId);
     return true;
   } catch (error) {
     console.error('Failed to send verification email:', error);
+    console.error('Error details:', JSON.stringify(error, null, 2));
+    console.error('Email configuration:', {
+      from: emailContent.from,
+      to: emailContent.to,
+      subject: emailContent.subject,
+      emailProvider: process.env.GMAIL_EMAIL ? 'Gmail' : 'Not configured',
+      hasCredentials: !!process.env.GMAIL_APP_PASSWORD
+    });
     return false;
   }
 }
@@ -104,6 +152,11 @@ export async function sendVerificationEmail(details: VerificationEmailDetails): 
  * Send a password reset email
  */
 export async function sendPasswordResetEmail(details: PasswordResetEmailDetails): Promise<boolean> {
+  if (!transporter) {
+    console.error('Email transporter not initialized. Check email credentials.');
+    return false;
+  }
+  
   const { username, email, name, resetToken } = details;
   
   // Create reset URL
@@ -151,11 +204,22 @@ export async function sendPasswordResetEmail(details: PasswordResetEmailDetails)
   };
 
   try {
-    await transporter.sendMail(emailContent);
+    console.log(`Attempting to send password reset email to ${email} using ${process.env.GMAIL_EMAIL}`);
+    const info = await transporter.sendMail(emailContent);
     console.log(`Password reset email sent to ${email}`);
+    console.log('Email response:', info.response);
+    console.log('Message ID:', info.messageId);
     return true;
   } catch (error) {
     console.error('Failed to send password reset email:', error);
+    console.error('Error details:', JSON.stringify(error, null, 2));
+    console.error('Email configuration:', {
+      from: emailContent.from,
+      to: emailContent.to,
+      subject: emailContent.subject,
+      emailProvider: process.env.GMAIL_EMAIL ? 'Gmail' : 'Not configured',
+      hasCredentials: !!process.env.GMAIL_APP_PASSWORD
+    });
     return false;
   }
 }
@@ -164,6 +228,11 @@ export async function sendPasswordResetEmail(details: PasswordResetEmailDetails)
  * Send a ticket confirmation email
  */
 export async function sendTicketConfirmationEmail(details: TicketDetails): Promise<boolean> {
+  if (!transporter) {
+    console.error('Email transporter not initialized. Check email credentials.');
+    return false;
+  }
+  
   const { ticket, event, ticketType, attendeeEmail, attendeeName, qrCodeDataUrl } = details;
   
   // Format date for display
@@ -267,11 +336,22 @@ export async function sendTicketConfirmationEmail(details: TicketDetails): Promi
   };
 
   try {
-    await transporter.sendMail(emailContent);
+    console.log(`Attempting to send ticket confirmation email to ${attendeeEmail} using ${process.env.GMAIL_EMAIL}`);
+    const info = await transporter.sendMail(emailContent);
     console.log(`Ticket confirmation email sent to ${attendeeEmail}`);
+    console.log('Email response:', info.response);
+    console.log('Message ID:', info.messageId);
     return true;
   } catch (error) {
     console.error('Failed to send ticket confirmation email:', error);
+    console.error('Error details:', JSON.stringify(error, null, 2));
+    console.error('Email configuration:', {
+      from: emailContent.from,
+      to: emailContent.to,
+      subject: emailContent.subject,
+      emailProvider: process.env.GMAIL_EMAIL ? 'Gmail' : 'Not configured',
+      hasCredentials: !!process.env.GMAIL_APP_PASSWORD
+    });
     return false;
   }
 }

@@ -19,6 +19,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { insertUserSchema } from "@shared/schema";
 import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
 
 // Login form schema
 const loginSchema = z.object({
@@ -66,6 +67,7 @@ export default function AuthPage() {
   const [activeTab, setActiveTab] = useState<string>("login");
   const [resetToken, setResetToken] = useState<string | null>(null);
   const [location] = useLocation();
+  const { toast } = useToast();
   const { 
     user, 
     loginMutation, 
@@ -114,17 +116,54 @@ export default function AuthPage() {
     },
   });
 
-  // Check for token in URL
+  // Check for tokens in URL
   useEffect(() => {
     // Parse the query parameters from the current location
     const searchParams = new URLSearchParams(location.split('?')[1] || '');
-    const token = searchParams.get('token');
-    if (token) {
-      setResetToken(token);
+    
+    // Check for reset password token
+    const resetToken = searchParams.get('reset_token');
+    if (resetToken) {
+      setResetToken(resetToken);
       setActiveTab("forgot-password");
-      resetPasswordForm.setValue("token", token);
+      resetPasswordForm.setValue("token", resetToken);
     }
-  }, [location, resetPasswordForm]);
+    
+    // Check for email verification token
+    const verificationToken = searchParams.get('token');
+    if (verificationToken) {
+      // Call API to verify email
+      const verifyEmail = async () => {
+        try {
+          const response = await fetch(`/api/verify-email?token=${verificationToken}`);
+          const data = await response.json();
+          
+          if (response.ok) {
+            toast({
+              title: "Email Verified",
+              description: "Your email has been successfully verified. You can now log in.",
+              variant: "success"
+            });
+            setActiveTab("login");
+          } else {
+            toast({
+              title: "Verification Failed",
+              description: data.message || "Email verification failed. Please try again or request a new verification link.",
+              variant: "destructive"
+            });
+          }
+        } catch (error) {
+          toast({
+            title: "Verification Error",
+            description: "An error occurred during email verification. Please try again later.",
+            variant: "destructive"
+          });
+        }
+      };
+      
+      verifyEmail();
+    }
+  }, [location, resetPasswordForm, toast]);
 
   // Form submission handlers
   const onLoginSubmit = (values: LoginFormValues) => {

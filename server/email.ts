@@ -46,8 +46,9 @@ interface PasswordResetEmailDetails {
 export async function sendVerificationEmail(details: VerificationEmailDetails): Promise<boolean> {
   const { username, email, name, verificationToken } = details;
   
-  // Create verification URL
-  const verificationUrl = `${process.env.APP_URL || 'http://localhost:5000'}/verify-email?token=${verificationToken}`;
+  // Create verification URL - using /auth page with token parameter
+  const baseUrl = process.env.APP_URL || 'https://eventtix.replit.app';
+  const verificationUrl = `${baseUrl}/auth?token=${verificationToken}`;
   
   // Email content
   const emailContent = {
@@ -106,7 +107,8 @@ export async function sendPasswordResetEmail(details: PasswordResetEmailDetails)
   const { username, email, name, resetToken } = details;
   
   // Create reset URL
-  const resetUrl = `${process.env.APP_URL || 'http://localhost:5000'}/reset-password?token=${resetToken}`;
+  const baseUrl = process.env.APP_URL || 'https://eventtix.replit.app';
+  const resetUrl = `${baseUrl}/auth?reset_token=${resetToken}`;
   
   // Email content
   const emailContent = {

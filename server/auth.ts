@@ -10,6 +10,7 @@ import connectPg from "connect-pg-simple";
 import { pool } from "./db";
 import flash from "connect-flash";
 import { sendVerificationEmail } from "./email";
+import { successResponse, errorResponse } from "./utils/api-response";
 
 // Extend Express.User interface to include our User type
 declare global {
@@ -90,11 +91,11 @@ async function comparePasswords(supplied: string, stored: string): Promise<boole
 export function requireRole(roles: string[]): (req: Request, res: Response, next: NextFunction) => void {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Unauthorized" });
+      return res.status(401).json(errorResponse("Unauthorized", 401));
     }
     
     if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ message: "Forbidden: Insufficient privileges" });
+      return res.status(403).json(errorResponse("Forbidden: Insufficient privileges", 403));
     }
     
     next();
@@ -170,12 +171,12 @@ export function setupAuth(app: Express): void {
       // Check if user already exists
       const existingUser = await storage.getUserByUsername(username);
       if (existingUser) {
-        return res.status(400).json({ message: "Username already exists" });
+        return res.status(400).json(errorResponse("Username already exists", 400));
       }
       
       // Validate role if provided
       if (role && !USER_ROLES.includes(role)) {
-        return res.status(400).json({ message: "Invalid role" });
+        return res.status(400).json(errorResponse("Invalid role", 400));
       }
       
       // Create user with hashed password
@@ -210,7 +211,7 @@ export function setupAuth(app: Express): void {
         if (err) return next(err);
         // Remove password from response
         const { password, ...userResponse } = user;
-        res.status(201).json(userResponse);
+        res.status(201).json(successResponse(userResponse, 201, "User registered successfully"));
       });
     } catch (error) {
       next(error);
@@ -222,14 +223,14 @@ export function setupAuth(app: Express): void {
       if (err) return next(err);
       
       if (!user) {
-        return res.status(401).json({ message: info?.message || "Authentication failed" });
+        return res.status(401).json(errorResponse(info?.message || "Authentication failed", 401));
       }
       
       req.login(user, (err: any) => {
         if (err) return next(err);
         // Remove password from response
         const { password, ...userResponse } = user;
-        res.status(200).json(userResponse);
+        res.status(200).json(successResponse(userResponse, 200, "Login successful"));
       });
     })(req, res, next);
   });
@@ -237,19 +238,19 @@ export function setupAuth(app: Express): void {
   app.post("/api/logout", (req, res) => {
     req.logout((err) => {
       if (err) {
-        return res.status(500).json({ message: "Error during logout" });
+        return res.status(500).json(errorResponse("Error during logout", 500));
       }
-      res.status(200).json({ message: "Logged out successfully" });
+      res.status(200).json(successResponse(null, 200, "Logged out successfully"));
     });
   });
 
   app.get("/api/user", (req, res) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Not authenticated" });
+      return res.status(401).json(errorResponse("Not authenticated", 401));
     }
     
     // Remove password from response
     const { password, ...userResponse } = req.user;
-    res.status(200).json(userResponse);
+    res.status(200).json(successResponse(userResponse, 200, "User information retrieved successfully"));
   });
 }

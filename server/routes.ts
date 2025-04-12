@@ -51,14 +51,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const existingUser = await storage.getUserByUsername(data.username);
       if (existingUser) {
-        return res.status(400).json({ message: "Username already exists" });
+        return res.status(400).json(errorResponse("Username already exists", 400));
       }
       
       const user = await storage.createUser(data);
-      return res.status(201).json({ id: user.id, username: user.username, name: user.name, email: user.email });
+      const userData = { id: user.id, username: user.username, name: user.name, email: user.email };
+      return res.status(201).json(successResponse(userData, 201, "User created successfully"));
     } catch (err) {
       console.error("Error creating user:", err);
-      return res.status(500).json({ message: "Failed to create user" });
+      return res.status(500).json(errorResponse("Failed to create user", 500));
     }
   });
 
@@ -155,13 +156,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         
-        return res.json(filteredEvents);
+        return res.json(successResponse(filteredEvents, 200, "Events retrieved successfully"));
       }
       
-      return res.json(events);
+      return res.json(successResponse(events, 200, "Events retrieved successfully"));
     } catch (err) {
       console.error("Error fetching events:", err);
-      return res.status(500).json({ message: "Failed to fetch events" });
+      return res.status(500).json(errorResponse("Failed to fetch events", 500));
     }
   });
 
@@ -171,15 +172,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const event = await storage.getEvent(eventId);
       
       if (!event) {
-        return res.status(404).json({ message: "Event not found" });
+        return res.status(404).json(errorResponse("Event not found", 404));
       }
       
       const ticketTypes = await storage.getTicketTypes(eventId);
       
-      return res.json({ ...event, ticketTypes });
+      return res.json(successResponse({ ...event, ticketTypes }, 200, "Event retrieved successfully"));
     } catch (err) {
       console.error("Error fetching event:", err);
-      return res.status(500).json({ message: "Failed to fetch event" });
+      return res.status(500).json(errorResponse("Failed to fetch event", 500));
     }
   });
 
@@ -196,10 +197,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         organizer: req.user.id
       });
       
-      return res.status(201).json(event);
+      return res.status(201).json(successResponse(event, 201, "Event created successfully"));
     } catch (err) {
       console.error("Error creating event:", err);
-      return res.status(500).json({ message: "Failed to create event" });
+      return res.status(500).json(errorResponse("Failed to create event", 500));
     }
   });
 
@@ -211,7 +212,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if event exists
       const event = await storage.getEvent(eventId);
       if (!event) {
-        return res.status(404).json({ message: "Event not found" });
+        return res.status(404).json(errorResponse("Event not found", 404));
       }
       
       // Ensure user is authenticated
@@ -219,7 +220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verify the user has permission (is admin or the event organizer)
       if (req.user.role !== 'admin' && event.organizer !== req.user.id) {
-        return res.status(403).json({ message: "You do not have permission to view tickets for this event" });
+        return res.status(403).json(errorResponse("You do not have permission to view tickets for this event", 403));
       }
       
       // Get tickets for the event
@@ -243,10 +244,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return formattedTicket;
       });
       
-      return res.json(ticketsWithDetails);
+      return res.json(successResponse(ticketsWithDetails, 200, "Event tickets retrieved successfully"));
     } catch (err) {
       console.error("Error fetching event tickets:", err);
-      return res.status(500).json({ message: "Failed to fetch event tickets" });
+      return res.status(500).json(errorResponse("Failed to fetch event tickets", 500));
     }
   });
   
@@ -258,13 +259,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get the ticket to ensure it exists and to get the event ID
       const ticket = await storage.getTicket(ticketId);
       if (!ticket) {
-        return res.status(404).json({ message: "Ticket not found" });
+        return res.status(404).json(errorResponse("Ticket not found", 404));
       }
       
       // Get the event to check permissions
       const event = await storage.getEvent(ticket.eventId);
       if (!event) {
-        return res.status(404).json({ message: "Event not found" });
+        return res.status(404).json(errorResponse("Event not found", 404));
       }
       
       // Ensure user is authenticated
@@ -272,16 +273,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verify the user has permission (is admin or the event organizer)
       if (req.user.role !== 'admin' && event.organizer !== req.user.id) {
-        return res.status(403).json({ message: "You do not have permission to delete tickets for this event" });
+        return res.status(403).json(errorResponse("You do not have permission to delete tickets for this event", 403));
       }
       
       // Delete the ticket
       await storage.removeTicket(ticketId);
       
-      return res.status(200).json({ message: "Ticket successfully removed" });
+      return res.status(200).json(successResponse(null, 200, "Ticket successfully removed"));
     } catch (err) {
       console.error("Error removing ticket:", err);
-      return res.status(500).json({ message: "Failed to remove ticket" });
+      return res.status(500).json(errorResponse("Failed to remove ticket", 500));
     }
   });
 
@@ -295,10 +296,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ensureAuthenticated(req);
       
       const tickets = await storage.purchaseTickets(data, req.user.id);
-      return res.status(201).json(tickets);
+      return res.status(201).json(successResponse(tickets, 201, "Tickets purchased successfully"));
     } catch (err: any) {
       console.error("Error purchasing tickets:", err);
-      return res.status(500).json({ message: err.message || "Failed to purchase tickets" });
+      return res.status(500).json(errorResponse(err.message || "Failed to purchase tickets", 500));
     }
   });
 
@@ -323,10 +324,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       );
       
-      return res.json(expandedTickets);
+      return res.json(successResponse(expandedTickets, 200, "User tickets retrieved successfully"));
     } catch (err) {
       console.error("Error fetching user tickets:", err);
-      return res.status(500).json({ message: "Failed to fetch tickets" });
+      return res.status(500).json(errorResponse("Failed to fetch tickets", 500));
     }
   });
 
@@ -336,7 +337,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const event = await storage.getEvent(eventId);
       
       if (!event) {
-        return res.status(404).json({ message: "Event not found" });
+        return res.status(404).json(errorResponse("Event not found", 404));
       }
       
       // Ensure user is authenticated and get their ID
@@ -344,18 +345,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verify the user has permission (is admin or the event organizer)
       if (req.user.role !== 'admin' && event.organizer !== req.user.id) {
-        return res.status(403).json({ message: "You do not have permission to view sales for this event" });
+        return res.status(403).json(errorResponse("You do not have permission to view sales for this event", 403));
       }
       
       const salesData = await storage.getEventSales(eventId);
       
-      return res.json({
+      return res.json(successResponse({
         event,
         ...salesData
-      });
+      }, 200, "Event sales data retrieved successfully"));
     } catch (err) {
       console.error("Error fetching event sales:", err);
-      return res.status(500).json({ message: "Failed to fetch event sales" });
+      return res.status(500).json(errorResponse("Failed to fetch event sales", 500));
     }
   });
   
@@ -367,10 +368,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate or retrieve QR code
       const qrCodeUrl = await storage.generateTicketQR(ticketId);
       
-      res.json({ qrCode: qrCodeUrl });
+      res.json(successResponse({ qrCode: qrCodeUrl }, 200, "QR code generated successfully"));
     } catch (error) {
       console.error("Error generating QR code:", error);
-      res.status(500).json({ message: "Failed to generate QR code" });
+      res.status(500).json(errorResponse("Failed to generate QR code", 500));
     }
   });
 
@@ -381,13 +382,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isValid = await storage.validateTicket(ticketId);
       
       if (isValid) {
-        res.json({ valid: true, message: "Ticket successfully validated" });
+        res.json(successResponse({ valid: true }, 200, "Ticket successfully validated"));
       } else {
-        res.json({ valid: false, message: "Ticket already used or invalid" });
+        res.json(successResponse({ valid: false }, 200, "Ticket already used or invalid"));
       }
     } catch (error) {
       console.error("Error validating ticket:", error);
-      res.status(500).json({ message: "Failed to validate ticket" });
+      res.status(500).json(errorResponse("Failed to validate ticket", 500));
     }
   });
   
@@ -397,13 +398,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { ticketId, eventId, ticketTypeId, timestamp, signature } = req.query;
       
       if (!ticketId || !eventId || !ticketTypeId || !timestamp || !signature) {
-        return res.status(400).json({ message: "Missing required parameters" });
+        return res.status(400).json(errorResponse("Missing required parameters", 400));
       }
       
       // Verify signature to ensure the link is valid and hasn't been tampered with
       const expectedSignature = Buffer.from(`${ticketId}-${timestamp}`).toString('base64');
       if (signature !== expectedSignature) {
-        return res.status(403).json({ message: "Invalid wallet pass request" });
+        return res.status(403).json(errorResponse("Invalid wallet pass request", 403));
       }
       
       // In production, we'd generate an actual .pkpass file here
@@ -413,7 +414,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ticketType = await storage.getTicketType(Number(ticketTypeId));
       
       if (!ticket || !event || !ticketType) {
-        return res.status(404).json({ message: "Ticket, event, or ticket type not found" });
+        return res.status(404).json(errorResponse("Ticket, event, or ticket type not found", 404));
       }
       
       // Generate QR code for the ticket if it doesn't have one
@@ -537,7 +538,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.send(walletPassHtml);
     } catch (error) {
       console.error("Error generating Apple Wallet pass:", error);
-      res.status(500).json({ message: "Failed to generate wallet pass" });
+      res.status(500).json(errorResponse("Failed to generate wallet pass", 500));
     }
   });
   
@@ -547,13 +548,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { ticketId, eventId, ticketTypeId, timestamp, signature } = req.query;
       
       if (!ticketId || !eventId || !ticketTypeId || !timestamp || !signature) {
-        return res.status(400).json({ message: "Missing required parameters" });
+        return res.status(400).json(errorResponse("Missing required parameters", 400));
       }
       
       // Verify signature to ensure the link is valid and hasn't been tampered with
       const expectedSignature = Buffer.from(`${ticketId}-${timestamp}-gpay`).toString('base64');
       if (signature !== expectedSignature) {
-        return res.status(403).json({ message: "Invalid wallet pass request" });
+        return res.status(403).json(errorResponse("Invalid wallet pass request", 403));
       }
       
       // In production, we'd generate an actual Google Pay pass here
@@ -563,7 +564,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ticketType = await storage.getTicketType(Number(ticketTypeId));
       
       if (!ticket || !event || !ticketType) {
-        return res.status(404).json({ message: "Ticket, event, or ticket type not found" });
+        return res.status(404).json(errorResponse("Ticket, event, or ticket type not found", 404));
       }
       
       // Generate QR code for the ticket if it doesn't have one
@@ -690,7 +691,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.send(googlePayPassHtml);
     } catch (error) {
       console.error("Error generating Google Pay pass:", error);
-      res.status(500).json({ message: "Failed to generate wallet pass" });
+      res.status(500).json(errorResponse("Failed to generate wallet pass", 500));
     }
   });
 
@@ -700,10 +701,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all users from the database via a raw SQL query since storage doesn't offer this method
       const result = await db.execute("SELECT * FROM users");
       // Extract the rows array from the query result object
-      res.json(Array.isArray(result.rows) ? result.rows : []);
+      const users = Array.isArray(result.rows) ? result.rows : [];
+      res.json(successResponse(users, 200, "Users retrieved successfully"));
     } catch (error: any) {
       console.error("Error fetching users:", error);
-      res.status(500).json({ message: "Failed to fetch users" });
+      res.status(500).json(errorResponse("Failed to fetch users", 500));
     }
   });
   
@@ -713,7 +715,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existingUser = await storage.getUserByUsername(req.body.username);
       
       if (existingUser) {
-        return res.status(400).json({ message: "Username already exists" });
+        return res.status(400).json(errorResponse("Username already exists", 400));
       }
       
       // Create new user
@@ -725,10 +727,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: req.body.role,
       });
       
-      res.status(201).json(newUser);
+      res.status(201).json(successResponse(newUser, 201, "User created successfully"));
     } catch (error: any) {
       console.error("Error creating user:", error);
-      res.status(500).json({ message: "Failed to create user" });
+      res.status(500).json(errorResponse("Failed to create user", 500));
     }
   });
   
@@ -739,15 +741,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if the user exists
       const existingUser = await storage.getUser(userId);
       if (!existingUser) {
-        return res.status(404).json({ message: "User not found" });
+        return res.status(404).json(errorResponse("User not found", 404));
       }
       
       // Update the user
       const updatedUser = await storage.updateUser(userId, req.body);
-      res.json(updatedUser);
+      res.json(successResponse(updatedUser, 200, "User updated successfully"));
     } catch (error: any) {
       console.error("Error updating user:", error);
-      res.status(500).json({ message: error.message || "Failed to update user" });
+      res.status(500).json(errorResponse(error.message || "Failed to update user", 500));
     }
   });
   
@@ -758,35 +760,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if user exists
       const existingUser = await storage.getUser(userId);
       if (!existingUser) {
-        return res.status(404).json({ message: "User not found" });
+        return res.status(404).json(errorResponse("User not found", 404));
       }
       
       // Protect the main admin users
       if (existingUser.role === "admin" && (userId === 5 || userId === 10)) {
-        return res.status(403).json({ message: "Cannot delete the main admin user" });
+        return res.status(403).json(errorResponse("Cannot delete the main admin user", 403));
       }
       
       // Delete the user
       const success = await storage.deleteUser(userId);
       
       if (success) {
-        res.json({ message: "User deleted successfully" });
+        res.json(successResponse(null, 200, "User deleted successfully"));
       } else {
-        res.status(500).json({ message: "Failed to delete user" });
+        res.status(500).json(errorResponse("Failed to delete user", 500));
       }
     } catch (error: any) {
       console.error("Error deleting user:", error);
-      res.status(500).json({ message: error.message || "Failed to delete user" });
+      res.status(500).json(errorResponse(error.message || "Failed to delete user", 500));
     }
   });
   
   app.get("/api/admin/events", requireRole(["admin"]), async (req: Request, res: Response) => {
     try {
       const events = await storage.getEvents();
-      res.json(events);
+      res.json(successResponse(events, 200, "Events retrieved successfully"));
     } catch (error: any) {
       console.error("Error fetching events:", error);
-      res.status(500).json({ message: "Failed to fetch events" });
+      res.status(500).json(errorResponse("Failed to fetch events", 500));
     }
   });
 

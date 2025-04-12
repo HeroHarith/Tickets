@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { type Json } from 'drizzle-orm';
+// JSON object type - similar to Drizzle's Json type
+export type Json = string | number | boolean | null | { [key: string]: Json } | Json[];
 import { 
   attendeeDetailsSchema,
   type SharePlatform

@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EVENT_CATEGORIES, EVENT_DATE_FILTERS, EVENT_PRICE_FILTERS, EVENT_TYPES } from "@shared/schema";
+import { debounce, throttle } from "@/utils/performance";
 import { 
   Search, 
   SlidersIcon, 
@@ -76,81 +77,124 @@ const EventSearch = ({ onSearch }: EventSearchProps) => {
     setActiveFilterCount(count);
   }, [searchParams]);
 
+  const debouncedSearch = useCallback(
+    debounce((params) => {
+      onSearch(params);
+    }, 500),
+    [onSearch]
+  );
+
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
-    setSearchParams({
+    const newParams = {
       ...searchParams,
       [e.target.name]: e.target.value,
-    });
+    };
+    setSearchParams(newParams);
+    
+    // Auto-search after typing with debounce
+    if (e.target.name === 'search') {
+      debouncedSearch(newParams);
+    }
   };
 
   const handleCategoryChange = (value: string) => {
-    setSearchParams({
+    const newParams = {
       ...searchParams,
       category: value === "all-categories" ? "" : value,
-    });
+    };
+    setSearchParams(newParams);
+    // Auto-search when category changes
+    onSearch(newParams);
   };
 
   const handleDateFilterChange = (value: string) => {
-    setSearchParams({
+    const newParams = {
       ...searchParams,
       dateFilter: value === "all" ? "" : value,
-    });
+    };
+    setSearchParams(newParams);
+    // Auto-search when date filter changes
+    onSearch(newParams);
   };
 
   const handlePriceFilterChange = (value: string) => {
-    setSearchParams({
+    const newParams = {
       ...searchParams,
       priceFilter: value === "all" ? "" : value,
-    });
+    };
+    setSearchParams(newParams);
+    // Auto-search when price filter changes
+    onSearch(newParams);
   };
 
   const handleSortByChange = (value: string) => {
-    setSearchParams({
+    const newParams = {
       ...searchParams,
       sortBy: value,
-    });
+    };
+    setSearchParams(newParams);
+    // Auto-search when sort changes
+    onSearch(newParams);
   };
 
   const handleMinDateChange = (date: Date | undefined) => {
     setMinDate(date);
-    setSearchParams({
+    const newParams = {
       ...searchParams,
       minDate: date ? date.toISOString() : "",
-    });
+    };
+    setSearchParams(newParams);
+    
+    // Don't auto-search until both dates are set or cleared
+    if (!date || (date && searchParams.maxDate)) {
+      onSearch(newParams);
+    }
   };
 
   const handleMaxDateChange = (date: Date | undefined) => {
     setMaxDate(date);
-    setSearchParams({
+    const newParams = {
       ...searchParams,
       maxDate: date ? date.toISOString() : "",
-    });
+    };
+    setSearchParams(newParams);
+    
+    // Don't auto-search until both dates are set or cleared
+    if (!date || (date && searchParams.minDate)) {
+      onSearch(newParams);
+    }
   };
 
   const handleClearDates = () => {
     setMinDate(undefined);
     setMaxDate(undefined);
-    setSearchParams({
+    const newParams = {
       ...searchParams,
       minDate: "",
       maxDate: "",
-    });
+    };
+    setSearchParams(newParams);
+    onSearch(newParams);
   };
   
   const handleEventTypeChange = (value: string) => {
-    setSearchParams({
+    const newParams = {
       ...searchParams,
       eventType: value === "all-types" ? "" : value,
-    });
+    };
+    setSearchParams(newParams);
+    onSearch(newParams);
   };
   
   const handleFeaturedChange = (value: boolean) => {
-    setSearchParams({
+    const newParams = {
       ...searchParams,
       featured: value,
-    });
+    };
+    setSearchParams(newParams);
+    onSearch(newParams);
   };
   
   const handleClearFilters = () => {

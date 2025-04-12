@@ -32,7 +32,8 @@ import {
   type CreateEventInput,
   type PurchaseTicketInput,
   type CreateRentalInput,
-  type EventShareAnalytics
+  type EventShareAnalytics,
+  type Json
 } from './types';
 import { pool } from './db';
 import { IStorage } from './storage';

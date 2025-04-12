@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { queryClient } from "@/lib/queryClient";
 import { apiRequest } from "@/lib/queryClient";
+import SocialShare from "@/components/ui/social-share";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { Event, TicketType, PurchaseTicketInput, AttendeeDetails, attendeeDetailsSchema } from "@shared/schema";
@@ -301,9 +302,17 @@ const EventDetails = () => {
         </div>
         
         <div className="md:col-span-2">
-          <h1 className="text-2xl font-bold font-poppins text-gray-900 mb-2">
-            {title}
-          </h1>
+          <div className="flex justify-between items-start mb-2">
+            <h1 className="text-2xl font-bold font-poppins text-gray-900">
+              {title}
+            </h1>
+            <SocialShare 
+              title={title}
+              description={description}
+              url={window.location.href}
+              imageUrl={imageUrl || undefined}
+            />
+          </div>
           <p className="text-gray-700 mb-6">
             {description}
           </p>

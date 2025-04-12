@@ -805,10 +805,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? await storage.getVenues(req.user.id)  
         : await storage.getVenues();
         
-      res.json(venues);
+      res.json(successResponse(venues, 200, "Venues retrieved successfully"));
     } catch (error) {
       console.error("Error fetching venues:", error);
-      res.status(500).json({ message: "Error fetching venues" });
+      res.status(500).json(errorResponse("Error fetching venues", 500));
     }
   });
   
@@ -821,18 +821,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const venue = await storage.getVenue(venueId);
       
       if (!venue) {
-        return res.status(404).json({ message: "Venue not found" });
+        return res.status(404).json(errorResponse("Venue not found", 404));
       }
       
       // Check permissions - centers can only view their own venues
       if (req.user.role === "center" && venue.ownerId !== req.user.id) {
-        return res.status(403).json({ message: "You don't have permission to view this venue" });
+        return res.status(403).json(errorResponse("You don't have permission to view this venue", 403));
       }
       
-      res.json(venue);
+      res.json(successResponse(venue, 200, "Venue retrieved successfully"));
     } catch (error) {
       console.error("Error fetching venue:", error);
-      res.status(500).json({ message: "Error fetching venue" });
+      res.status(500).json(errorResponse("Error fetching venue", 500));
     }
   });
   
@@ -848,18 +848,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       const venue = await storage.createVenue(venueData);
-      res.status(201).json(venue);
+      res.status(201).json(successResponse(venue, 201, "Venue created successfully"));
     } catch (error) {
       console.error("Error creating venue:", error);
       
       if (error instanceof ZodError) {
-        return res.status(400).json({ 
-          message: "Invalid venue data", 
-          errors: error.errors 
-        });
+        return res.status(400).json(errorResponse("Invalid venue data", 400, { errors: error.errors }));
       }
       
-      res.status(500).json({ message: "Error creating venue" });
+      res.status(500).json(errorResponse("Error creating venue", 500));
     }
   });
   
@@ -1257,7 +1254,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check if email already verified
       if (req.user.emailVerified) {
-        return res.status(400).json({ message: "Email already verified" });
+        return res.status(400).json(errorResponse("Email already verified", 400));
       }
       
       // Create new verification token
@@ -1271,10 +1268,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
         verificationToken: token
       });
       
-      return res.status(200).json({ message: "Verification email resent" });
+      return res.status(200).json(successResponse(null, 200, "Verification email resent"));
     } catch (error) {
       console.error("Error resending verification email:", error);
-      return res.status(500).json({ message: "Server error during email verification" });
+      return res.status(500).json(errorResponse("Server error during email verification", 500));
+    }
+  });
+
+  // ===== Event Sharing Routes =====
+  
+  // Track event shares
+  app.post("/api/events/:id/share", async (req: Request, res: Response) => {
+    try {
+      const eventId = parseInt(req.params.id);
+      const { platform } = req.body;
+      
+      // Validate that the event exists
+      const event = await storage.getEvent(eventId);
+      if (!event) {
+        return res.status(404).json(errorResponse("Event not found", 404));
+      }
+      
+      // Track the share (we'll add this to storage.ts later)
+      // For now, we'll just log it and return success
+      console.log(`Event ${eventId} shared on ${platform} at ${new Date().toISOString()}`);
+      
+      // If user is authenticated, track who shared it
+      if (req.isAuthenticated()) {
+        console.log(`Shared by user ${req.user.id} (${req.user.username})`);
+      }
+      
+      return res.status(200).json(successResponse({ 
+        eventId,
+        platform,
+        timestamp: new Date().toISOString()
+      }, 200, "Share tracked successfully"));
+    } catch (error) {
+      console.error("Error tracking event share:", error);
+      return res.status(500).json(errorResponse("Error tracking event share", 500));
+    }
+  });
+  
+  // Get event share counts - for analytics dashboards
+  app.get("/api/events/:id/shares", requireRole(["eventManager", "admin"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      const eventId = parseInt(req.params.id);
+      
+      // Validate that the event exists
+      const event = await storage.getEvent(eventId);
+      if (!event) {
+        return res.status(404).json(errorResponse("Event not found", 404));
+      }
+      
+      // Check if user has permission (event managers can only view their own events)
+      if (req.user.role === "eventManager" && event.organizer !== req.user.id) {
+        return res.status(403).json(errorResponse("You don't have permission to view share analytics for this event", 403));
+      }
+      
+      // This is a placeholder for actual share count data
+      // In a real implementation, this would fetch data from the database
+      const shareData = {
+        total: 42,
+        platforms: {
+          facebook: 18,
+          twitter: 12,
+          linkedin: 8,
+          whatsapp: 4
+        }
+      };
+      
+      return res.status(200).json(successResponse(shareData, 200, "Share analytics retrieved successfully"));
+    } catch (error) {
+      console.error("Error retrieving event share analytics:", error);
+      return res.status(500).json(errorResponse("Error retrieving event share analytics", 500));
     }
   });
 

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar, MapPin } from "lucide-react";
 import { format } from "date-fns";
 import { Event, TicketType } from "@shared/schema";
+import SocialShare from "@/components/ui/social-share";
 
 interface EventCardProps {
   event: Event;

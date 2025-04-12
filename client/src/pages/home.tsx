@@ -78,14 +78,19 @@ const Home = () => {
   
   // Fetch ticket types for each event
   const ticketTypesQueries = useQuery<Record<number, TicketType[]>>({
-    queryKey: ["/api/events/ticketTypes", eventsQuery.data?.map(e => e.id)],
-    enabled: !!eventsQuery.data && eventsQuery.data.length > 0,
+    queryKey: ["/api/events/ticketTypes", Array.isArray(eventsQuery.data) ? eventsQuery.data.map(e => e.id) : []],
+    enabled: !!eventsQuery.data && Array.isArray(eventsQuery.data) && eventsQuery.data.length > 0,
     queryFn: async () => {
-      const eventIds = eventsQuery.data!.map(e => e.id);
+      // Make sure eventsQuery.data is an array before proceeding
+      if (!Array.isArray(eventsQuery.data)) {
+        return {};
+      }
+      
+      const eventIds = eventsQuery.data.map(e => e.id);
       const promises = eventIds.map(id => 
         fetch(`/api/events/${id}`)
           .then(res => res.json())
-          .then(data => ({ id, ticketTypes: data.ticketTypes }))
+          .then(data => ({ id, ticketTypes: data.data?.ticketTypes || [] }))
       );
       
       const results = await Promise.all(promises);

@@ -1289,20 +1289,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json(errorResponse("Event not found", 404));
       }
       
-      // Track the share (we'll add this to storage.ts later)
-      // For now, we'll just log it and return success
-      console.log(`Event ${eventId} shared on ${platform} at ${new Date().toISOString()}`);
-      
-      // If user is authenticated, track who shared it
-      if (req.isAuthenticated()) {
-        console.log(`Shared by user ${req.user.id} (${req.user.username})`);
-      }
-      
-      return res.status(200).json(successResponse({ 
+      // Create the share data
+      const shareData = {
         eventId,
         platform,
-        timestamp: new Date().toISOString()
-      }, 200, "Share tracked successfully"));
+        // Track user if authenticated
+        userId: req.isAuthenticated() ? req.user.id : null,
+        // Additional tracking data
+        userAgent: req.headers['user-agent'] || null,
+        ipAddress: req.ip || null,
+        referer: req.headers.referer || null
+      };
+      
+      // Track the share using our storage method
+      const share = await storage.trackEventShare(shareData);
+      
+      return res.status(201).json(successResponse(share, 201, "Share tracked successfully"));
     } catch (error) {
       console.error("Error tracking event share:", error);
       return res.status(500).json(errorResponse("Error tracking event share", 500));
@@ -1327,17 +1329,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json(errorResponse("You don't have permission to view share analytics for this event", 403));
       }
       
-      // This is a placeholder for actual share count data
-      // In a real implementation, this would fetch data from the database
-      const shareData = {
-        total: 42,
-        platforms: {
-          facebook: 18,
-          twitter: 12,
-          linkedin: 8,
-          whatsapp: 4
-        }
-      };
+      // Get share analytics from storage
+      const shareData = await storage.getEventShareAnalytics(eventId);
       
       return res.status(200).json(successResponse(shareData, 200, "Share analytics retrieved successfully"));
     } catch (error) {

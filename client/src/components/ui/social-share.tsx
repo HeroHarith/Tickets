@@ -40,7 +40,12 @@ export function SocialShare({ title, description, url, imageUrl }: SocialSharePr
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ platform })
+        body: JSON.stringify({ platform: platform.toLowerCase() })
+      }).then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to record share');
+        }
+        return response.json();
       }).catch(err => {
         console.error('Failed to record share:', err);
       });
@@ -72,12 +77,22 @@ export function SocialShare({ title, description, url, imageUrl }: SocialSharePr
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({ platform: 'copy_link' })
+        }).then(response => {
+          if (!response.ok) {
+            throw new Error('Failed to record share');
+          }
+          return response.json();
         }).catch(err => {
           console.error('Failed to record share:', err);
         });
       }
     }).catch(err => {
       console.error('Failed to copy: ', err);
+      toast({
+        title: "Copy failed",
+        description: "Could not copy link to clipboard",
+        variant: "destructive",
+      });
     });
   };
 

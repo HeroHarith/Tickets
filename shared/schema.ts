@@ -300,6 +300,7 @@ export type SharePlatform = z.infer<typeof sharePlatformSchema>;
 export const eventShares = pgTable("event_shares", {
   id: serial("id").primaryKey(),
   eventId: integer("event_id").notNull(), // References events.id
+  userId: integer("user_id"), // References users.id (optional - can be null for anonymous shares)
   platform: text("platform").notNull(), // The social media platform used
   shareDate: timestamp("share_date").defaultNow().notNull(),
   userAgent: text("user_agent"), // Browser/device information
@@ -312,6 +313,10 @@ export const eventSharesRelations = relations(eventShares, ({ one }) => ({
   event: one(events, {
     fields: [eventShares.eventId],
     references: [events.id],
+  }),
+  user: one(users, {
+    fields: [eventShares.userId],
+    references: [users.id],
   }),
 }));
 

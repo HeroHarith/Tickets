@@ -8,24 +8,35 @@ interface ShareAnalyticsProps {
   eventId: number;
 }
 
+interface PlatformCounts {
+  facebook: number;
+  twitter: number;
+  linkedin: number;
+  whatsapp: number;
+  copy_link: number;
+}
+
 interface ShareData {
   total: number;
-  platforms: {
-    facebook: number;
-    twitter: number;
-    linkedin: number;
-    whatsapp: number;
-    copy_link?: number;
-  };
+  platforms: PlatformCounts;
+}
+
+// This wraps the API response which contains the data in a 'data' property
+interface ApiResponse {
+  code: number;
+  success: boolean;
+  data: ShareData;
+  description?: string;
 }
 
 export function ShareAnalytics({ eventId }: ShareAnalyticsProps) {
   const [activeTab, setActiveTab] = useState("overview");
   
   // Fetch share data
-  const shareQuery = useQuery<ShareData>({
+  const shareQuery = useQuery<ApiResponse, Error, ShareData>({
     queryKey: [`/api/events/${eventId}/shares`],
     enabled: eventId > 0,
+    select: (response) => response.data, // Extract the data from the API response
   });
   
   if (shareQuery.isLoading) {

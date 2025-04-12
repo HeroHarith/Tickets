@@ -116,15 +116,24 @@ const EventCard = ({ event, ticketTypes, featured = false, className = "" }: Eve
           <div className={`text-sm font-medium ${availability.color}`}>{availability.text}</div>
         </div>
         
-        <Link href={`/events/${event.id}`}>
-          <Button 
-            variant="default" 
-            className="mt-3 w-full bg-primary hover:bg-primary/90"
-            disabled={availability.text === "Sold Out"}
-          >
-            {availability.text === "Sold Out" ? "Sold Out" : "Get Tickets"}
-          </Button>
-        </Link>
+        <div className="flex items-center justify-between mt-3 gap-2">
+          <SocialShare 
+            title={event.title}
+            description={event.description || `${event.title} at ${event.location}`}
+            url={`${window.location.origin}/events/${event.id}`}
+            imageUrl={imageUrl || undefined}
+          />
+          
+          <Link href={`/events/${event.id}`} className="flex-1">
+            <Button 
+              variant="default" 
+              className="w-full bg-primary hover:bg-primary/90"
+              disabled={availability.text === "Sold Out"}
+            >
+              {availability.text === "Sold Out" ? "Sold Out" : "Get Tickets"}
+            </Button>
+          </Link>
+        </div>
       </div>
     </div>
   );

@@ -1,8 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Calendar, MapPin, Users, Ticket, AlertTriangle, Plus } from "lucide-react";
+import { Calendar, MapPin, Users, Ticket, AlertTriangle, Plus, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import ShareAnalytics from "@/components/ui/share-analytics";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import TabsComponent from "@/components/ui/tabs-component";
 import { format } from "date-fns";
 import { Event, TicketType } from "@shared/schema";
@@ -227,6 +235,24 @@ const ManagedEvents = () => {
                       </Button>
                     </Link>
                   </div>
+                  
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        className="w-full flex items-center gap-2"
+                      >
+                        <Share2 className="h-4 w-4" />
+                        Share Analytics
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Share Analytics</DialogTitle>
+                      </DialogHeader>
+                      <ShareAnalytics eventId={event.id} />
+                    </DialogContent>
+                  </Dialog>
                 </CardContent>
               </Card>
             ))}

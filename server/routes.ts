@@ -15,6 +15,7 @@ import { generateAppleWalletPassUrl, generateGooglePayPassUrl } from "./wallet";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./email";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
+import { successResponse, errorResponse } from "./utils/api-response";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
@@ -35,10 +36,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof ZodError) {
         return { 
           data: null, 
-          error: { message: "Validation error", details: error.errors } 
+          error: errorResponse("Validation error", 400, { details: error.errors })
         };
       }
-      return { data: null, error: { message: "Unknown error" } };
+      return { data: null, error: errorResponse("Unknown error", 400) };
     }
   };
 

@@ -1,6 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+// Import optimized storage instead of standard storage
+import { optimizedStorage as storage } from "./optimized-storage"; 
 import { 
   createEventSchema, 
   insertUserSchema, 

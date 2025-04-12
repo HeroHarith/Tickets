@@ -1,11 +1,36 @@
 import express, { type Request, Response, NextFunction } from "express";
+import compression from 'compression';
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { standardErrorHandler, errorResponse } from "./utils/api-response";
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+
+// Apply compression middleware - improves response time by reducing payload size
+app.use(compression({
+  // Only compress responses that are at least 1KB in size
+  threshold: 1024,
+  // Apply compression to all content types except images (which are already compressed)
+  filter: (req, res) => {
+    const contentType = res.getHeader('Content-Type') as string || '';
+    return !contentType.startsWith('image/');
+  }
+}));
+
+// Increase the limit for JSON bodies
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: false, limit: '2mb' }));
+
+// Add security headers
+app.use((req, res, next) => {
+  // Prevent browsers from incorrectly detecting non-scripts as scripts
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  // Prevent clickjacking
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  // XSS protection
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  next();
+});
 
 app.use((req, res, next) => {
   const start = Date.now();

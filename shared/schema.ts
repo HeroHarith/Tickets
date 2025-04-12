@@ -1,6 +1,7 @@
 import { pgTable, text, serial, integer, boolean, timestamp, varchar, numeric, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { relations } from "drizzle-orm";
 
 // User roles
 export const USER_ROLES = ["customer", "eventManager", "admin", "center"] as const;
@@ -44,6 +45,12 @@ export const events = pgTable("events", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   featured: boolean("featured").default(false).notNull(),
 });
+
+// Define the events relationships
+export const eventsRelations = relations(events, ({ many }) => ({
+  ticketTypes: many(ticketTypes),
+  shares: many(eventShares),
+}));
 
 // Ticket Type model
 export const ticketTypes = pgTable("ticket_types", {
@@ -283,3 +290,43 @@ export const createRentalSchema = insertRentalSchema.extend({
 });
 
 export type CreateRentalInput = z.infer<typeof createRentalSchema>;
+
+// Social Media Share platforms
+export const SHARE_PLATFORMS = ["facebook", "twitter", "linkedin", "whatsapp", "copy_link"] as const;
+export const sharePlatformSchema = z.enum(SHARE_PLATFORMS);
+export type SharePlatform = z.infer<typeof sharePlatformSchema>;
+
+// Event Shares model - to track social media shares
+export const eventShares = pgTable("event_shares", {
+  id: serial("id").primaryKey(),
+  eventId: integer("event_id").notNull(), // References events.id
+  platform: text("platform").notNull(), // The social media platform used
+  shareDate: timestamp("share_date").defaultNow().notNull(),
+  userAgent: text("user_agent"), // Browser/device information
+  ipAddress: text("ip_address"), // IP address (consider privacy regulations)
+  referer: text("referer"), // Referring URL
+});
+
+// Define the event shares relationships
+export const eventSharesRelations = relations(eventShares, ({ one }) => ({
+  event: one(events, {
+    fields: [eventShares.eventId],
+    references: [events.id],
+  }),
+}));
+
+// Insert schema for event shares
+export const insertEventShareSchema = createInsertSchema(eventShares).omit({
+  id: true,
+  shareDate: true,
+});
+
+// Types
+export type EventShare = typeof eventShares.$inferSelect;
+export type InsertEventShare = z.infer<typeof insertEventShareSchema>;
+
+// Event Share Analytics type
+export type EventShareAnalytics = {
+  total: number;
+  platforms: Record<SharePlatform, number>;
+};

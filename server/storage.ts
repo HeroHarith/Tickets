@@ -13,7 +13,11 @@ import {
   Rental, InsertRental,
   CreateRentalInput,
   RentalStatus, PaymentStatus,
-  venues, rentals
+  venues, rentals,
+  // Share tracking types
+  EventShare, InsertEventShare,
+  EventShareAnalytics, SharePlatform,
+  eventShares
 } from "@shared/schema";
 import { nanoid } from "nanoid";
 import { db, pool } from "./db";
@@ -94,6 +98,10 @@ export interface IStorage {
   createRental(rental: CreateRentalInput): Promise<Rental>;
   updateRentalStatus(id: number, status: RentalStatus): Promise<Rental>;
   updatePaymentStatus(id: number, status: PaymentStatus): Promise<Rental>;
+  
+  // Event shares operations
+  trackEventShare(shareData: InsertEventShare): Promise<EventShare>;
+  getEventShareAnalytics(eventId: number): Promise<EventShareAnalytics>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -957,6 +965,56 @@ export class DatabaseStorage implements IStorage {
     } catch (err) {
       console.error("Error enriching rental:", err);
       return rental;
+    }
+  }
+
+  // Event shares operations
+  async trackEventShare(shareData: InsertEventShare): Promise<EventShare> {
+    try {
+      const [share] = await db
+        .insert(eventShares)
+        .values(shareData)
+        .returning();
+      
+      return share;
+    } catch (error) {
+      console.error('Error tracking event share:', error);
+      throw new Error('Failed to track event share');
+    }
+  }
+
+  async getEventShareAnalytics(eventId: number): Promise<EventShareAnalytics> {
+    try {
+      // Get all shares for this event
+      const shares = await db
+        .select()
+        .from(eventShares)
+        .where(eq(eventShares.eventId, eventId));
+      
+      // Initialize with default platform counts
+      const platforms: Record<SharePlatform, number> = {
+        facebook: 0,
+        twitter: 0,
+        linkedin: 0,
+        whatsapp: 0,
+        copy_link: 0
+      };
+      
+      // Count shares by platform
+      shares.forEach(share => {
+        const platform = share.platform as SharePlatform;
+        if (platform in platforms) {
+          platforms[platform]++;
+        }
+      });
+      
+      return {
+        total: shares.length,
+        platforms
+      };
+    } catch (error) {
+      console.error('Error getting event share analytics:', error);
+      throw new Error('Failed to get event share analytics');
     }
   }
 }

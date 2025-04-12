@@ -42,18 +42,27 @@ const Home = () => {
     return tabs;
   };
   
+  // Interface for API response
+  interface ApiResponse<T> {
+    code: number;
+    success: boolean;
+    data: T;
+    description?: string;
+  }
+
   // Fetch featured events
-  const featuredEventsQuery = useQuery<Event[]>({
+  const featuredEventsQuery = useQuery<ApiResponse<Event[]>, Error, Event[]>({
     queryKey: ["/api/events", { featured: true }],
     queryFn: async () => {
       const res = await fetch(`/api/events?featured=true`);
       if (!res.ok) throw new Error("Failed to fetch featured events");
       return res.json();
-    }
+    },
+    select: (response) => response.data || [] // Extract data from response
   });
   
   // Fetch all events with search parameters
-  const eventsQuery = useQuery<Event[]>({
+  const eventsQuery = useQuery<ApiResponse<Event[]>, Error, Event[]>({
     queryKey: ["/api/events", searchParams],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -73,7 +82,8 @@ const Home = () => {
       const res = await fetch(`/api/events?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch events");
       return res.json();
-    }
+    },
+    select: (response) => response.data || [] // Extract data from response
   });
   
   // Fetch ticket types for each event

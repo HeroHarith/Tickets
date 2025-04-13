@@ -399,11 +399,14 @@ export class OptimizedStorage implements IStorage {
       }
       
       // Create the cashier record
+      // Convert venueIds array to a properly formatted JSON array string
+      const venueIdsJson = JSON.stringify(venueIds || []);
+      
       const [newCashier] = await tx.insert(cashiers).values({
         ownerId,
         userId: user.id,
         permissions: permissions as Json,
-        venueIds: venueIds as unknown as Json
+        venueIds: venueIdsJson as unknown as Json
       }).returning();
       
       // Invalidate cashier caches
@@ -437,8 +440,11 @@ export class OptimizedStorage implements IStorage {
   }
   
   async updateCashierVenues(id: number, venueIds: number[]): Promise<Cashier> {
+    // Convert venueIds array to a properly formatted JSON array string
+    const venueIdsJson = JSON.stringify(venueIds || []);
+    
     const [updatedCashier] = await db.update(cashiers)
-      .set({ venueIds: venueIds as unknown as Json })
+      .set({ venueIds: venueIdsJson as unknown as Json })
       .where(eq(cashiers.id, id))
       .returning();
       

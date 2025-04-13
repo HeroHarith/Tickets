@@ -58,6 +58,7 @@ interface Cashier {
 // Validation schemas
 const addCashierSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
+  name: z.string().min(2, { message: "Name must be at least 2 characters" }),
   permissions: z.record(z.boolean()).optional(),
   venueIds: z.array(z.number()).optional()
 });
@@ -102,6 +103,7 @@ export default function CenterCashiersPage() {
     resolver: zodResolver(addCashierSchema),
     defaultValues: {
       email: "",
+      name: "",
       permissions: DEFAULT_PERMISSIONS,
       venueIds: []
     }
@@ -514,6 +516,26 @@ export default function CenterCashiersPage() {
                       </FormControl>
                       <FormDescription>
                         This email will receive an invitation to join as a cashier.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={addForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cashier Name</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="John Smith" 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        The display name for this cashier.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

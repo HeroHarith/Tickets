@@ -3,7 +3,10 @@ import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, PlusCircle, X, Check, Edit, Trash, Calendar, Clock, User, DollarSign, BarChart3 } from "lucide-react";
+import { 
+  Loader2, PlusCircle, X, Check, Edit, Trash, Calendar, Clock, User, DollarSign, 
+  BarChart3, Users, CheckSquare, ShieldCheck, Building, Mail
+} from "lucide-react";
 import { VenueSalesReport } from "@/components/ui/venue-sales-report";
 import { format } from "date-fns";
 import { z } from "zod";
@@ -56,6 +59,24 @@ interface Rental {
   venueName?: string;
 }
 
+interface CashierUser {
+  id: number;
+  username: string;
+  email: string;
+  name: string;
+}
+
+interface Cashier {
+  id: number;
+  userId: number;
+  ownerId: number;
+  permissions: Record<string, boolean>;
+  venueIds: number[];
+  createdAt: string;
+  updatedAt: string;
+  user?: CashierUser;
+}
+
 // Form validation schemas
 const venueFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -83,6 +104,21 @@ const venueFormSchema = z.object({
   isActive: z.boolean().default(true)
 });
 
+// Define the cashier form schema
+const cashierFormSchema = z.object({
+  email: z.string().email("Please provide a valid email address"),
+  permissions: z.object({
+    can_manage_bookings: z.boolean().default(true),
+    can_manage_payments: z.boolean().default(false),
+    can_view_reports: z.boolean().default(false)
+  }).default({
+    can_manage_bookings: true,
+    can_manage_payments: false,
+    can_view_reports: false
+  }),
+  venueIds: z.array(z.number()).default([])
+});
+
 export default function CenterDashboard() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -93,6 +129,11 @@ export default function CenterDashboard() {
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
   const [selectedRental, setSelectedRental] = useState<Rental | null>(null);
   const [isRentalDetailsDialogOpen, setIsRentalDetailsDialogOpen] = useState(false);
+  
+  // Cashier management state
+  const [isCreateCashierDialogOpen, setIsCreateCashierDialogOpen] = useState(false);
+  const [isEditCashierDialogOpen, setIsEditCashierDialogOpen] = useState(false);
+  const [selectedCashier, setSelectedCashier] = useState<Cashier | null>(null);
   
   // Form for creating/editing venues
   const venueForm = useForm<z.infer<typeof venueFormSchema>>({
@@ -108,6 +149,20 @@ export default function CenterDashboard() {
       availabilityHours: "{}",
       images: "",
       isActive: true
+    }
+  });
+  
+  // Form for creating/editing cashiers
+  const cashierForm = useForm<z.infer<typeof cashierFormSchema>>({
+    resolver: zodResolver(cashierFormSchema),
+    defaultValues: {
+      email: "",
+      permissions: {
+        can_manage_bookings: true,
+        can_manage_payments: false,
+        can_view_reports: false
+      },
+      venueIds: []
     }
   });
   
@@ -359,7 +414,7 @@ export default function CenterDashboard() {
         <div>
           <h1 className="text-3xl font-bold">Center Dashboard</h1>
           <p className="text-muted-foreground">
-            Manage your venues and rentals
+            Manage your venues, rentals, and staff
           </p>
         </div>
         
@@ -369,12 +424,23 @@ export default function CenterDashboard() {
             Create Venue
           </Button>
         )}
+        
+        {activeTab === "cashiers" && (
+          <Button onClick={() => setIsCreateCashierDialogOpen(true)}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add Cashier
+          </Button>
+        )}
       </div>
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full md:w-[600px] grid-cols-3">
+        <TabsList className="grid w-full md:w-[800px] grid-cols-4">
           <TabsTrigger value="venues">Venues</TabsTrigger>
           <TabsTrigger value="rentals">Rentals</TabsTrigger>
+          <TabsTrigger value="cashiers" className="flex items-center">
+            <Users className="mr-2 h-4 w-4" />
+            Cashiers
+          </TabsTrigger>
           <TabsTrigger value="reports" className="flex items-center">
             <BarChart3 className="mr-2 h-4 w-4" />
             Sales Reports

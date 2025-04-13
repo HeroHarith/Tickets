@@ -29,81 +29,73 @@ function Router() {
   return (
     <div className="flex flex-col min-h-screen">
       <Switch>
-        <Route path="/auth">
-          <AuthPage />
-        </Route>
-        <Route>
-          <main className="flex-grow">
-            <Switch>
-              <ProtectedRoute path="/" component={Home} />
-              <ProtectedRoute path="/events/:id" component={EventDetails} />
-              <ProtectedRoute 
-                path="/create-event" 
-                component={CreateEvent} 
-                requiredRoles={["eventManager", "admin"]} 
-              />
-              <ProtectedRoute 
-                path="/my-tickets" 
-                component={MyTickets} 
-              />
-              <ProtectedRoute 
-                path="/profile" 
-                component={ProfilePage} 
-              />
-              <ProtectedRoute 
-                path="/managed-events" 
-                component={ManagedEvents} 
-                requiredRoles={["eventManager", "admin"]} 
-              />
-              <ProtectedRoute 
-                path="/sales-reports" 
-                component={ManagedEvents} 
-                requiredRoles={["eventManager", "admin"]} 
-              />
-              <ProtectedRoute 
-                path="/sales-reports/:id" 
-                component={SalesReports} 
-                requiredRoles={["eventManager", "admin"]} 
-              />
-              <ProtectedRoute 
-                path="/ticket-management/:id" 
-                component={TicketManagement} 
-                requiredRoles={["eventManager", "admin"]} 
-              />
-              <ProtectedRoute
-                path="/admin"
-                component={AdminDashboard}
-                requiredRoles={["admin"]}
-              />
-              <ProtectedRoute
-                path="/center-old"
-                component={CenterDashboard}
-                requiredRoles={["center"]}
-              />
-              <ProtectedRoute
-                path="/center"
-                component={CenterHomePage}
-                requiredRoles={["center"]}
-              />
-              <ProtectedRoute
-                path="/center/bookings"
-                component={CenterBookingsPage}
-                requiredRoles={["center"]}
-              />
-              <ProtectedRoute
-                path="/center/venues"
-                component={CenterVenuesPage}
-                requiredRoles={["center"]}
-              />
-              <ProtectedRoute
-                path="/center/schedule"
-                component={CenterSchedulePage}
-                requiredRoles={["center"]}
-              />
-              <Route component={NotFound} />
-            </Switch>
-          </main>
-        </Route>
+        <Route path="/auth" component={AuthPage} />
+        <ProtectedRoute path="/" component={Home} />
+        <ProtectedRoute path="/events/:id" component={EventDetails} />
+        <ProtectedRoute 
+          path="/create-event" 
+          component={CreateEvent} 
+          requiredRoles={["eventManager", "admin"]} 
+        />
+        <ProtectedRoute 
+          path="/my-tickets" 
+          component={MyTickets} 
+        />
+        <ProtectedRoute 
+          path="/profile" 
+          component={ProfilePage} 
+        />
+        <ProtectedRoute 
+          path="/managed-events" 
+          component={ManagedEvents} 
+          requiredRoles={["eventManager", "admin"]} 
+        />
+        <ProtectedRoute 
+          path="/sales-reports" 
+          component={ManagedEvents} 
+          requiredRoles={["eventManager", "admin"]} 
+        />
+        <ProtectedRoute 
+          path="/sales-reports/:id" 
+          component={SalesReports} 
+          requiredRoles={["eventManager", "admin"]} 
+        />
+        <ProtectedRoute 
+          path="/ticket-management/:id" 
+          component={TicketManagement} 
+          requiredRoles={["eventManager", "admin"]} 
+        />
+        <ProtectedRoute
+          path="/admin"
+          component={AdminDashboard}
+          requiredRoles={["admin"]}
+        />
+        <ProtectedRoute
+          path="/center-old"
+          component={CenterDashboard}
+          requiredRoles={["center"]}
+        />
+        <ProtectedRoute
+          path="/center"
+          component={CenterHomePage}
+          requiredRoles={["center"]}
+        />
+        <ProtectedRoute
+          path="/center/bookings"
+          component={CenterBookingsPage}
+          requiredRoles={["center"]}
+        />
+        <ProtectedRoute
+          path="/center/venues"
+          component={CenterVenuesPage}
+          requiredRoles={["center"]}
+        />
+        <ProtectedRoute
+          path="/center/schedule"
+          component={CenterSchedulePage}
+          requiredRoles={["center"]}
+        />
+        <ProtectedRoute path="*" component={NotFound} />
       </Switch>
     </div>
   );

@@ -6,7 +6,7 @@ import Footer from "@/components/ui/footer";
 
 type ProtectedRouteProps = {
   path: string;
-  component: () => React.JSX.Element;
+  component: () => React.JSX.Element | null;
   requiredRoles?: string[];
 };
 

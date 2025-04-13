@@ -225,10 +225,17 @@ export const cashiers = pgTable("cashiers", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(), // References users.id
   ownerId: integer("owner_id").notNull(), // References users.id with role "center"
-  venueIds: jsonb("venue_ids"), // Array of venue IDs the cashier can manage
   permissions: jsonb("permissions"), // JSON object with permission flags
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Cashier-Venue join table for many-to-many relationship
+export const cashierVenues = pgTable("cashier_venues", {
+  id: serial("id").primaryKey(),
+  cashierId: integer("cashier_id").notNull(), // References cashiers.id
+  venueId: integer("venue_id").notNull(), // References venues.id
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // Rental model (bookings for venues)
@@ -350,7 +357,7 @@ export const DEFAULT_CASHIER_PERMISSIONS = {
 };
 
 // Define the cashier relationships
-export const cashiersRelations = relations(cashiers, ({ one }) => ({
+export const cashiersRelations = relations(cashiers, ({ one, many }) => ({
   user: one(users, {
     fields: [cashiers.userId],
     references: [users.id],
@@ -358,6 +365,19 @@ export const cashiersRelations = relations(cashiers, ({ one }) => ({
   owner: one(users, {
     fields: [cashiers.ownerId],
     references: [users.id],
+  }),
+  venues: many(cashierVenues),
+}));
+
+// Define the cashier_venues relationships
+export const cashierVenuesRelations = relations(cashierVenues, ({ one }) => ({
+  cashier: one(cashiers, {
+    fields: [cashierVenues.cashierId],
+    references: [cashiers.id],
+  }),
+  venue: one(venues, {
+    fields: [cashierVenues.venueId],
+    references: [venues.id],
   }),
 }));
 
@@ -368,6 +388,7 @@ export const venuesRelations = relations(venues, ({ one, many }) => ({
     references: [users.id],
   }),
   rentals: many(rentals),
+  cashierVenues: many(cashierVenues),
 }));
 
 // Define the rental relationships
@@ -378,9 +399,17 @@ export const rentalsRelations = relations(rentals, ({ one }) => ({
   }),
 }));
 
+// Insert schema for cashier venues join table
+export const insertCashierVenueSchema = createInsertSchema(cashierVenues).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type Cashier = typeof cashiers.$inferSelect;
 export type InsertCashier = z.infer<typeof insertCashierSchema>;
+export type CashierVenue = typeof cashierVenues.$inferSelect;
+export type InsertCashierVenue = z.infer<typeof insertCashierVenueSchema>;
 
 export type EventShare = typeof eventShares.$inferSelect;
 export type InsertEventShare = z.infer<typeof insertEventShareSchema>;

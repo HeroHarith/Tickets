@@ -365,6 +365,7 @@ export class OptimizedStorage implements IStorage {
   async createCashier(
     ownerId: number,
     email: string,
+    name: string,
     permissions: Record<string, boolean> = DEFAULT_CASHIER_PERMISSIONS,
     venueIds: number[] = []
   ): Promise<{ cashier: Cashier, user: User, tempPassword: string }> {
@@ -385,7 +386,7 @@ export class OptimizedStorage implements IStorage {
           username: username + '-' + nanoid(4),
           email,
           password: hashedPassword,
-          name: username.charAt(0).toUpperCase() + username.slice(1), // Capitalize first letter for display name
+          name: name || (username.charAt(0).toUpperCase() + username.slice(1)), // Use provided name or capitalize username
           role: 'customer', // Cashiers are given customer role initially
           emailVerified: false // They will need to verify their email
         }).returning();
@@ -399,13 +400,21 @@ export class OptimizedStorage implements IStorage {
       }
       
       // Create the cashier record
-      // Use sql to explicitly handle array type conversion
       const [newCashier] = await tx.insert(cashiers).values({
         ownerId,
         userId: user.id,
         permissions: permissions as Json,
-        venueIds: sql`ARRAY[${sql.join(venueIds || [], sql`, `)}]::int[]`
       }).returning();
+      
+      // Create cashier-venue relationships
+      if (venueIds && venueIds.length > 0) {
+        for (const venueId of venueIds) {
+          await tx.insert(cashierVenues).values({
+            cashierId: newCashier.id,
+            venueId
+          });
+        }
+      }
       
       // Invalidate cashier caches
       this.invalidateTypeCache('cashiers-by-owner');
@@ -438,22 +447,35 @@ export class OptimizedStorage implements IStorage {
   }
   
   async updateCashierVenues(id: number, venueIds: number[]): Promise<Cashier> {
-    // Use SQL to explicitly cast the array type
-    const [updatedCashier] = await db.update(cashiers)
-      .set({ venueIds: sql`ARRAY[${sql.join(venueIds || [], sql`, `)}]::int[]` })
-      .where(eq(cashiers.id, id))
-      .returning();
-      
-    if (!updatedCashier) {
+    // First, check if the cashier exists
+    const [cashier] = await db.select().from(cashiers).where(eq(cashiers.id, id));
+    
+    if (!cashier) {
       throw new Error(`Cashier with ID ${id} not found`);
     }
+    
+    // Use a transaction to ensure consistency
+    await db.transaction(async (tx) => {
+      // Delete all existing venue associations for this cashier
+      await tx.delete(cashierVenues).where(eq(cashierVenues.cashierId, id));
+      
+      // Insert new venue associations
+      if (venueIds && venueIds.length > 0) {
+        for (const venueId of venueIds) {
+          await tx.insert(cashierVenues).values({
+            cashierId: id,
+            venueId
+          });
+        }
+      }
+    });
     
     // Invalidate cashier caches
     this.invalidateCache('cashier', id);
     this.invalidateTypeCache('cashiers-by-owner');
     this.invalidateTypeCache('cashiers-by-user');
     
-    return updatedCashier;
+    return cashier;
   }
   
   async deleteCashier(id: number): Promise<boolean> {

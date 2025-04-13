@@ -290,7 +290,9 @@ export type PaymentStatus = z.infer<typeof paymentStatusSchema>;
 export const createRentalSchema = insertRentalSchema.extend({
   startTime: z.coerce.date(),
   endTime: z.coerce.date(),
-  customerName: z.string().optional(),
+  customerName: z.string().min(1),
+  status: z.string().min(1),
+  paymentStatus: z.string().min(1),
   customFields: z.record(z.string(), z.any()).optional(),
 });
 

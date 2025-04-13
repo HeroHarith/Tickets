@@ -1290,17 +1290,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? req.body.customerName 
         : req.user.name || req.user.username;
       
-      // Validate rental data
-      const rentalData = schema.createRentalSchema.parse({
+      // Create rental data with non-null status and paymentStatus
+      const rentalData = {
         ...req.body,
-        customerName,
+        customerName, 
         totalPrice: totalPrice.toString(),
-        // Use provided status and paymentStatus or defaults
         status: req.body.status || "pending",
         paymentStatus: req.body.paymentStatus || "unpaid"
-      });
+      };
       
-      const rental = await storage.createRental(rentalData);
+      // Validate rental data with zod schema
+      const validatedData = schema.createRentalSchema.parse(rentalData);
+      
+      const rental = await storage.createRental(validatedData);
       res.status(201).json(rental);
     } catch (error) {
       console.error("Error creating rental:", error);

@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2, Plus, ChevronDown, ChevronUp, MapPin, Calendar, Tag, Users } from "lucide-react";
 import { EVENT_TYPES } from "@shared/schema";
 
@@ -23,6 +24,31 @@ interface TicketTypeInput {
   price: string; // String to match numeric in Postgres
   quantity: number;
   availableQuantity: number; // Required field
+}
+
+interface SpeakerInput {
+  name: string;
+  bio?: string;
+  profileImage?: string;
+  title?: string; // Job title or role
+  company?: string;
+  socialLinks?: Record<string, string>; // Social media links
+  presentationTopic?: string;
+  presentationDescription?: string;
+  presentationTime?: Date;
+}
+
+interface WorkshopInput {
+  title: string;
+  description?: string;
+  startTime: Date;
+  endTime: Date;
+  location?: string; // Room or specific location within the event venue
+  capacity?: number;
+  instructor?: string;
+  prerequisites?: string;
+  materials?: string[]; // Array of required materials
+  registrationRequired?: boolean;
 }
 
 interface EventFormValues {
@@ -38,6 +64,8 @@ interface EventFormValues {
   eventType?: "general" | "conference" | "seated"; // Typed to match EVENT_TYPES
   seatingMap?: Record<string, any> | null; // For seated events
   ticketTypes: TicketTypeInput[];
+  speakers: SpeakerInput[];
+  workshops: WorkshopInput[];
 }
 
 interface CreateEventFormProps {
@@ -49,8 +77,12 @@ interface CreateEventFormProps {
 
 const CreateEventForm = ({ form, onSubmit, isPending, categories }: CreateEventFormProps) => {
   const [expandedTicketType, setExpandedTicketType] = useState<number | null>(null);
+  const [expandedSpeaker, setExpandedSpeaker] = useState<number | null>(null);
+  const [expandedWorkshop, setExpandedWorkshop] = useState<number | null>(null);
   
   const watchTicketTypes = form.watch("ticketTypes");
+  const watchSpeakers = form.watch("speakers");
+  const watchWorkshops = form.watch("workshops");
   const watchEventType = form.watch("eventType");
   
   const addTicketType = () => {
@@ -79,6 +111,65 @@ const CreateEventForm = ({ form, onSubmit, isPending, categories }: CreateEventF
   
   const toggleExpandTicketType = (index: number) => {
     setExpandedTicketType(expandedTicketType === index ? null : index);
+  };
+  
+  // Speaker management functions
+  const addSpeaker = () => {
+    const currentSpeakers = form.getValues("speakers") || [];
+    form.setValue("speakers", [
+      ...currentSpeakers,
+      {
+        name: "",
+        bio: "",
+        title: "",
+        company: "",
+        presentationTopic: ""
+      }
+    ]);
+    setExpandedSpeaker(currentSpeakers.length);
+  };
+  
+  const removeSpeaker = (index: number) => {
+    const currentSpeakers = form.getValues("speakers") || [];
+    form.setValue("speakers", 
+      currentSpeakers.filter((_, i) => i !== index)
+    );
+  };
+  
+  const toggleExpandSpeaker = (index: number) => {
+    setExpandedSpeaker(expandedSpeaker === index ? null : index);
+  };
+  
+  // Workshop management functions
+  const addWorkshop = () => {
+    const currentWorkshops = form.getValues("workshops") || [];
+    const startTime = new Date(form.getValues("startDate"));
+    const endTime = new Date(startTime);
+    endTime.setHours(endTime.getHours() + 1);
+    
+    form.setValue("workshops", [
+      ...currentWorkshops,
+      {
+        title: "",
+        description: "",
+        startTime,
+        endTime,
+        capacity: 20,
+        registrationRequired: false
+      }
+    ]);
+    setExpandedWorkshop(currentWorkshops.length);
+  };
+  
+  const removeWorkshop = (index: number) => {
+    const currentWorkshops = form.getValues("workshops") || [];
+    form.setValue("workshops", 
+      currentWorkshops.filter((_, i) => i !== index)
+    );
+  };
+  
+  const toggleExpandWorkshop = (index: number) => {
+    setExpandedWorkshop(expandedWorkshop === index ? null : index);
   };
   
   return (
@@ -729,6 +820,458 @@ const CreateEventForm = ({ form, onSubmit, isPending, categories }: CreateEventF
           >
             <Plus className="h-5 w-5 mr-2 text-primary" />
             <span className="font-medium">Add Ticket Type</span>
+          </Button>
+        </div>
+        
+        {/* Speakers Section */}
+        <Separator className="my-6" />
+        <div className="mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h3 className="text-lg font-medium">Event Speakers</h3>
+              <p className="text-sm text-gray-500 mt-1">Add speakers to your event</p>
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            {watchSpeakers && watchSpeakers.map((speaker, index) => (
+              <div key={index} className="border rounded-lg overflow-hidden">
+                <div 
+                  className="flex justify-between items-center bg-gray-50 px-4 py-3 cursor-pointer"
+                  onClick={() => toggleExpandSpeaker(index)}
+                >
+                  <div className="flex items-center">
+                    <div className="font-medium text-gray-800">
+                      {speaker.name ? speaker.name : `Speaker ${index + 1}`}
+                    </div>
+                    {speaker.presentationTopic && (
+                      <div className="ml-3 text-sm text-gray-500">
+                        {speaker.presentationTopic}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeSpeaker(index);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 text-gray-500" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleExpandSpeaker(index);
+                      }}
+                    >
+                      {expandedSpeaker === index ? 
+                        <ChevronUp className="h-4 w-4 text-gray-500" /> : 
+                        <ChevronDown className="h-4 w-4 text-gray-500" />
+                      }
+                    </Button>
+                  </div>
+                </div>
+                
+                {expandedSpeaker === index && (
+                  <div className="p-4 bg-white">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                        <Input 
+                          placeholder="Speaker name" 
+                          value={speaker.name || ""}
+                          onChange={(e) => {
+                            const updatedSpeakers = [...form.getValues("speakers")];
+                            updatedSpeakers[index] = {
+                              ...updatedSpeakers[index],
+                              name: e.target.value
+                            };
+                            form.setValue("speakers", updatedSpeakers);
+                          }}
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Job Title</label>
+                        <Input 
+                          placeholder="e.g. CTO, Professor, Industry Expert" 
+                          value={speaker.title || ""}
+                          onChange={(e) => {
+                            const updatedSpeakers = [...form.getValues("speakers")];
+                            updatedSpeakers[index] = {
+                              ...updatedSpeakers[index],
+                              title: e.target.value
+                            };
+                            form.setValue("speakers", updatedSpeakers);
+                          }}
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Company/Organization</label>
+                        <Input 
+                          placeholder="Company or organization" 
+                          value={speaker.company || ""}
+                          onChange={(e) => {
+                            const updatedSpeakers = [...form.getValues("speakers")];
+                            updatedSpeakers[index] = {
+                              ...updatedSpeakers[index],
+                              company: e.target.value
+                            };
+                            form.setValue("speakers", updatedSpeakers);
+                          }}
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Profile Image URL</label>
+                        <Input 
+                          placeholder="https://example.com/speaker.jpg" 
+                          value={speaker.profileImage || ""}
+                          onChange={(e) => {
+                            const updatedSpeakers = [...form.getValues("speakers")];
+                            updatedSpeakers[index] = {
+                              ...updatedSpeakers[index],
+                              profileImage: e.target.value
+                            };
+                            form.setValue("speakers", updatedSpeakers);
+                          }}
+                        />
+                      </div>
+                      
+                      <div className="sm:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
+                        <Textarea 
+                          placeholder="Speaker bio and credentials" 
+                          className="h-24"
+                          value={speaker.bio || ""}
+                          onChange={(e) => {
+                            const updatedSpeakers = [...form.getValues("speakers")];
+                            updatedSpeakers[index] = {
+                              ...updatedSpeakers[index],
+                              bio: e.target.value
+                            };
+                            form.setValue("speakers", updatedSpeakers);
+                          }}
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Presentation Topic</label>
+                        <Input 
+                          placeholder="Topic of presentation" 
+                          value={speaker.presentationTopic || ""}
+                          onChange={(e) => {
+                            const updatedSpeakers = [...form.getValues("speakers")];
+                            updatedSpeakers[index] = {
+                              ...updatedSpeakers[index],
+                              presentationTopic: e.target.value
+                            };
+                            form.setValue("speakers", updatedSpeakers);
+                          }}
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Presentation Time</label>
+                        <Input 
+                          type="datetime-local" 
+                          value={speaker.presentationTime instanceof Date ? 
+                            speaker.presentationTime.toISOString().slice(0, 16) : 
+                            ""}
+                          onChange={(e) => {
+                            const date = e.target.value ? new Date(e.target.value) : undefined;
+                            const updatedSpeakers = [...form.getValues("speakers")];
+                            updatedSpeakers[index] = {
+                              ...updatedSpeakers[index],
+                              presentationTime: date
+                            };
+                            form.setValue("speakers", updatedSpeakers);
+                          }}
+                        />
+                      </div>
+                      
+                      <div className="sm:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Presentation Description</label>
+                        <Textarea 
+                          placeholder="Description of the presentation" 
+                          className="h-24"
+                          value={speaker.presentationDescription || ""}
+                          onChange={(e) => {
+                            const updatedSpeakers = [...form.getValues("speakers")];
+                            updatedSpeakers[index] = {
+                              ...updatedSpeakers[index],
+                              presentationDescription: e.target.value
+                            };
+                            form.setValue("speakers", updatedSpeakers);
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          
+          <Button
+            type="button"
+            variant="outline"
+            onClick={addSpeaker}
+            className="mt-4 border-dashed border-2 w-full py-6 flex justify-center items-center hover:bg-gray-50"
+          >
+            <Plus className="h-5 w-5 mr-2 text-primary" />
+            <span className="font-medium">Add Speaker</span>
+          </Button>
+        </div>
+        
+        {/* Workshops Section */}
+        <Separator className="my-6" />
+        <div className="mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h3 className="text-lg font-medium">Event Workshops</h3>
+              <p className="text-sm text-gray-500 mt-1">Add workshops or sessions to your event</p>
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            {watchWorkshops && watchWorkshops.map((workshop, index) => (
+              <div key={index} className="border rounded-lg overflow-hidden">
+                <div 
+                  className="flex justify-between items-center bg-gray-50 px-4 py-3 cursor-pointer"
+                  onClick={() => toggleExpandWorkshop(index)}
+                >
+                  <div className="flex items-center">
+                    <div className="font-medium text-gray-800">
+                      {workshop.title ? workshop.title : `Workshop ${index + 1}`}
+                    </div>
+                    {workshop.startTime && (
+                      <div className="ml-3 text-sm text-gray-500">
+                        {workshop.startTime.toLocaleString('en-US', { 
+                          month: 'short', 
+                          day: 'numeric', 
+                          hour: 'numeric', 
+                          minute: '2-digit' 
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeWorkshop(index);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 text-gray-500" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleExpandWorkshop(index);
+                      }}
+                    >
+                      {expandedWorkshop === index ? 
+                        <ChevronUp className="h-4 w-4 text-gray-500" /> : 
+                        <ChevronDown className="h-4 w-4 text-gray-500" />
+                      }
+                    </Button>
+                  </div>
+                </div>
+                
+                {expandedWorkshop === index && (
+                  <div className="p-4 bg-white">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Workshop Title</label>
+                        <Input 
+                          placeholder="Workshop title" 
+                          value={workshop.title || ""}
+                          onChange={(e) => {
+                            const updatedWorkshops = [...form.getValues("workshops")];
+                            updatedWorkshops[index] = {
+                              ...updatedWorkshops[index],
+                              title: e.target.value
+                            };
+                            form.setValue("workshops", updatedWorkshops);
+                          }}
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Location/Room</label>
+                        <Input 
+                          placeholder="e.g. Room 101, East Hall" 
+                          value={workshop.location || ""}
+                          onChange={(e) => {
+                            const updatedWorkshops = [...form.getValues("workshops")];
+                            updatedWorkshops[index] = {
+                              ...updatedWorkshops[index],
+                              location: e.target.value
+                            };
+                            form.setValue("workshops", updatedWorkshops);
+                          }}
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+                        <Input 
+                          type="datetime-local" 
+                          value={workshop.startTime instanceof Date ? 
+                            workshop.startTime.toISOString().slice(0, 16) : 
+                            ""}
+                          onChange={(e) => {
+                            const date = e.target.value ? new Date(e.target.value) : undefined;
+                            const updatedWorkshops = [...form.getValues("workshops")];
+                            updatedWorkshops[index] = {
+                              ...updatedWorkshops[index],
+                              startTime: date
+                            };
+                            form.setValue("workshops", updatedWorkshops);
+                          }}
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                        <Input 
+                          type="datetime-local" 
+                          value={workshop.endTime instanceof Date ? 
+                            workshop.endTime.toISOString().slice(0, 16) : 
+                            ""}
+                          onChange={(e) => {
+                            const date = e.target.value ? new Date(e.target.value) : undefined;
+                            const updatedWorkshops = [...form.getValues("workshops")];
+                            updatedWorkshops[index] = {
+                              ...updatedWorkshops[index],
+                              endTime: date
+                            };
+                            form.setValue("workshops", updatedWorkshops);
+                          }}
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Instructor/Facilitator</label>
+                        <Input 
+                          placeholder="Workshop instructor" 
+                          value={workshop.instructor || ""}
+                          onChange={(e) => {
+                            const updatedWorkshops = [...form.getValues("workshops")];
+                            updatedWorkshops[index] = {
+                              ...updatedWorkshops[index],
+                              instructor: e.target.value
+                            };
+                            form.setValue("workshops", updatedWorkshops);
+                          }}
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Capacity</label>
+                        <Input 
+                          type="number" 
+                          min="1"
+                          placeholder="Maximum number of attendees" 
+                          value={workshop.capacity || ""}
+                          onChange={(e) => {
+                            const updatedWorkshops = [...form.getValues("workshops")];
+                            updatedWorkshops[index] = {
+                              ...updatedWorkshops[index],
+                              capacity: parseInt(e.target.value)
+                            };
+                            form.setValue("workshops", updatedWorkshops);
+                          }}
+                        />
+                      </div>
+                      
+                      <div className="sm:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                        <Textarea 
+                          placeholder="Workshop description" 
+                          className="h-24"
+                          value={workshop.description || ""}
+                          onChange={(e) => {
+                            const updatedWorkshops = [...form.getValues("workshops")];
+                            updatedWorkshops[index] = {
+                              ...updatedWorkshops[index],
+                              description: e.target.value
+                            };
+                            form.setValue("workshops", updatedWorkshops);
+                          }}
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Prerequisites</label>
+                        <Input 
+                          placeholder="e.g. Laptop required, basic knowledge of Python" 
+                          value={workshop.prerequisites || ""}
+                          onChange={(e) => {
+                            const updatedWorkshops = [...form.getValues("workshops")];
+                            updatedWorkshops[index] = {
+                              ...updatedWorkshops[index],
+                              prerequisites: e.target.value
+                            };
+                            form.setValue("workshops", updatedWorkshops);
+                          }}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id={`registration-required-${index}`}
+                          checked={workshop.registrationRequired || false}
+                          onCheckedChange={(checked) => {
+                            const updatedWorkshops = [...form.getValues("workshops")];
+                            updatedWorkshops[index] = {
+                              ...updatedWorkshops[index],
+                              registrationRequired: checked as boolean
+                            };
+                            form.setValue("workshops", updatedWorkshops);
+                          }}
+                        />
+                        <label 
+                          htmlFor={`registration-required-${index}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          Registration Required
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          
+          <Button
+            type="button"
+            variant="outline"
+            onClick={addWorkshop}
+            className="mt-4 border-dashed border-2 w-full py-6 flex justify-center items-center hover:bg-gray-50"
+          >
+            <Plus className="h-5 w-5 mr-2 text-primary" />
+            <span className="font-medium">Add Workshop</span>
           </Button>
         </div>
         

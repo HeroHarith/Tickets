@@ -38,6 +38,8 @@ export const getQueryFn: <T>(options: {
     }
 
     await throwIfResNotOk(res);
+    
+    // Return the raw response - let the calling component handle the standardized format
     return await res.json();
   };
 

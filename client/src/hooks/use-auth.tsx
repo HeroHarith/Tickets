@@ -26,24 +26,30 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const {
-    data: user,
+    data: userData,
     error,
     isLoading,
-  } = useQuery<SelectUser | null, Error>({
+  } = useQuery<{data: SelectUser} | null, Error>({
     queryKey: ["/api/user"],
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
+  
+  // Extract the user data from the standardized response format
+  const user = userData?.data || null;
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
       const res = await apiRequest("POST", "/api/login", credentials);
-      return await res.json();
+      const response = await res.json();
+      // Handle our standardized API response format
+      return response.data;
     },
     onSuccess: (user: SelectUser) => {
-      queryClient.setQueryData(["/api/user"], user);
+      // Store the response in the standardized format to be consistent
+      queryClient.setQueryData(["/api/user"], { data: user });
       toast({
         title: "Login successful",
-        description: `Welcome back, ${user.name}!`,
+        description: `Welcome back, ${user.name || user.username}!`,
       });
     },
     onError: (error: Error) => {
@@ -58,13 +64,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const registerMutation = useMutation({
     mutationFn: async (credentials: InsertUser) => {
       const res = await apiRequest("POST", "/api/register", credentials);
-      return await res.json();
+      const response = await res.json();
+      // Handle our standardized API response format
+      return response.data;
     },
     onSuccess: (user: SelectUser) => {
-      queryClient.setQueryData(["/api/user"], user);
+      // Store the response in the standardized format to be consistent
+      queryClient.setQueryData(["/api/user"], { data: user });
       toast({
         title: "Registration successful",
-        description: `Welcome, ${user.name}!`,
+        description: `Welcome, ${user.name || user.username}!`,
       });
     },
     onError: (error: Error) => {
@@ -81,6 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await apiRequest("POST", "/api/logout");
     },
     onSuccess: () => {
+      // Set to null to indicate not logged in
       queryClient.setQueryData(["/api/user"], null);
       toast({
         title: "Logged out",

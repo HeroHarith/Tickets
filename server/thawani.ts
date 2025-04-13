@@ -15,11 +15,11 @@ const BASE_URL = isProduction
   : 'https://uatcheckout.thawani.om/api/v1/';
 
 // Client URLs for redirection
-const SUCCESS_URL = isProduction 
+export const SUCCESS_URL = isProduction 
   ? 'https://your-site.replit.app/payment-success' 
   : 'http://localhost:5000/payment-success';
 
-const CANCEL_URL = isProduction 
+export const CANCEL_URL = isProduction 
   ? 'https://your-site.replit.app/payment-cancel' 
   : 'http://localhost:5000/payment-cancel';
 

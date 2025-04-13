@@ -576,6 +576,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json(errorResponse("Error processing payment", 500));
     }
   });
+  
+  // Complete ticket purchase after payment
+  app.post("/api/tickets/purchase", requireRole(["customer", "admin"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      const { eventId, ticketSelections, customerDetails, paymentSessionId } = req.body;
+      
+      // Validate input
+      if (!eventId || !ticketSelections || !customerDetails) {
+        return res.status(400).json(errorResponse("Missing required fields", 400));
+      }
+      
+      // Verify payment if session ID is provided
+      if (paymentSessionId) {
+        const paymentStatus = await thawaniService.checkPaymentStatus(paymentSessionId);
+        
+        if (paymentStatus !== 'paid') {
+          return res.status(400).json(errorResponse("Payment not completed", 400));
+        }
+      }
+      
+      // Create purchase input object
+      const purchaseInput: PurchaseTicketInput = {
+        eventId,
+        ticketSelections,
+        customerDetails
+      };
+      
+      // Process ticket purchase
+      const tickets = await storage.purchaseTickets(purchaseInput, req.user.id);
+      
+      return res.json(successResponse(tickets, 201, "Tickets purchased successfully"));
+    } catch (error: any) {
+      console.error("Error purchasing tickets:", error);
+      
+      if (error.message?.includes("not enough tickets") || error.message?.includes("not found")) {
+        return res.status(400).json(errorResponse(error.message, 400));
+      }
+      
+      return res.status(500).json(errorResponse("Error purchasing tickets", 500));
+    }
+  });
 
   // Payment success and cancel pages
   app.get("/payment-success", (req: Request, res: Response) => {

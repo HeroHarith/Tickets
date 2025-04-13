@@ -1,11 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import EventCard from "@/components/ui/event-card";
 import TabsComponent from "@/components/ui/tabs-component";
-import EventSearch from "@/components/ui/event-search";
 import { Button } from "@/components/ui/button";
 import { Event, TicketType } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
+import { EventCard, EventSearch } from "@/components/domain/events";
 
 const Home = () => {
   const { user } = useAuth();

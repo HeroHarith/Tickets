@@ -13,21 +13,13 @@ import {
   TagIcon, 
   ArrowDownAZ, 
   ArrowUpAZ, 
-  XCircle, 
-  FilterIcon, 
-  Ticket, 
-  Star,
-  X
+  XIcon, 
+  ArrowDown01, 
+  ArrowUp01 
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 
 interface EventSearchProps {
   onSearch: (params: {
@@ -42,792 +34,556 @@ interface EventSearchProps {
     eventType?: string;
     featured?: boolean;
   }) => void;
+  initialValues?: {
+    search?: string;
+    category?: string;
+    dateFilter?: string;
+    priceFilter?: string;
+    minDate?: string;
+    maxDate?: string;
+    location?: string;
+    sortBy?: string;
+    eventType?: string;
+    featured?: boolean;
+  };
 }
 
-const EventSearch = ({ onSearch }: EventSearchProps) => {
-  const isMobile = useIsMobile();
-  const [searchParams, setSearchParams] = useState({
-    search: "",
-    category: "",
-    dateFilter: "",
-    priceFilter: "",
-    minDate: "",
-    maxDate: "",
-    location: "",
-    sortBy: "date-desc", // Default sort
-    eventType: "",
-    featured: false
-  });
-
-  const [minDate, setMinDate] = useState<Date | undefined>(undefined);
-  const [maxDate, setMaxDate] = useState<Date | undefined>(undefined);
-  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
-  const [activeFilterCount, setActiveFilterCount] = useState(0);
+export function EventSearch({ onSearch, initialValues = {} }: EventSearchProps) {
+  // State for search parameters
+  const [search, setSearch] = useState(initialValues.search || "");
+  const [category, setCategory] = useState(initialValues.category || "");
+  const [dateFilter, setDateFilter] = useState(initialValues.dateFilter || "");
+  const [priceFilter, setPriceFilter] = useState(initialValues.priceFilter || "");
+  const [location, setLocation] = useState(initialValues.location || "");
+  const [sortBy, setSortBy] = useState(initialValues.sortBy || "date-desc");
+  const [eventType, setEventType] = useState(initialValues.eventType || "");
+  const [featured, setFeatured] = useState(initialValues.featured || false);
   
-  // Count active filters for the filter badge
-  useEffect(() => {
-    let count = 0;
-    if (searchParams.category) count++;
-    if (searchParams.dateFilter) count++;
-    if (searchParams.priceFilter) count++;
-    if (searchParams.minDate || searchParams.maxDate) count++;
-    if (searchParams.location) count++;
-    if (searchParams.eventType) count++;
-    if (searchParams.featured) count++;
-    setActiveFilterCount(count);
-  }, [searchParams]);
-
-  const debouncedSearch = useCallback(
-    debounce((params) => {
-      onSearch(params);
-    }, 500),
-    [onSearch]
+  // Custom date range state
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [minDate, setMinDate] = useState<Date | undefined>(
+    initialValues.minDate ? new Date(initialValues.minDate) : undefined
   );
-
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const newParams = {
-      ...searchParams,
-      [e.target.name]: e.target.value,
-    };
-    setSearchParams(newParams);
-    
-    // Auto-search after typing with debounce
-    if (e.target.name === 'search') {
-      debouncedSearch(newParams);
-    }
+  const [maxDate, setMaxDate] = useState<Date | undefined>(
+    initialValues.maxDate ? new Date(initialValues.maxDate) : undefined
+  );
+  
+  // Advanced filters visibility
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  
+  // Active filters count
+  const getActiveFiltersCount = () => {
+    let count = 0;
+    if (category) count++;
+    if (dateFilter) count++;
+    if (priceFilter) count++;
+    if (location) count++;
+    if (eventType) count++;
+    if (featured) count++;
+    if (minDate || maxDate) count++;
+    return count;
   };
-
-  const handleCategoryChange = (value: string) => {
-    const newParams = {
-      ...searchParams,
-      category: value === "all-categories" ? "" : value,
-    };
-    setSearchParams(newParams);
-    // Auto-search when category changes
-    onSearch(newParams);
-  };
-
-  const handleDateFilterChange = (value: string) => {
-    const newParams = {
-      ...searchParams,
-      dateFilter: value === "all" ? "" : value,
-    };
-    setSearchParams(newParams);
-    // Auto-search when date filter changes
-    onSearch(newParams);
-  };
-
-  const handlePriceFilterChange = (value: string) => {
-    const newParams = {
-      ...searchParams,
-      priceFilter: value === "all" ? "" : value,
-    };
-    setSearchParams(newParams);
-    // Auto-search when price filter changes
-    onSearch(newParams);
-  };
-
-  const handleSortByChange = (value: string) => {
-    const newParams = {
-      ...searchParams,
-      sortBy: value,
-    };
-    setSearchParams(newParams);
-    // Auto-search when sort changes
-    onSearch(newParams);
-  };
-
-  const handleMinDateChange = (date: Date | undefined) => {
-    setMinDate(date);
-    const newParams = {
-      ...searchParams,
-      minDate: date ? date.toISOString() : "",
-    };
-    setSearchParams(newParams);
-    
-    // Don't auto-search until both dates are set or cleared
-    if (!date || (date && searchParams.maxDate)) {
-      onSearch(newParams);
-    }
-  };
-
-  const handleMaxDateChange = (date: Date | undefined) => {
-    setMaxDate(date);
-    const newParams = {
-      ...searchParams,
-      maxDate: date ? date.toISOString() : "",
-    };
-    setSearchParams(newParams);
-    
-    // Don't auto-search until both dates are set or cleared
-    if (!date || (date && searchParams.minDate)) {
-      onSearch(newParams);
-    }
-  };
-
-  const handleClearDates = () => {
+  
+  // Clear all filters
+  const clearAllFilters = () => {
+    setSearch("");
+    setCategory("");
+    setDateFilter("");
+    setPriceFilter("");
+    setLocation("");
+    setEventType("");
+    setFeatured(false);
     setMinDate(undefined);
     setMaxDate(undefined);
-    const newParams = {
-      ...searchParams,
-      minDate: "",
-      maxDate: "",
-    };
-    setSearchParams(newParams);
-    onSearch(newParams);
-  };
-  
-  const handleEventTypeChange = (value: string) => {
-    const newParams = {
-      ...searchParams,
-      eventType: value === "all-types" ? "" : value,
-    };
-    setSearchParams(newParams);
-    onSearch(newParams);
-  };
-  
-  const handleFeaturedChange = (value: boolean) => {
-    const newParams = {
-      ...searchParams,
-      featured: value,
-    };
-    setSearchParams(newParams);
-    onSearch(newParams);
-  };
-  
-  const handleClearFilters = () => {
-    setMinDate(undefined);
-    setMaxDate(undefined);
-    setSearchParams({
-      search: searchParams.search, // Keep search term
+    
+    // Trigger search with cleared parameters
+    onSearch({
+      search: "",
       category: "",
       dateFilter: "",
       priceFilter: "",
-      minDate: "",
-      maxDate: "",
       location: "",
-      sortBy: "date-desc",
+      sortBy,
       eventType: "",
       featured: false
     });
   };
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSearch(searchParams);
+  
+  // Clear specific filter
+  const clearFilter = (filterName: string) => {
+    switch (filterName) {
+      case 'search':
+        setSearch("");
+        break;
+      case 'category':
+        setCategory("");
+        break;
+      case 'dateFilter':
+        setDateFilter("");
+        break;
+      case 'priceFilter':
+        setPriceFilter("");
+        break;
+      case 'location':
+        setLocation("");
+        break;
+      case 'eventType':
+        setEventType("");
+        break;
+      case 'featured':
+        setFeatured(false);
+        break;
+      case 'dateRange':
+        setMinDate(undefined);
+        setMaxDate(undefined);
+        break;
+    }
   };
   
-  // Helper to format filter labels
-  const getFilterLabels = () => {
+  // Debounced search
+  const debouncedSearch = useCallback(
+    debounce((value: string) => {
+      onSearch({
+        search: value,
+        category,
+        dateFilter,
+        priceFilter,
+        minDate: minDate ? format(minDate, 'yyyy-MM-dd') : undefined,
+        maxDate: maxDate ? format(maxDate, 'yyyy-MM-dd') : undefined,
+        location,
+        sortBy,
+        eventType,
+        featured
+      });
+    }, 500),
+    [category, dateFilter, priceFilter, minDate, maxDate, location, sortBy, eventType, featured]
+  );
+  
+  // Handle search input changes
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearch(value);
+    debouncedSearch(value);
+  };
+  
+  // Handle filter changes
+  const handleFilterChange = useCallback(
+    throttle(() => {
+      onSearch({
+        search,
+        category,
+        dateFilter,
+        priceFilter,
+        minDate: minDate ? format(minDate, 'yyyy-MM-dd') : undefined,
+        maxDate: maxDate ? format(maxDate, 'yyyy-MM-dd') : undefined,
+        location,
+        sortBy,
+        eventType,
+        featured
+      });
+    }, 300),
+    [search, category, dateFilter, priceFilter, minDate, maxDate, location, sortBy, eventType, featured]
+  );
+  
+  // Effect to trigger search when filters change
+  useEffect(() => {
+    handleFilterChange();
+  }, [category, dateFilter, priceFilter, location, sortBy, eventType, featured, handleFilterChange]);
+  
+  // Effect to close date picker when both dates are selected
+  useEffect(() => {
+    if (minDate && maxDate) {
+      setIsDatePickerOpen(false);
+      setDateFilter("custom");
+      handleFilterChange();
+    }
+  }, [minDate, maxDate, handleFilterChange]);
+  
+  // Handle date filter change
+  const handleDateFilterChange = (value: string) => {
+    // Clear custom date range if selecting a predefined filter
+    if (value !== "custom") {
+      setMinDate(undefined);
+      setMaxDate(undefined);
+    }
+    setDateFilter(value);
+  };
+  
+  // Render active filters
+  const renderActiveFilters = () => {
     const filters = [];
     
-    if (searchParams.category) {
-      filters.push({
-        label: searchParams.category,
-        key: 'category',
-        icon: <TagIcon className="h-3 w-3 mr-1" />
-      });
+    if (category) {
+      filters.push(
+        <Badge 
+          key="category" 
+          variant="outline" 
+          className="flex items-center gap-1 bg-gray-100"
+          onClick={() => clearFilter('category')}
+        >
+          <TagIcon className="h-3 w-3" />
+          Category: {category}
+          <XIcon className="h-3 w-3 ml-1 cursor-pointer" />
+        </Badge>
+      );
     }
     
-    if (searchParams.dateFilter) {
-      const dateLabel = searchParams.dateFilter.split('-').map(word => 
-        word.charAt(0).toUpperCase() + word.slice(1)
-      ).join(' ');
+    if (dateFilter) {
+      let dateLabel = dateFilter;
+      if (dateFilter === "custom" && (minDate || maxDate)) {
+        dateLabel = `${minDate ? format(minDate, 'MMM d, yyyy') : 'Any start'} - ${maxDate ? format(maxDate, 'MMM d, yyyy') : 'Any end'}`;
+      } else {
+        dateLabel = EVENT_DATE_FILTERS.find(df => df.value === dateFilter)?.label || dateFilter;
+      }
       
-      filters.push({
-        label: dateLabel,
-        key: 'dateFilter',
-        icon: <CalendarIcon className="h-3 w-3 mr-1" />
-      });
+      filters.push(
+        <Badge 
+          key="date" 
+          variant="outline" 
+          className="flex items-center gap-1 bg-gray-100"
+          onClick={() => clearFilter(dateFilter === "custom" ? 'dateRange' : 'dateFilter')}
+        >
+          <CalendarIcon className="h-3 w-3" />
+          Date: {dateLabel}
+          <XIcon className="h-3 w-3 ml-1 cursor-pointer" />
+        </Badge>
+      );
     }
     
-    if (searchParams.priceFilter) {
-      const priceLabels: Record<string, string> = {
-        'free': 'Free',
-        'under-25': 'Under $25',
-        '25-to-50': '$25 to $50',
-        '50-to-100': '$50 to $100',
-        'over-100': 'Over $100'
-      };
-      
-      filters.push({
-        label: priceLabels[searchParams.priceFilter] || searchParams.priceFilter,
-        key: 'priceFilter',
-        icon: <TagIcon className="h-3 w-3 mr-1" />
-      });
+    if (priceFilter) {
+      filters.push(
+        <Badge 
+          key="price" 
+          variant="outline" 
+          className="flex items-center gap-1 bg-gray-100"
+          onClick={() => clearFilter('priceFilter')}
+        >
+          Price: {EVENT_PRICE_FILTERS.find(pf => pf.value === priceFilter)?.label || priceFilter}
+          <XIcon className="h-3 w-3 ml-1 cursor-pointer" />
+        </Badge>
+      );
     }
     
-    if (searchParams.minDate && searchParams.maxDate) {
-      filters.push({
-        label: `${format(new Date(searchParams.minDate), 'MMM d')} - ${format(new Date(searchParams.maxDate), 'MMM d')}`,
-        key: 'dateRange',
-        icon: <CalendarIcon className="h-3 w-3 mr-1" />
-      });
-    } else if (searchParams.minDate) {
-      filters.push({
-        label: `From ${format(new Date(searchParams.minDate), 'MMM d')}`,
-        key: 'minDate',
-        icon: <CalendarIcon className="h-3 w-3 mr-1" />
-      });
-    } else if (searchParams.maxDate) {
-      filters.push({
-        label: `Until ${format(new Date(searchParams.maxDate), 'MMM d')}`,
-        key: 'maxDate',
-        icon: <CalendarIcon className="h-3 w-3 mr-1" />
-      });
+    if (location) {
+      filters.push(
+        <Badge 
+          key="location" 
+          variant="outline" 
+          className="flex items-center gap-1 bg-gray-100"
+          onClick={() => clearFilter('location')}
+        >
+          <MapPinIcon className="h-3 w-3" />
+          Location: {location}
+          <XIcon className="h-3 w-3 ml-1 cursor-pointer" />
+        </Badge>
+      );
     }
     
-    if (searchParams.location) {
-      filters.push({
-        label: searchParams.location,
-        key: 'location',
-        icon: <MapPinIcon className="h-3 w-3 mr-1" />
-      });
+    if (eventType) {
+      filters.push(
+        <Badge 
+          key="eventType" 
+          variant="outline" 
+          className="flex items-center gap-1 bg-gray-100"
+          onClick={() => clearFilter('eventType')}
+        >
+          Type: {EVENT_TYPES.find(et => et.value === eventType)?.label || eventType}
+          <XIcon className="h-3 w-3 ml-1 cursor-pointer" />
+        </Badge>
+      );
     }
     
-    if (searchParams.eventType) {
-      filters.push({
-        label: searchParams.eventType.charAt(0).toUpperCase() + searchParams.eventType.slice(1),
-        key: 'eventType',
-        icon: <Ticket className="h-3 w-3 mr-1" />
-      });
-    }
-    
-    if (searchParams.featured) {
-      filters.push({
-        label: 'Featured',
-        key: 'featured',
-        icon: <Star className="h-3 w-3 mr-1" />
-      });
+    if (featured) {
+      filters.push(
+        <Badge 
+          key="featured" 
+          variant="outline" 
+          className="flex items-center gap-1 bg-gray-100"
+          onClick={() => clearFilter('featured')}
+        >
+          Featured Only
+          <XIcon className="h-3 w-3 ml-1 cursor-pointer" />
+        </Badge>
+      );
     }
     
     return filters;
   };
-
-  const SearchContent = () => (
-    <form onSubmit={handleSearch} className="space-y-4">
-      {/* Basic search row */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="flex-grow">
+  
+  // Render sort icon based on current sort
+  const renderSortIcon = () => {
+    switch(sortBy) {
+      case 'date-asc':
+        return <ArrowDownAZ className="h-4 w-4" />;
+      case 'date-desc':
+        return <ArrowUpAZ className="h-4 w-4" />;
+      case 'price-low':
+        return <ArrowDown01 className="h-4 w-4" />;
+      case 'price-high':
+        return <ArrowUp01 className="h-4 w-4" />;
+      default:
+        return <ArrowUpAZ className="h-4 w-4" />;
+    }
+  };
+  
+  return (
+    <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
+      {/* Search Bar */}
+      <div className="flex flex-col md:flex-row gap-4 mb-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
             type="text"
-            name="search"
-            placeholder="Search for events..."
-            value={searchParams.search}
-            onChange={handleInputChange}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary focus:border-primary"
+            placeholder="Search events, venues, or keywords..."
+            className="pl-10"
+            value={search}
+            onChange={handleSearchChange}
           />
-        </div>
-        <div className="w-full md:w-48">
-          <Select
-            value={searchParams.category || "all-categories"}
-            onValueChange={handleCategoryChange}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="All Categories" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all-categories">All Categories</SelectItem>
-              {EVENT_CATEGORIES.map((category) => (
-                <SelectItem key={category} value={category}>
-                  {category}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="w-full md:w-48">
-          <Select
-            value={searchParams.dateFilter || "all"}
-            onValueChange={handleDateFilterChange}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="All Dates" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Dates</SelectItem>
-              <SelectItem value="today">Today</SelectItem>
-              <SelectItem value="tomorrow">Tomorrow</SelectItem>
-              <SelectItem value="this-week">This Week</SelectItem>
-              <SelectItem value="this-weekend">This Weekend</SelectItem>
-              <SelectItem value="this-month">This Month</SelectItem>
-              <SelectItem value="future">Future Events</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Button
-            type="submit"
-            className="w-full md:w-auto bg-primary text-white hover:bg-primary/90"
-          >
-            <Search className="h-4 w-4 mr-2" />
-            Search
-          </Button>
-        </div>
-      </div>
-
-      {/* Active filters display */}
-      {activeFilterCount > 0 && (
-        <div className="flex flex-wrap gap-2 mt-4">
-          {getFilterLabels().map((filter) => (
-            <Badge 
-              key={filter.key} 
-              variant="secondary"
-              className="py-1 px-2 bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+          {search && (
+            <button 
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              onClick={() => {
+                setSearch("");
+                debouncedSearch("");
+              }}
             >
-              <span className="flex items-center">
-                {filter.icon}
-                {filter.label}
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-4 w-4 p-0 ml-1 text-gray-500 hover:text-gray-800"
-                onClick={() => {
-                  if (filter.key === 'dateRange' || filter.key === 'minDate' || filter.key === 'maxDate') {
-                    handleClearDates();
-                  } else if (filter.key === 'category') {
-                    handleCategoryChange('all-categories');
-                  } else if (filter.key === 'dateFilter') {
-                    handleDateFilterChange('all');
-                  } else if (filter.key === 'priceFilter') {
-                    handlePriceFilterChange('all');
-                  } else if (filter.key === 'eventType') {
-                    handleEventTypeChange('all-types');
-                  } else if (filter.key === 'featured') {
-                    handleFeaturedChange(false);
-                  } else if (filter.key === 'location') {
-                    setSearchParams({
-                      ...searchParams,
-                      location: ''
-                    });
-                  }
-                }}
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            </Badge>
-          ))}
-          
-          {activeFilterCount > 1 && (
-            <Button 
-              type="button" 
-              variant="ghost" 
-              size="sm" 
-              className="text-xs text-gray-600 hover:text-gray-900"
-              onClick={handleClearFilters}
-            >
-              Clear All Filters
-            </Button>
+              <XIcon className="h-4 w-4" />
+            </button>
           )}
         </div>
-      )}
-      
-      {isMobile ? (
-        <Drawer>
-          <DrawerTrigger asChild>
-            <Button 
-              type="button" 
-              variant="outline" 
-              className="text-gray-600 w-full flex items-center justify-center"
-            >
-              Filters
-              <FilterIcon className="ml-2 h-4 w-4" />
-              {activeFilterCount > 0 && (
-                <Badge className="ml-2 text-xs" variant="secondary">{activeFilterCount}</Badge>
-              )}
-            </Button>
-          </DrawerTrigger>
-          <DrawerContent>
-            <div className="px-4 py-5 max-h-[80vh] overflow-y-auto">
-              <h3 className="text-lg font-semibold mb-4">Filter Events</h3>
-              {/* Mobile Filters Content */}
-              <div className="space-y-6">
-                <div>
-                  <h4 className="text-sm font-medium mb-2">Event Type</h4>
-                  <Select
-                    value={searchParams.eventType || "all-types"}
-                    onValueChange={handleEventTypeChange}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="All Event Types" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all-types">All Event Types</SelectItem>
-                      {EVENT_TYPES.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {type.charAt(0).toUpperCase() + type.slice(1)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div>
-                  <h4 className="text-sm font-medium mb-2">Price Range</h4>
-                  <RadioGroup
-                    value={searchParams.priceFilter || "all"}
-                    onValueChange={handlePriceFilterChange}
-                    className="space-y-2"
-                  >
-                    <div className="flex items-center">
-                      <RadioGroupItem value="all" id="mobile-price-all" />
-                      <Label htmlFor="mobile-price-all" className="ml-2">Any Price</Label>
-                    </div>
-                    <div className="flex items-center">
-                      <RadioGroupItem value="free" id="mobile-price-free" />
-                      <Label htmlFor="mobile-price-free" className="ml-2">Free</Label>
-                    </div>
-                    <div className="flex items-center">
-                      <RadioGroupItem value="under-25" id="mobile-price-under-25" />
-                      <Label htmlFor="mobile-price-under-25" className="ml-2">Under $25</Label>
-                    </div>
-                    <div className="flex items-center">
-                      <RadioGroupItem value="25-to-50" id="mobile-price-25-50" />
-                      <Label htmlFor="mobile-price-25-50" className="ml-2">$25 to $50</Label>
-                    </div>
-                    <div className="flex items-center">
-                      <RadioGroupItem value="50-to-100" id="mobile-price-50-100" />
-                      <Label htmlFor="mobile-price-50-100" className="ml-2">$50 to $100</Label>
-                    </div>
-                    <div className="flex items-center">
-                      <RadioGroupItem value="over-100" id="mobile-price-over-100" />
-                      <Label htmlFor="mobile-price-over-100" className="ml-2">Over $100</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-                
-                <div>
-                  <h4 className="text-sm font-medium mb-2">Date</h4>
-                  <Select
-                    value={searchParams.dateFilter || "all"}
-                    onValueChange={handleDateFilterChange}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="All Dates" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Dates</SelectItem>
-                      <SelectItem value="today">Today</SelectItem>
-                      <SelectItem value="tomorrow">Tomorrow</SelectItem>
-                      <SelectItem value="this-week">This Week</SelectItem>
-                      <SelectItem value="this-weekend">This Weekend</SelectItem>
-                      <SelectItem value="this-month">This Month</SelectItem>
-                      <SelectItem value="future">Future Events</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium mb-2">Date Range</h4>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start text-left"
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {minDate ? format(minDate, "PPP") : "Start Date"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={minDate}
-                        onSelect={handleMinDateChange}
-                        disabled={(date) => maxDate ? date > maxDate : false}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start text-left"
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {maxDate ? format(maxDate, "PPP") : "End Date"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={maxDate}
-                        onSelect={handleMaxDateChange}
-                        disabled={(date) => minDate ? date < minDate : false}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                
-                <div>
-                  <h4 className="text-sm font-medium mb-2">Location</h4>
-                  <Input
-                    type="text"
-                    name="location"
-                    placeholder="Enter a city or venue"
-                    value={searchParams.location}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="mobile-featured"
-                    checked={searchParams.featured}
-                    onChange={(e) => handleFeaturedChange(e.target.checked)}
-                    className="rounded border-gray-300 text-primary focus:ring-primary"
-                  />
-                  <Label htmlFor="mobile-featured">Featured Events Only</Label>
-                </div>
-                
-                <div className="pt-4 space-y-2">
-                  <Button 
-                    type="submit" 
-                    className="w-full"
-                  >
-                    Apply Filters
-                  </Button>
-                  
-                  {activeFilterCount > 0 && (
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      className="w-full" 
-                      onClick={handleClearFilters}
-                    >
-                      Clear All Filters
-                    </Button>
-                  )}
-                </div>
+        
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            className="flex items-center gap-2"
+            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+          >
+            <SlidersIcon className="h-4 w-4" />
+            Filters
+            {getActiveFiltersCount() > 0 && (
+              <Badge variant="default" className="ml-1 h-5 w-5 p-0 flex items-center justify-center rounded-full">
+                {getActiveFiltersCount()}
+              </Badge>
+            )}
+          </Button>
+          
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="flex items-center gap-2">
+                {renderSortIcon()}
+                Sort
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-48 p-2">
+              <div className="flex flex-col gap-1">
+                <Button 
+                  variant={sortBy === 'date-desc' ? 'default' : 'ghost'} 
+                  size="sm" 
+                  className="justify-start"
+                  onClick={() => setSortBy('date-desc')}
+                >
+                  <ArrowUpAZ className="h-4 w-4 mr-2" />
+                  Newest First
+                </Button>
+                <Button 
+                  variant={sortBy === 'date-asc' ? 'default' : 'ghost'} 
+                  size="sm" 
+                  className="justify-start"
+                  onClick={() => setSortBy('date-asc')}
+                >
+                  <ArrowDownAZ className="h-4 w-4 mr-2" />
+                  Oldest First
+                </Button>
+                <Button 
+                  variant={sortBy === 'price-low' ? 'default' : 'ghost'} 
+                  size="sm" 
+                  className="justify-start"
+                  onClick={() => setSortBy('price-low')}
+                >
+                  <ArrowDown01 className="h-4 w-4 mr-2" />
+                  Price: Low to High
+                </Button>
+                <Button 
+                  variant={sortBy === 'price-high' ? 'default' : 'ghost'} 
+                  size="sm" 
+                  className="justify-start"
+                  onClick={() => setSortBy('price-high')}
+                >
+                  <ArrowUp01 className="h-4 w-4 mr-2" />
+                  Price: High to Low
+                </Button>
               </div>
-            </div>
-          </DrawerContent>
-        </Drawer>
-      ) : (
-        <>
-          {/* Advanced filters toggle for desktop */}
-          <div className="flex gap-2 pt-2">
-            <Button 
-              type="button" 
-              variant="outline" 
-              className="text-gray-600"
-              onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
-            >
-              {isAdvancedOpen ? 'Hide' : 'Show'} Advanced Filters
-              <SlidersIcon className="ml-2 h-4 w-4" />
-              {!isAdvancedOpen && activeFilterCount > 0 && (
-                <Badge className="ml-2 text-xs" variant="secondary">{activeFilterCount}</Badge>
-              )}
-            </Button>
-            
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="featured"
-                checked={searchParams.featured}
-                onChange={(e) => handleFeaturedChange(e.target.checked)}
-                className="rounded border-gray-300 text-primary focus:ring-primary"
-              />
-              <Label htmlFor="featured">Featured Events Only</Label>
-            </div>
-          </div>
-        </>
-      )}
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
       
-      {/* Advanced filters section for desktop */}
-      {!isMobile && isAdvancedOpen && (
-        <div className="bg-gray-50 p-4 rounded-md mt-4 grid grid-cols-1 md:grid-cols-4 gap-6">
-          {/* Event Type Filter */}
+      {/* Advanced Filters */}
+      {showAdvancedFilters && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
           <div>
-            <h3 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
-              <Ticket className="h-4 w-4 mr-1" />
-              Event Type
-            </h3>
-            <Select
-              value={searchParams.eventType || "all-types"}
-              onValueChange={handleEventTypeChange}
-            >
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Category
+            </label>
+            <Select value={category} onValueChange={setCategory}>
               <SelectTrigger>
-                <SelectValue placeholder="All Event Types" />
+                <SelectValue placeholder="All Categories" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all-types">All Event Types</SelectItem>
-                {EVENT_TYPES.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                <SelectItem value="">All Categories</SelectItem>
+                {EVENT_CATEGORIES.map(cat => (
+                  <SelectItem key={cat.value} value={cat.value}>
+                    {cat.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-        
-          {/* Price Filter */}
-          <div>
-            <h3 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
-              <TagIcon className="h-4 w-4 mr-1" />
-              Price Range
-            </h3>
-            <RadioGroup
-              value={searchParams.priceFilter || "all"}
-              onValueChange={handlePriceFilterChange}
-              className="space-y-1"
-            >
-              <div className="flex items-center">
-                <RadioGroupItem value="all" id="price-all" />
-                <Label htmlFor="price-all" className="ml-2 cursor-pointer">Any Price</Label>
-              </div>
-              <div className="flex items-center">
-                <RadioGroupItem value="free" id="price-free" />
-                <Label htmlFor="price-free" className="ml-2 cursor-pointer">Free</Label>
-              </div>
-              <div className="flex items-center">
-                <RadioGroupItem value="under-25" id="price-under-25" />
-                <Label htmlFor="price-under-25" className="ml-2 cursor-pointer">Under $25</Label>
-              </div>
-              <div className="flex items-center">
-                <RadioGroupItem value="25-to-50" id="price-25-50" />
-                <Label htmlFor="price-25-50" className="ml-2 cursor-pointer">$25 to $50</Label>
-              </div>
-              <div className="flex items-center">
-                <RadioGroupItem value="50-to-100" id="price-50-100" />
-                <Label htmlFor="price-50-100" className="ml-2 cursor-pointer">$50 to $100</Label>
-              </div>
-              <div className="flex items-center">
-                <RadioGroupItem value="over-100" id="price-over-100" />
-                <Label htmlFor="price-over-100" className="ml-2 cursor-pointer">Over $100</Label>
-              </div>
-            </RadioGroup>
-          </div>
           
-          {/* Date Range Picker */}
           <div>
-            <h3 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
-              <CalendarIcon className="h-4 w-4 mr-1" />
-              Date Range
-            </h3>
-            <div className="space-y-2">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {minDate ? format(minDate, "PPP") : "Start Date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={minDate}
-                    onSelect={handleMinDateChange}
-                    disabled={(date) => maxDate ? date > maxDate : false}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Date
+            </label>
+            <div className="relative">
+              <Select value={dateFilter} onValueChange={handleDateFilterChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Any Date" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Any Date</SelectItem>
+                  {EVENT_DATE_FILTERS.map(filter => (
+                    <SelectItem key={filter.value} value={filter.value}>
+                      {filter.label}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="custom">Custom Range</SelectItem>
+                </SelectContent>
+              </Select>
               
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {maxDate ? format(maxDate, "PPP") : "End Date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={maxDate}
-                    onSelect={handleMaxDateChange}
-                    disabled={(date) => minDate ? date < minDate : false}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-              
-              {(minDate || maxDate) && (
-                <Button 
-                  type="button" 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={handleClearDates}
-                  className="text-xs"
-                >
-                  Clear Dates
-                </Button>
+              {dateFilter === "custom" && (
+                <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      className="w-full mt-2 justify-start text-left font-normal"
+                      onClick={() => setIsDatePickerOpen(true)}
+                    >
+                      <CalendarIcon className="h-4 w-4 mr-2" />
+                      {minDate && maxDate ? (
+                        `${format(minDate, 'MMM d, yyyy')} - ${format(maxDate, 'MMM d, yyyy')}`
+                      ) : minDate ? (
+                        `From ${format(minDate, 'MMM d, yyyy')}`
+                      ) : maxDate ? (
+                        `Until ${format(maxDate, 'MMM d, yyyy')}`
+                      ) : (
+                        "Select date range"
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="range"
+                      selected={{
+                        from: minDate || undefined,
+                        to: maxDate || undefined
+                      }}
+                      onSelect={range => {
+                        setMinDate(range?.from);
+                        setMaxDate(range?.to);
+                      }}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               )}
             </div>
           </div>
           
-          {/* Location & Sort */}
-          <div className="space-y-4">
-            {/* Location Search */}
-            <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
-                <MapPinIcon className="h-4 w-4 mr-1" />
-                Location
-              </h3>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Price
+            </label>
+            <Select value={priceFilter} onValueChange={setPriceFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Any Price" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Any Price</SelectItem>
+                {EVENT_PRICE_FILTERS.map(filter => (
+                  <SelectItem key={filter.value} value={filter.value}>
+                    {filter.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Location
+            </label>
+            <div className="relative">
+              <MapPinIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 type="text"
-                name="location"
-                placeholder="Enter a city or venue"
-                value={searchParams.location}
-                onChange={handleInputChange}
+                placeholder="City or venue name"
+                className="pl-10"
+                value={location}
+                onChange={e => setLocation(e.target.value)}
               />
             </div>
-            
-            {/* Sort By */}
-            <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
-                {searchParams.sortBy?.includes('asc') ? (
-                  <ArrowUpAZ className="h-4 w-4 mr-1" />
-                ) : (
-                  <ArrowDownAZ className="h-4 w-4 mr-1" />
-                )}
-                Sort By
-              </h3>
-              <Select
-                value={searchParams.sortBy}
-                onValueChange={handleSortByChange}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sort by..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="date-desc">Date (Newest First)</SelectItem>
-                  <SelectItem value="date-asc">Date (Oldest First)</SelectItem>
-                  <SelectItem value="price-asc">Price (Low to High)</SelectItem>
-                  <SelectItem value="price-desc">Price (High to Low)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Event Type
+            </label>
+            <Select value={eventType} onValueChange={setEventType}>
+              <SelectTrigger>
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All Types</SelectItem>
+                {EVENT_TYPES.map(type => (
+                  <SelectItem key={type.value} value={type.value}>
+                    {type.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="flex items-center mt-7">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input 
+                type="checkbox" 
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                checked={featured}
+                onChange={e => setFeatured(e.target.checked)}
+              />
+              <span className="text-sm font-medium text-gray-700">Featured Events Only</span>
+            </label>
+          </div>
+          
+          <div className="flex items-center justify-end mt-7 col-span-1 md:col-span-2">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={clearAllFilters}
+              disabled={getActiveFiltersCount() === 0}
+            >
+              Clear All Filters
+            </Button>
           </div>
         </div>
       )}
-    </form>
-  );
-
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold font-poppins text-gray-900 mb-6">
-          Find Your Next Experience
-        </h1>
-        <SearchContent />
-      </div>
+      
+      {/* Active Filters */}
+      {getActiveFiltersCount() > 0 && (
+        <div className="flex flex-wrap gap-2 mt-2">
+          {renderActiveFilters()}
+        </div>
+      )}
     </div>
   );
-};
-
-export default EventSearch;
+}

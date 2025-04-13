@@ -401,7 +401,7 @@ export class OptimizedStorage implements IStorage {
         ownerId,
         userId: user.id,
         permissions: permissions as Json,
-        venueIds: venueIds
+        venueIds: venueIds as unknown as Json
       }).returning();
       
       // Invalidate cashier caches
@@ -436,7 +436,7 @@ export class OptimizedStorage implements IStorage {
   
   async updateCashierVenues(id: number, venueIds: number[]): Promise<Cashier> {
     const [updatedCashier] = await db.update(cashiers)
-      .set({ venueIds })
+      .set({ venueIds: venueIds as unknown as Json })
       .where(eq(cashiers.id, id))
       .returning();
       

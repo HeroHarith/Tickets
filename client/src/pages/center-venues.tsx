@@ -127,7 +127,7 @@ export default function CenterAllVenuesPage() {
             <Link href="/center/venues">
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
-                Manage Venues
+                Create Venue
               </Button>
             </Link>
           </div>
@@ -260,7 +260,7 @@ export default function CenterAllVenuesPage() {
                     <Link href={`/center/venue/${venue.id}`}>
                       <Button variant="outline" size="sm" className="ml-auto mt-2">
                         <Eye className="mr-2 h-3.5 w-3.5" />
-                        Manage
+                        Edit
                       </Button>
                     </Link>
                   </CardFooter>

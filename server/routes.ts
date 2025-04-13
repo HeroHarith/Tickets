@@ -306,6 +306,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Events API endpoints
+  app.get("/api/events", async (req: Request, res: Response) => {
+    try {
+      // Parse and validate query parameters
+      const { featured, category, search, dateFilter, priceFilter, minDate, maxDate, location, organizer, sortBy } = req.query;
+      
+      // Convert featured from string to boolean if present
+      const featuredBool = featured === 'true' ? true : 
+                          featured === 'false' ? false : undefined;
+      
+      // Convert organizer from string to number if present
+      const organizerId = organizer ? parseInt(organizer as string) : undefined;
+      
+      // Prepare search options
+      const searchOptions = {
+        featured: featuredBool,
+        category: category as string | undefined,
+        search: search as string | undefined,
+        dateFilter: dateFilter as string | undefined,
+        priceFilter: priceFilter as string | undefined,
+        minDate: minDate as string | undefined,
+        maxDate: maxDate as string | undefined,
+        location: location as string | undefined,
+        organizer: !isNaN(organizerId as number) ? organizerId : undefined,
+        sortBy: sortBy as 'date-asc' | 'date-desc' | 'price-asc' | 'price-desc' | undefined
+      };
+      
+      // Get events from storage
+      const events = await storage.getEvents(searchOptions);
+      
+      return res.json(successResponse(events, 200, "Events retrieved successfully"));
+    } catch (error) {
+      console.error("Error retrieving events:", error);
+      return res.status(500).json(errorResponse("Error retrieving events", 500));
+    }
+  });
+  
+  // Get single event endpoint
+  app.get("/api/events/:id", async (req: Request, res: Response) => {
+    try {
+      const eventId = parseInt(req.params.id);
+      if (isNaN(eventId)) {
+        return res.status(400).json(errorResponse("Invalid event ID", 400));
+      }
+      
+      const event = await storage.getEvent(eventId);
+      
+      if (!event) {
+        return res.status(404).json(errorResponse("Event not found", 404));
+      }
+      
+      // Get ticket types for this event
+      const ticketTypes = await storage.getTicketTypes(eventId);
+      
+      // Return event with ticket types
+      return res.json(successResponse({...event, ticketTypes}, 200, "Event retrieved successfully"));
+    } catch (error) {
+      console.error("Error retrieving event:", error);
+      return res.status(500).json(errorResponse("Error retrieving event", 500));
+    }
+  });
+  
+  // Create event endpoint
+  app.post("/api/events", requireRole(["eventManager", "admin"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      // Validate event data
+      const validation = validateRequest(createEventSchema, req.body);
+      if (validation.error) {
+        return res.status(400).json(errorResponse("Invalid event data", 400, validation.error));
+      }
+      
+      // Set organizer to current user if not admin
+      if (req.user.role !== "admin") {
+        req.body.organizer = req.user.id;
+      }
+      
+      try {
+        const event = await storage.createEvent(req.body);
+        return res.status(201).json(successResponse(event, 201, "Event created successfully"));
+      } catch (error: any) {
+        console.error("Error creating event:", error);
+        return res.status(500).json(errorResponse("Error creating event: " + error.message, 500));
+      }
+    } catch (error) {
+      console.error("Error creating event:", error);
+      return res.status(500).json(errorResponse("Error creating event", 500));
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

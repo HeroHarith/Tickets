@@ -14,6 +14,9 @@ import {
   CreateRentalInput,
   RentalStatus, PaymentStatus,
   venues, rentals,
+  // Cashier types
+  Cashier, InsertCashier,
+  cashiers, DEFAULT_CASHIER_PERMISSIONS,
   // Share tracking types
   EventShare, InsertEventShare,
   EventShareAnalytics, SharePlatform,
@@ -48,6 +51,14 @@ export interface IStorage {
   // Password reset operations
   createPasswordResetToken(email: string): Promise<string | null>;
   resetPassword(token: string, newPassword: string): Promise<boolean>;
+  
+  // Cashier operations
+  getCashiers(ownerId: number): Promise<Cashier[]>;
+  getCashiersByUserId(userId: number): Promise<Cashier[]>;
+  createCashier(ownerId: number, email: string, permissions?: Record<string, boolean>, venueIds?: number[]): Promise<{ cashier: Cashier, user: User, tempPassword: string }>;
+  updateCashierPermissions(id: number, permissions: Record<string, boolean>): Promise<Cashier>;
+  updateCashierVenues(id: number, venueIds: number[]): Promise<Cashier>;
+  deleteCashier(id: number): Promise<boolean>;
   
   // Event operations
   getEvent(id: number): Promise<Event | undefined>;
@@ -307,6 +318,108 @@ export class DatabaseStorage implements IStorage {
       return true;
     } catch (error) {
       console.error('Error resetting password:', error);
+      return false;
+    }
+  }
+  
+  // Cashier operations
+  async getCashiers(ownerId: number): Promise<Cashier[]> {
+    return await db.select()
+      .from(cashiers)
+      .where(eq(cashiers.ownerId, ownerId));
+  }
+  
+  async getCashiersByUserId(userId: number): Promise<Cashier[]> {
+    return await db.select()
+      .from(cashiers)
+      .where(eq(cashiers.userId, userId));
+  }
+  
+  async createCashier(
+    ownerId: number,
+    email: string,
+    permissions: Record<string, boolean> = DEFAULT_CASHIER_PERMISSIONS,
+    venueIds: number[] = []
+  ): Promise<{ cashier: Cashier, user: User, tempPassword: string }> {
+    const existingUser = await this.getUserByEmail(email);
+    
+    return await db.transaction(async (tx) => {
+      let user: User;
+      const tempPassword = randomBytes(4).toString('hex'); // Generate a temporary password
+      const hashedPassword = await hashPassword(tempPassword);
+      
+      if (existingUser) {
+        // If user exists, use the existing user
+        user = existingUser;
+      } else {
+        // Create a new user with the cashier role
+        const [newUser] = await tx.insert(users).values({
+          username: email.split('@')[0] + '-' + nanoid(4),
+          email,
+          password: hashedPassword,
+          role: 'customer', // Cashiers are given customer role initially
+          emailVerified: false // They will need to verify their email
+        }).returning();
+        
+        user = newUser;
+      }
+      
+      // Create the cashier record
+      const [newCashier] = await tx.insert(cashiers).values({
+        ownerId,
+        userId: user.id,
+        permissions: permissions as Json,
+        venueIds: venueIds
+      }).returning();
+      
+      return {
+        cashier: newCashier,
+        user,
+        tempPassword: existingUser ? '' : tempPassword // Only return password for new users
+      };
+    });
+  }
+  
+  async updateCashierPermissions(id: number, permissions: Record<string, boolean>): Promise<Cashier> {
+    const [updatedCashier] = await db.update(cashiers)
+      .set({ permissions: permissions as Json })
+      .where(eq(cashiers.id, id))
+      .returning();
+      
+    if (!updatedCashier) {
+      throw new Error(`Cashier with ID ${id} not found`);
+    }
+    
+    return updatedCashier;
+  }
+  
+  async updateCashierVenues(id: number, venueIds: number[]): Promise<Cashier> {
+    const [updatedCashier] = await db.update(cashiers)
+      .set({ venueIds })
+      .where(eq(cashiers.id, id))
+      .returning();
+      
+    if (!updatedCashier) {
+      throw new Error(`Cashier with ID ${id} not found`);
+    }
+    
+    return updatedCashier;
+  }
+  
+  async deleteCashier(id: number): Promise<boolean> {
+    try {
+      const [cashier] = await db.select().from(cashiers).where(eq(cashiers.id, id));
+      
+      if (!cashier) {
+        return false;
+      }
+      
+      // Delete the cashier
+      await db.delete(cashiers).where(eq(cashiers.id, id));
+      
+      return true;
+    } catch (error) {
+      console.error('Error deleting cashier:', error);
       return false;
     }
   }

@@ -226,6 +226,17 @@ export const venues = pgTable("venues", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Cashier model for venue centers
+export const cashiers = pgTable("cashiers", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(), // References users.id
+  ownerId: integer("owner_id").notNull(), // References users.id with role "center"
+  venueIds: jsonb("venue_ids"), // Array of venue IDs the cashier can manage
+  permissions: jsonb("permissions"), // JSON object with permission flags
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Rental model (bookings for venues)
 export const rentals = pgTable("rentals", {
   id: serial("id").primaryKey(),
@@ -326,7 +337,55 @@ export const insertEventShareSchema = createInsertSchema(eventShares).omit({
   shareDate: true,
 });
 
+// Insert schema for cashiers
+export const insertCashierSchema = createInsertSchema(cashiers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Default permissions object for cashiers
+export const DEFAULT_CASHIER_PERMISSIONS = {
+  manageBookings: true,
+  viewReports: true,
+  editVenues: false,
+  deleteVenues: false,
+  managePayments: true
+};
+
+// Define the cashier relationships
+export const cashiersRelations = relations(cashiers, ({ one }) => ({
+  user: one(users, {
+    fields: [cashiers.userId],
+    references: [users.id],
+  }),
+  owner: one(users, {
+    fields: [cashiers.ownerId],
+    references: [users.id],
+  }),
+}));
+
+// Define the venue relationships
+export const venuesRelations = relations(venues, ({ one, many }) => ({
+  owner: one(users, {
+    fields: [venues.ownerId],
+    references: [users.id],
+  }),
+  rentals: many(rentals),
+}));
+
+// Define the rental relationships
+export const rentalsRelations = relations(rentals, ({ one }) => ({
+  venue: one(venues, {
+    fields: [rentals.venueId],
+    references: [venues.id],
+  }),
+}));
+
 // Types
+export type Cashier = typeof cashiers.$inferSelect;
+export type InsertCashier = z.infer<typeof insertCashierSchema>;
+
 export type EventShare = typeof eventShares.$inferSelect;
 export type InsertEventShare = z.infer<typeof insertEventShareSchema>;
 

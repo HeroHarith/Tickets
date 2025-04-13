@@ -5,6 +5,7 @@ import connectPg from 'connect-pg-simple';
 import NodeCache from 'node-cache';
 import { randomBytes } from 'crypto';
 import QRCode from 'qrcode';
+import { hashPassword } from './auth';
 import { nanoid } from 'nanoid';
 import { 
   users, 
@@ -13,6 +14,7 @@ import {
   tickets,
   venues, 
   rentals,
+  cashiers,
   eventShares,
   type User,
   type Event,
@@ -20,12 +22,15 @@ import {
   type Ticket,
   type Venue,
   type Rental,
+  type Cashier,
   type EventShare,
   type InsertUser,
   type InsertVenue, 
+  type InsertCashier,
   type InsertEventShare,
   type RentalStatus,
-  type PaymentStatus
+  type PaymentStatus,
+  DEFAULT_CASHIER_PERMISSIONS
 } from '@shared/schema';
 import { 
   type EventSearchParams, 
@@ -316,6 +321,156 @@ export class OptimizedStorage implements IStorage {
       return true;
     } catch (error) {
       console.error('Error resetting password:', error);
+      return false;
+    }
+  }
+  
+  // CASHIER OPERATIONS
+  async getCashiers(ownerId: number): Promise<Cashier[]> {
+    const cacheKey = this.getCacheKey('cashiers-by-owner', ownerId);
+    const cachedCashiers = cache.get<Cashier[]>(cacheKey);
+    
+    if (cachedCashiers) {
+      return cachedCashiers;
+    }
+    
+    const result = await db.select()
+      .from(cashiers)
+      .where(eq(cashiers.ownerId, ownerId));
+    
+    // Cache the results
+    cache.set(cacheKey, result, TTL.MEDIUM);
+    
+    return result;
+  }
+  
+  async getCashiersByUserId(userId: number): Promise<Cashier[]> {
+    const cacheKey = this.getCacheKey('cashiers-by-user', userId);
+    const cachedCashiers = cache.get<Cashier[]>(cacheKey);
+    
+    if (cachedCashiers) {
+      return cachedCashiers;
+    }
+    
+    const result = await db.select()
+      .from(cashiers)
+      .where(eq(cashiers.userId, userId));
+    
+    // Cache the results
+    cache.set(cacheKey, result, TTL.MEDIUM);
+    
+    return result;
+  }
+  
+  async createCashier(
+    ownerId: number,
+    email: string,
+    permissions: Record<string, boolean> = DEFAULT_CASHIER_PERMISSIONS,
+    venueIds: number[] = []
+  ): Promise<{ cashier: Cashier, user: User, tempPassword: string }> {
+    const existingUser = await this.getUserByEmail(email);
+    
+    return await db.transaction(async (tx) => {
+      let user: User;
+      const tempPassword = randomBytes(4).toString('hex'); // Generate a temporary password
+      const hashedPassword = await hashPassword(tempPassword);
+      
+      if (existingUser) {
+        // If user exists, use the existing user
+        user = existingUser;
+      } else {
+        // Create a new user with the cashier role
+        const [newUser] = await tx.insert(users).values({
+          username: email.split('@')[0] + '-' + nanoid(4),
+          email,
+          password: hashedPassword,
+          role: 'customer', // Cashiers are given customer role initially
+          emailVerified: false // They will need to verify their email
+        }).returning();
+        
+        user = newUser;
+        
+        // Cache the new user
+        cache.set(this.getCacheKey('user', user.id), user, TTL.MEDIUM);
+        cache.set(this.getCacheKey('user-username', user.username), user, TTL.MEDIUM);
+        cache.set(this.getCacheKey('user-email', user.email), user, TTL.MEDIUM);
+      }
+      
+      // Create the cashier record
+      const [newCashier] = await tx.insert(cashiers).values({
+        ownerId,
+        userId: user.id,
+        permissions: permissions as Json,
+        venueIds: venueIds
+      }).returning();
+      
+      // Invalidate cashier caches
+      this.invalidateTypeCache('cashiers-by-owner');
+      this.invalidateTypeCache('cashiers-by-user');
+      
+      return {
+        cashier: newCashier,
+        user,
+        tempPassword: existingUser ? '' : tempPassword // Only return password for new users
+      };
+    });
+  }
+  
+  async updateCashierPermissions(id: number, permissions: Record<string, boolean>): Promise<Cashier> {
+    const [updatedCashier] = await db.update(cashiers)
+      .set({ permissions: permissions as Json })
+      .where(eq(cashiers.id, id))
+      .returning();
+      
+    if (!updatedCashier) {
+      throw new Error(`Cashier with ID ${id} not found`);
+    }
+    
+    // Invalidate cashier caches
+    this.invalidateCache('cashier', id);
+    this.invalidateTypeCache('cashiers-by-owner');
+    this.invalidateTypeCache('cashiers-by-user');
+    
+    return updatedCashier;
+  }
+  
+  async updateCashierVenues(id: number, venueIds: number[]): Promise<Cashier> {
+    const [updatedCashier] = await db.update(cashiers)
+      .set({ venueIds })
+      .where(eq(cashiers.id, id))
+      .returning();
+      
+    if (!updatedCashier) {
+      throw new Error(`Cashier with ID ${id} not found`);
+    }
+    
+    // Invalidate cashier caches
+    this.invalidateCache('cashier', id);
+    this.invalidateTypeCache('cashiers-by-owner');
+    this.invalidateTypeCache('cashiers-by-user');
+    
+    return updatedCashier;
+  }
+  
+  async deleteCashier(id: number): Promise<boolean> {
+    try {
+      const [cashier] = await db.select().from(cashiers).where(eq(cashiers.id, id));
+      
+      if (!cashier) {
+        return false;
+      }
+      
+      // Delete the cashier
+      await db.delete(cashiers).where(eq(cashiers.id, id));
+      
+      // Invalidate caches
+      this.invalidateCache('cashier', id);
+      this.invalidateTypeCache('cashiers-by-owner');
+      this.invalidateTypeCache('cashiers-by-user');
+      
+      return true;
+    } catch (error) {
+      console.error('Error deleting cashier:', error);
       return false;
     }
   }

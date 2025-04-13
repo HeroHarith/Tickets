@@ -136,17 +136,11 @@ export default function CenterCashiersPage() {
   });
   
   // Extract data from the standardized response format
-  const cashiers: Cashier[] = Array.isArray(cashiersResponse) 
-    ? cashiersResponse 
-    : (cashiersResponse && typeof cashiersResponse === 'object' && 'data' in cashiersResponse 
-        ? cashiersResponse.data as Cashier[] 
-        : []);
+  const cashiers: Cashier[] = cashiersResponse?.data || [];
+  console.log('Extracted cashiers:', cashiers);
   
-  const venues: Venue[] = Array.isArray(venuesResponse) 
-    ? venuesResponse 
-    : (venuesResponse && typeof venuesResponse === 'object' && 'data' in venuesResponse 
-        ? venuesResponse.data as Venue[] 
-        : []);
+  const venues: Venue[] = venuesResponse?.data || [];
+  console.log('Extracted venues:', venues);
   
   // Add cashier mutation
   const addCashierMutation = useMutation({

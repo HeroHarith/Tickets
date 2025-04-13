@@ -35,7 +35,7 @@ interface SpeakerInput {
   socialLinks?: Record<string, string>; // Social media links
   presentationTopic?: string;
   presentationDescription?: string;
-  presentationTime?: Date;
+  presentationTime: Date; // Making this required to match implementation
 }
 
 interface WorkshopInput {
@@ -116,6 +116,8 @@ const CreateEventForm = ({ form, onSubmit, isPending, categories }: CreateEventF
   // Speaker management functions
   const addSpeaker = () => {
     const currentSpeakers = form.getValues("speakers") || [];
+    // Use the event start date as default presentation time
+    const presentationTime = new Date(form.getValues("startDate"));
     form.setValue("speakers", [
       ...currentSpeakers,
       {
@@ -123,7 +125,8 @@ const CreateEventForm = ({ form, onSubmit, isPending, categories }: CreateEventF
         bio: "",
         title: "",
         company: "",
-        presentationTopic: ""
+        presentationTopic: "",
+        presentationTime // Add the required presentationTime field
       }
     ]);
     setExpandedSpeaker(currentSpeakers.length);
@@ -989,7 +992,8 @@ const CreateEventForm = ({ form, onSubmit, isPending, categories }: CreateEventF
                             speaker.presentationTime.toISOString().slice(0, 16) : 
                             ""}
                           onChange={(e) => {
-                            const date = e.target.value ? new Date(e.target.value) : undefined;
+                            // Create a Date object or use current date as fallback if empty
+                            const date = e.target.value ? new Date(e.target.value) : new Date();
                             const updatedSpeakers = [...form.getValues("speakers")];
                             updatedSpeakers[index] = {
                               ...updatedSpeakers[index],
@@ -1140,7 +1144,8 @@ const CreateEventForm = ({ form, onSubmit, isPending, categories }: CreateEventF
                             workshop.startTime.toISOString().slice(0, 16) : 
                             ""}
                           onChange={(e) => {
-                            const date = e.target.value ? new Date(e.target.value) : undefined;
+                            // Create a Date object or use current date as fallback if empty
+                            const date = e.target.value ? new Date(e.target.value) : new Date();
                             const updatedWorkshops = [...form.getValues("workshops")];
                             updatedWorkshops[index] = {
                               ...updatedWorkshops[index],
@@ -1159,7 +1164,8 @@ const CreateEventForm = ({ form, onSubmit, isPending, categories }: CreateEventF
                             workshop.endTime.toISOString().slice(0, 16) : 
                             ""}
                           onChange={(e) => {
-                            const date = e.target.value ? new Date(e.target.value) : undefined;
+                            // Create a Date object or use current date as fallback if empty
+                            const date = e.target.value ? new Date(e.target.value) : new Date();
                             const updatedWorkshops = [...form.getValues("workshops")];
                             updatedWorkshops[index] = {
                               ...updatedWorkshops[index],

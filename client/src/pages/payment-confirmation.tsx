@@ -7,7 +7,16 @@ import { Separator } from '@/components/ui/separator';
 import { CheckCircle, Download, Calendar, Clock, MapPin, Ticket as TicketIcon, User, Mail, QrCode } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { Event, Ticket as TicketType } from '@shared/schema';
+import { Event, Ticket as TicketBase } from '@shared/schema';
+
+// Extended ticket type that includes additional properties from our API
+interface EnhancedTicket extends TicketBase {
+  ticketTypeName: string;
+  price: string | number;
+  attendeeName: string;
+  attendeeEmail: string;
+  uuid: string;
+}
 import TabsComponent from '@/components/ui/tabs-component';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -160,11 +169,11 @@ const PaymentConfirmation = () => {
     );
   }
   
-  const tickets = ticketsQuery.data as TicketType[];
+  const tickets = ticketsQuery.data as EnhancedTicket[];
   const event = eventQuery.data as Event;
   
   // Group tickets by type for display
-  const ticketsByType: Record<string, TicketType[]> = {};
+  const ticketsByType: Record<string, EnhancedTicket[]> = {};
   tickets.forEach(ticket => {
     const typeId = ticket.ticketTypeId.toString();
     if (!ticketsByType[typeId]) {
@@ -175,7 +184,7 @@ const PaymentConfirmation = () => {
   
   // Calculate total amount paid
   const totalAmount = tickets.reduce((sum, ticket) => {
-    return sum + Number(ticket.price);
+    return sum + Number(ticket.price || ticket.totalPrice);
   }, 0);
   
   return (

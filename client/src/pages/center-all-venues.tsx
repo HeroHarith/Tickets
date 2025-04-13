@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { CenterLayout } from "@/components/ui/center-layout";
 import { Link } from "wouter";
+import { VenueEditDialog } from "@/components/ui/venue-edit-dialog";
 import { 
   Card, 
   CardContent, 
@@ -44,6 +45,8 @@ export default function CenterAllVenuesPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedVenue, setSelectedVenue] = useState<Venue | undefined>(undefined);
   
   // Load venues
   const { 
@@ -121,12 +124,15 @@ export default function CenterAllVenuesPage() {
               />
             </div>
             
-            <Link href="/center/venues">
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Create Venue
-              </Button>
-            </Link>
+            <Button
+              onClick={() => {
+                setSelectedVenue(undefined);
+                setEditDialogOpen(true);
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Create Venue
+            </Button>
           </div>
         </div>
         
@@ -254,12 +260,18 @@ export default function CenterAllVenuesPage() {
                         </div>
                       </div>
                     )}
-                    <Link href={`/center/venue/${venue.id}`}>
-                      <Button variant="outline" size="sm" className="ml-auto mt-2">
-                        <Eye className="mr-2 h-3.5 w-3.5" />
-                        Manage
-                      </Button>
-                    </Link>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="ml-auto mt-2"
+                      onClick={() => {
+                        setSelectedVenue(venue);
+                        setEditDialogOpen(true);
+                      }}
+                    >
+                      <Eye className="mr-2 h-3.5 w-3.5" />
+                      Edit
+                    </Button>
                   </CardFooter>
                 </Card>
               ))
@@ -276,20 +288,29 @@ export default function CenterAllVenuesPage() {
                         ? "You don't have any inactive venues" 
                         : "Get started by creating your first venue"}
                 </p>
-                <Link href="/center/venues">
-                  <Button 
-                    variant="outline" 
-                    className="mt-4"
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add a Venue
-                  </Button>
-                </Link>
+                <Button 
+                  variant="outline" 
+                  className="mt-4"
+                  onClick={() => {
+                    setSelectedVenue(undefined);
+                    setEditDialogOpen(true);
+                  }}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add a Venue
+                </Button>
               </div>
             )}
           </div>
         </Tabs>
       </div>
+      
+      {/* Venue Edit Dialog */}
+      <VenueEditDialog
+        venue={selectedVenue}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+      />
     </CenterLayout>
   );
 }

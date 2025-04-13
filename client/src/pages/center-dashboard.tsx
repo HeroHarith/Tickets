@@ -5,7 +5,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Loader2, PlusCircle, X, Check, Edit, Trash, Calendar, Clock, User, DollarSign, 
-  BarChart3, Users, CheckSquare, ShieldCheck, Building, Mail
+  BarChart3, Users, CheckSquare, ShieldCheck, Building, Mail, Key, Shield
 } from "lucide-react";
 import { VenueSalesReport } from "@/components/ui/venue-sales-report";
 import { format } from "date-fns";
@@ -186,6 +186,16 @@ export default function CenterDashboard() {
     enabled: user?.role === "center"
   });
   
+  // Load cashiers
+  const {
+    data: cashiers = [],
+    isLoading: cashiersLoading,
+    error: cashiersError
+  } = useQuery<Cashier[]>({
+    queryKey: ["/api/cashiers"],
+    enabled: user?.role === "center"
+  });
+  
   // Create venue mutation
   const createVenueMutation = useMutation({
     mutationFn: async (data: z.infer<typeof venueFormSchema>) => {
@@ -305,6 +315,101 @@ export default function CenterDashboard() {
     }
   });
   
+  // Create cashier mutation
+  const createCashierMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof cashierFormSchema>) => {
+      const res = await apiRequest("POST", "/api/cashiers", data);
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Cashier added",
+        description: "A new cashier has been added successfully.",
+      });
+      setIsCreateCashierDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/cashiers"] });
+      cashierForm.reset();
+    },
+    onError: (error) => {
+      console.error("Error creating cashier:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add cashier. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Update cashier permissions mutation
+  const updateCashierPermissionsMutation = useMutation({
+    mutationFn: async ({ cashierId, permissions }: { cashierId: number, permissions: Record<string, boolean> }) => {
+      const res = await apiRequest("PATCH", `/api/cashiers/${cashierId}/permissions`, { permissions });
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Permissions updated",
+        description: "Cashier permissions have been updated successfully.",
+      });
+      setIsEditCashierDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/cashiers"] });
+    },
+    onError: (error) => {
+      console.error("Error updating cashier permissions:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update permissions. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Update cashier venues mutation
+  const updateCashierVenuesMutation = useMutation({
+    mutationFn: async ({ cashierId, venueIds }: { cashierId: number, venueIds: number[] }) => {
+      const res = await apiRequest("PATCH", `/api/cashiers/${cashierId}/venues`, { venueIds });
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Venues updated",
+        description: "Cashier venue access has been updated successfully.",
+      });
+      setIsEditCashierDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/cashiers"] });
+    },
+    onError: (error) => {
+      console.error("Error updating cashier venues:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update venue access. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Delete cashier mutation
+  const deleteCashierMutation = useMutation({
+    mutationFn: async (cashierId: number) => {
+      await apiRequest("DELETE", `/api/cashiers/${cashierId}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Cashier removed",
+        description: "The cashier has been removed successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/cashiers"] });
+    },
+    onError: (error) => {
+      console.error("Error deleting cashier:", error);
+      toast({
+        title: "Error",
+        description: "Failed to remove cashier. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+  
   // Handle form submission for creating a venue
   const onCreateVenue = (data: z.infer<typeof venueFormSchema>) => {
     createVenueMutation.mutate(data);
@@ -383,6 +488,49 @@ export default function CenterDashboard() {
       isActive: true
     } as any);
     setIsCreateVenueDialogOpen(true);
+  };
+  
+  // Handle form submission for creating a cashier
+  const onCreateCashier = (data: z.infer<typeof cashierFormSchema>) => {
+    createCashierMutation.mutate(data);
+  };
+  
+  // Handle editing a cashier
+  const handleEditCashier = (cashier: Cashier) => {
+    setSelectedCashier(cashier);
+    
+    cashierForm.reset({
+      email: cashier.user?.email || "",
+      permissions: cashier.permissions,
+      venueIds: cashier.venueIds
+    });
+    
+    setIsEditCashierDialogOpen(true);
+  };
+  
+  // Handle updating cashier permissions
+  const handleUpdateCashierPermissions = (data: z.infer<typeof cashierFormSchema>) => {
+    if (!selectedCashier) return;
+    updateCashierPermissionsMutation.mutate({ 
+      cashierId: selectedCashier.id, 
+      permissions: data.permissions 
+    });
+  };
+  
+  // Handle updating cashier venue access
+  const handleUpdateCashierVenues = (data: z.infer<typeof cashierFormSchema>) => {
+    if (!selectedCashier) return;
+    updateCashierVenuesMutation.mutate({ 
+      cashierId: selectedCashier.id, 
+      venueIds: data.venueIds 
+    });
+  };
+  
+  // Handle confirming deletion of a cashier
+  const handleDeleteCashier = (cashier: Cashier) => {
+    if (confirm(`Are you sure you want to remove this cashier? This action cannot be undone.`)) {
+      deleteCashierMutation.mutate(cashier.id);
+    }
   };
   
   // Redirect if not a center role
@@ -603,6 +751,130 @@ export default function CenterDashboard() {
             ) : (
               <div className="text-center my-8">
                 <p className="text-muted-foreground">No rentals found</p>
+              </div>
+            )}
+          </TabsContent>
+          
+          {/* Cashiers Tab */}
+          <TabsContent value="cashiers">
+            {cashiersLoading ? (
+              <div className="flex justify-center my-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : cashiersError ? (
+              <div className="text-center my-8 text-destructive">
+                Error loading cashiers
+              </div>
+            ) : cashiers && cashiers.length > 0 ? (
+              <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-muted">
+                        <th className="text-left py-3 px-4 font-medium">Name</th>
+                        <th className="text-left py-3 px-4 font-medium">Email</th>
+                        <th className="text-left py-3 px-4 font-medium">Permissions</th>
+                        <th className="text-left py-3 px-4 font-medium">Assigned Venues</th>
+                        <th className="text-left py-3 px-4 font-medium">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cashiers.map((cashier: Cashier) => (
+                        <tr 
+                          key={cashier.id}
+                          className="border-t hover:bg-muted/50"
+                        >
+                          <td className="py-3 px-4">
+                            {cashier.user?.name || "N/A"}
+                          </td>
+                          <td className="py-3 px-4">
+                            {cashier.user?.email || "N/A"}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex flex-wrap gap-1">
+                              {cashier.permissions.can_manage_bookings && (
+                                <Badge variant="secondary" className="text-xs">
+                                  <CheckSquare className="h-3 w-3 mr-1" />
+                                  Bookings
+                                </Badge>
+                              )}
+                              
+                              {cashier.permissions.can_manage_payments && (
+                                <Badge variant="secondary" className="text-xs">
+                                  <DollarSign className="h-3 w-3 mr-1" />
+                                  Payments
+                                </Badge>
+                              )}
+                              
+                              {cashier.permissions.can_view_reports && (
+                                <Badge variant="secondary" className="text-xs">
+                                  <BarChart3 className="h-3 w-3 mr-1" />
+                                  Reports
+                                </Badge>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex flex-wrap gap-1">
+                              {cashier.venueIds.length > 0 ? (
+                                <>
+                                  {cashier.venueIds.slice(0, 2).map(venueId => {
+                                    const venue = venues.find(v => v.id === venueId);
+                                    return (
+                                      <Badge key={venueId} variant="outline" className="text-xs">
+                                        {venue?.name || `Venue ${venueId}`}
+                                      </Badge>
+                                    );
+                                  })}
+                                  {cashier.venueIds.length > 2 && (
+                                    <Badge variant="outline" className="text-xs">
+                                      +{cashier.venueIds.length - 2} more
+                                    </Badge>
+                                  )}
+                                </>
+                              ) : (
+                                <span className="text-muted-foreground text-xs">All venues</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex space-x-2">
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                className="h-8 px-2"
+                                onClick={() => handleEditCashier(cashier)}
+                              >
+                                <Edit className="h-3.5 w-3.5 mr-1" />
+                                Edit
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                className="h-8 px-2 text-destructive hover:text-destructive"
+                                onClick={() => handleDeleteCashier(cashier)}
+                              >
+                                <Trash className="h-3.5 w-3.5 mr-1" />
+                                Remove
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center my-8">
+                <p className="text-muted-foreground">No cashiers found</p>
+                <Button 
+                  variant="outline" 
+                  className="mt-2"
+                  onClick={() => setIsCreateCashierDialogOpen(true)}
+                >
+                  Add your first cashier
+                </Button>
               </div>
             )}
           </TabsContent>
@@ -1182,6 +1454,476 @@ export default function CenterDashboard() {
             </DialogFooter>
           </DialogContent>
         )}
+      </Dialog>
+      {/* Create Cashier Dialog */}
+      <Dialog open={isCreateCashierDialogOpen} onOpenChange={setIsCreateCashierDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Add New Cashier</DialogTitle>
+            <DialogDescription>
+              Enter the email address of the person you want to add as a cashier. They will receive an email with login instructions.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Form {...cashierForm}>
+            <form onSubmit={cashierForm.handleSubmit(onCreateCashier)} className="space-y-4">
+              <FormField
+                control={cashierForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email Address</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="email" placeholder="cashier@example.com" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <div>
+                <h4 className="text-sm font-medium mb-2 flex items-center">
+                  <Shield className="h-4 w-4 mr-1" />
+                  Permissions
+                </h4>
+                <div className="space-y-2 border rounded-md p-3">
+                  <FormField
+                    control={cashierForm.control}
+                    name="permissions.can_manage_bookings"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <input
+                            type="checkbox"
+                            checked={field.value}
+                            onChange={field.onChange}
+                            className="h-4 w-4 rounded border-gray-300"
+                          />
+                        </FormControl>
+                        <FormLabel className="cursor-pointer text-sm">
+                          Can manage bookings and rentals
+                        </FormLabel>
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={cashierForm.control}
+                    name="permissions.can_manage_payments"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <input
+                            type="checkbox"
+                            checked={field.value}
+                            onChange={field.onChange}
+                            className="h-4 w-4 rounded border-gray-300"
+                          />
+                        </FormControl>
+                        <FormLabel className="cursor-pointer text-sm">
+                          Can manage and process payments
+                        </FormLabel>
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={cashierForm.control}
+                    name="permissions.can_view_reports"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <input
+                            type="checkbox"
+                            checked={field.value}
+                            onChange={field.onChange}
+                            className="h-4 w-4 rounded border-gray-300"
+                          />
+                        </FormControl>
+                        <FormLabel className="cursor-pointer text-sm">
+                          Can view sales reports and analytics
+                        </FormLabel>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+              
+              {venues && venues.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium mb-2 flex items-center">
+                    <Building className="h-4 w-4 mr-1" />
+                    Venue Access
+                  </h4>
+                  <div className="space-y-2 border rounded-md p-3">
+                    <div className="text-sm text-muted-foreground mb-2">
+                      Select which venues this cashier can manage. If none are selected, they can access all venues.
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {venues.map(venue => (
+                        <FormField
+                          key={venue.id}
+                          control={cashierForm.control}
+                          name="venueIds"
+                          render={({ field }) => (
+                            <FormItem className="flex items-center space-x-2 space-y-0">
+                              <FormControl>
+                                <input
+                                  type="checkbox"
+                                  checked={field.value?.includes(venue.id)}
+                                  onChange={e => {
+                                    const checked = e.target.checked;
+                                    const currentIds = field.value || [];
+                                    
+                                    field.onChange(
+                                      checked
+                                        ? [...currentIds, venue.id]
+                                        : currentIds.filter(id => id !== venue.id)
+                                    );
+                                  }}
+                                  className="h-4 w-4 rounded border-gray-300"
+                                />
+                              </FormControl>
+                              <FormLabel className="cursor-pointer text-sm">
+                                {venue.name}
+                              </FormLabel>
+                            </FormItem>
+                          )}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsCreateCashierDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit"
+                  disabled={createCashierMutation.isPending}
+                >
+                  {createCashierMutation.isPending && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  Add Cashier
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Edit Cashier Dialog */}
+      <Dialog open={isEditCashierDialogOpen} onOpenChange={setIsEditCashierDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Cashier</DialogTitle>
+            <DialogDescription>
+              Update permissions and venue access for this cashier.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Form {...cashierForm}>
+            <form onSubmit={e => {
+              e.preventDefault();
+              const data = cashierForm.getValues();
+              handleUpdateCashierPermissions(data);
+              handleUpdateCashierVenues(data);
+            }} className="space-y-4">
+              <div>
+                <FormField
+                  control={cashierForm.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email Address</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="email" disabled />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <div>
+                <h4 className="text-sm font-medium mb-2 flex items-center">
+                  <Shield className="h-4 w-4 mr-1" />
+                  Permissions
+                </h4>
+                <div className="space-y-2 border rounded-md p-3">
+                  <FormField
+                    control={cashierForm.control}
+                    name="permissions.can_manage_bookings"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <input
+                            type="checkbox"
+                            checked={field.value}
+                            onChange={field.onChange}
+                            className="h-4 w-4 rounded border-gray-300"
+                          />
+                        </FormControl>
+                        <FormLabel className="cursor-pointer text-sm">
+                          Can manage bookings and rentals
+                        </FormLabel>
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={cashierForm.control}
+                    name="permissions.can_manage_payments"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <input
+                            type="checkbox"
+                            checked={field.value}
+                            onChange={field.onChange}
+                            className="h-4 w-4 rounded border-gray-300"
+                          />
+                        </FormControl>
+                        <FormLabel className="cursor-pointer text-sm">
+                          Can manage and process payments
+                        </FormLabel>
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={cashierForm.control}
+                    name="permissions.can_view_reports"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <input
+                            type="checkbox"
+                            checked={field.value}
+                            onChange={field.onChange}
+                            className="h-4 w-4 rounded border-gray-300"
+                          />
+                        </FormControl>
+                        <FormLabel className="cursor-pointer text-sm">
+                          Can view sales reports and analytics
+                        </FormLabel>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+              
+              {venues && venues.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium mb-2 flex items-center">
+                    <Building className="h-4 w-4 mr-1" />
+                    Venue Access
+                  </h4>
+                  <div className="space-y-2 border rounded-md p-3">
+                    <div className="text-sm text-muted-foreground mb-2">
+                      Select which venues this cashier can manage. If none are selected, they can access all venues.
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {venues.map(venue => (
+                        <FormField
+                          key={venue.id}
+                          control={cashierForm.control}
+                          name="venueIds"
+                          render={({ field }) => (
+                            <FormItem className="flex items-center space-x-2 space-y-0">
+                              <FormControl>
+                                <input
+                                  type="checkbox"
+                                  checked={field.value?.includes(venue.id)}
+                                  onChange={e => {
+                                    const checked = e.target.checked;
+                                    const currentIds = field.value || [];
+                                    
+                                    field.onChange(
+                                      checked
+                                        ? [...currentIds, venue.id]
+                                        : currentIds.filter(id => id !== venue.id)
+                                    );
+                                  }}
+                                  className="h-4 w-4 rounded border-gray-300"
+                                />
+                              </FormControl>
+                              <FormLabel className="cursor-pointer text-sm">
+                                {venue.name}
+                              </FormLabel>
+                            </FormItem>
+                          )}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsEditCashierDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit"
+                  disabled={updateCashierPermissionsMutation.isPending || updateCashierVenuesMutation.isPending}
+                >
+                  {(updateCashierPermissionsMutation.isPending || updateCashierVenuesMutation.isPending) && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  Save Changes
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Rental Details Dialog */}
+      <Dialog open={isRentalDetailsDialogOpen} onOpenChange={setIsRentalDetailsDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          {selectedRental && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Rental Details</DialogTitle>
+                <DialogDescription>
+                  View and manage rental details
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Venue</h3>
+                    <p className="text-base">{selectedRental.venueName || `Venue #${selectedRental.venueId}`}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Total Price</h3>
+                    <p className="text-base font-medium">${Number(selectedRental.totalPrice).toFixed(2)}</p>
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Date & Time</h3>
+                  <p className="text-base">
+                    {format(new Date(selectedRental.startTime), "MMMM dd, yyyy")}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {format(new Date(selectedRental.startTime), "h:mm a")} - {format(new Date(selectedRental.endTime), "h:mm a")}
+                  </p>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Status</h3>
+                    <div className="mt-1">
+                      <StatusBadge status={selectedRental.status} />
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Payment Status</h3>
+                    <div className="mt-1">
+                      <PaymentStatusBadge status={selectedRental.paymentStatus} />
+                    </div>
+                  </div>
+                </div>
+                
+                {selectedRental.notes && (
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Notes</h3>
+                    <p className="text-sm mt-1 p-2 bg-muted rounded-md">{selectedRental.notes}</p>
+                  </div>
+                )}
+                
+                <Separator />
+                
+                <div>
+                  <h3 className="text-sm font-medium mb-2">Update Status</h3>
+                  <div className="flex flex-wrap gap-2">
+                    <Button 
+                      size="sm"
+                      variant={selectedRental.status === "pending" ? "default" : "outline"}
+                      onClick={() => handleUpdateRentalStatus("pending")}
+                      disabled={updateRentalStatusMutation.isPending}
+                    >
+                      Pending
+                    </Button>
+                    <Button 
+                      size="sm"
+                      variant={selectedRental.status === "confirmed" ? "default" : "outline"}
+                      onClick={() => handleUpdateRentalStatus("confirmed")}
+                      disabled={updateRentalStatusMutation.isPending}
+                    >
+                      Confirm
+                    </Button>
+                    <Button 
+                      size="sm"
+                      variant={selectedRental.status === "completed" ? "default" : "outline"}
+                      onClick={() => handleUpdateRentalStatus("completed")}
+                      disabled={updateRentalStatusMutation.isPending}
+                    >
+                      Complete
+                    </Button>
+                    <Button 
+                      size="sm"
+                      variant={selectedRental.status === "canceled" ? "destructive" : "outline"}
+                      onClick={() => handleUpdateRentalStatus("canceled")}
+                      disabled={updateRentalStatusMutation.isPending}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="text-sm font-medium mb-2">Update Payment</h3>
+                  <div className="flex flex-wrap gap-2">
+                    <Button 
+                      size="sm"
+                      variant={selectedRental.paymentStatus === "unpaid" ? "default" : "outline"}
+                      onClick={() => handleUpdatePaymentStatus("unpaid")}
+                      disabled={updatePaymentStatusMutation.isPending}
+                    >
+                      Unpaid
+                    </Button>
+                    <Button 
+                      size="sm"
+                      variant={selectedRental.paymentStatus === "paid" ? "default" : "outline"}
+                      onClick={() => handleUpdatePaymentStatus("paid")}
+                      disabled={updatePaymentStatusMutation.isPending}
+                    >
+                      Mark as Paid
+                    </Button>
+                    <Button 
+                      size="sm"
+                      variant={selectedRental.paymentStatus === "refunded" ? "destructive" : "outline"}
+                      onClick={() => handleUpdatePaymentStatus("refunded")}
+                      disabled={updatePaymentStatusMutation.isPending}
+                    >
+                      Refund
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsRentalDetailsDialogOpen(false)}>
+                  Close
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
       </Dialog>
     </div>
   );

@@ -28,12 +28,13 @@ const UserProfile = () => {
     logoutMutation.mutate();
   };
 
-  const initials = user.name
+  // Safely generate initials from user name, falling back to username if name is not available
+  const initials = (user.name || user.username || '')
     .split(' ')
-    .map(part => part[0])
+    .map(part => part[0] || '')
     .join('')
     .toUpperCase()
-    .substring(0, 2);
+    .substring(0, 2) || user.username?.substring(0, 2).toUpperCase() || 'U';
 
   return (
     <DropdownMenu>
@@ -44,13 +45,13 @@ const UserProfile = () => {
               {initials}
             </AvatarFallback>
           </Avatar>
-          <span className="hidden sm:inline text-sm font-medium">{user.name}</span>
+          <span className="hidden sm:inline text-sm font-medium">{user.name || user.username}</span>
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium">{user.name}</p>
+            <p className="text-sm font-medium">{user.name || user.username}</p>
             <p className="text-xs text-muted-foreground">{user.email}</p>
             {!user.emailVerified && (
               <span className="text-xs text-amber-500 mt-1">Email verification pending</span>

@@ -883,20 +883,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "You don't have permission to update this venue" });
       }
       
-      // Validate venue update data - since we can't use .partial() on a transformed schema,
-      // we'll create a simplified validation for updates
+      // First transform the data to handle numeric conversions
+      const inputData = {
+        ...req.body,
+        hourlyRate: req.body.hourlyRate !== undefined 
+          ? String(req.body.hourlyRate) 
+          : undefined,
+        dailyRate: req.body.dailyRate !== undefined 
+          ? String(req.body.dailyRate) 
+          : undefined
+      };
+      
+      // Validate venue update data
       const venueData = z.object({
         name: z.string().min(1).optional(),
         description: z.string().optional().nullable(),
         location: z.string().min(1).optional(),
         capacity: z.number().optional().nullable(),
-        hourlyRate: z.coerce.number().min(0.01).optional().transform(val => val ? String(val) : undefined),
-        dailyRate: z.coerce.number().optional().transform(val => val !== undefined ? String(val) : undefined),
+        hourlyRate: z.string().optional(),
+        dailyRate: z.string().optional(),
         facilities: z.any().optional(),
         availabilityHours: z.any().optional(),
         images: z.any().optional(),
         isActive: z.boolean().optional()
-      }).parse(req.body);
+      }).parse(inputData);
       
       const updatedVenue = await storage.updateVenue(venueId, venueData);
       res.json(updatedVenue);

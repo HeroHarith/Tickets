@@ -93,19 +93,37 @@ export function VenueSalesReport({ venues }: VenueSalesReportProps) {
       // Build query parameters
       let queryParams = new URLSearchParams();
       
+      let validVenueId = selectedVenueId;
+      
       if (selectedVenueId !== "all") {
-        queryParams.append("venueId", selectedVenueId);
+        // Validate that it's a proper venue ID before sending
+        const parsedId = parseInt(selectedVenueId);
+        if (!isNaN(parsedId) && parsedId > 0) {
+          queryParams.append("venueId", parsedId.toString());
+          console.log("Using venue ID:", parsedId);
+        } else {
+          console.warn("Invalid venue ID detected:", selectedVenueId);
+          // Default to "all" if invalid
+          validVenueId = "all";
+        }
+      } else {
+        console.log("Using all venues");
       }
       
       if (startDate) {
         queryParams.append("startDate", startDate.toISOString());
+        console.log("Start date:", startDate.toISOString());
       }
       
       if (endDate) {
         queryParams.append("endDate", endDate.toISOString());
+        console.log("End date:", endDate.toISOString());
       }
       
-      const response = await fetch(`/api/venues/sales-report?${queryParams.toString()}`);
+      const url = `/api/venues/sales-report?${queryParams.toString()}`;
+      console.log("Fetching sales report from:", url);
+      
+      const response = await fetch(url);
       
       if (!response.ok) {
         throw new Error("Failed to fetch sales report");

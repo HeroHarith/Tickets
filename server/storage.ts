@@ -15,8 +15,8 @@ import {
   RentalStatus, PaymentStatus,
   venues, rentals,
   // Cashier types
-  Cashier, InsertCashier,
-  cashiers, DEFAULT_CASHIER_PERMISSIONS,
+  Cashier, InsertCashier, CashierVenue, InsertCashierVenue,
+  cashiers, cashierVenues, DEFAULT_CASHIER_PERMISSIONS,
   // Share tracking types
   EventShare, InsertEventShare,
   EventShareAnalytics, SharePlatform,
@@ -31,6 +31,9 @@ import connectPgSimple from "connect-pg-simple";
 import { sendTicketConfirmationEmail } from "./email";
 import { hashPassword } from "./auth";
 import { randomBytes } from "crypto";
+
+// Type alias for JSON in PostgreSQL
+type Json = unknown;
 
 export interface IStorage {
   // Session store for authentication
@@ -55,7 +58,7 @@ export interface IStorage {
   // Cashier operations
   getCashiers(ownerId: number): Promise<Cashier[]>;
   getCashiersByUserId(userId: number): Promise<Cashier[]>;
-  createCashier(ownerId: number, email: string, permissions?: Record<string, boolean>, venueIds?: number[]): Promise<{ cashier: Cashier, user: User, tempPassword: string }>;
+  createCashier(ownerId: number, email: string, name: string, permissions?: Record<string, boolean>, venueIds?: number[]): Promise<{ cashier: Cashier, user: User, tempPassword: string }>;
   updateCashierPermissions(id: number, permissions: Record<string, boolean>): Promise<Cashier>;
   updateCashierVenues(id: number, venueIds: number[]): Promise<Cashier>;
   deleteCashier(id: number): Promise<boolean>;
@@ -338,6 +341,7 @@ export class DatabaseStorage implements IStorage {
   async createCashier(
     ownerId: number,
     email: string,
+    name: string,
     permissions: Record<string, boolean> = DEFAULT_CASHIER_PERMISSIONS,
     venueIds: number[] = []
   ): Promise<{ cashier: Cashier, user: User, tempPassword: string }> {
@@ -353,10 +357,12 @@ export class DatabaseStorage implements IStorage {
         user = existingUser;
       } else {
         // Create a new user with the cashier role
+        const username = email.split('@')[0];
         const [newUser] = await tx.insert(users).values({
-          username: email.split('@')[0] + '-' + nanoid(4),
+          username: username + '-' + nanoid(4),
           email,
           password: hashedPassword,
+          name: name || (username.charAt(0).toUpperCase() + username.slice(1)), // Use provided name or capitalize username
           role: 'customer', // Cashiers are given customer role initially
           emailVerified: false // They will need to verify their email
         }).returning();
@@ -364,13 +370,22 @@ export class DatabaseStorage implements IStorage {
         user = newUser;
       }
       
-      // Create the cashier record
+      // Create the cashier record with permissions
       const [newCashier] = await tx.insert(cashiers).values({
         ownerId,
         userId: user.id,
-        permissions: permissions as Json,
-        venueIds: venueIds
+        permissions: permissions as Json
       }).returning();
+      
+      // Create cashier-venue relationships
+      if (venueIds && venueIds.length > 0) {
+        for (const venueId of venueIds) {
+          await tx.insert(cashierVenues).values({
+            cashierId: newCashier.id,
+            venueId
+          });
+        }
+      }
       
       return {
         cashier: newCashier,
@@ -394,16 +409,30 @@ export class DatabaseStorage implements IStorage {
   }
   
   async updateCashierVenues(id: number, venueIds: number[]): Promise<Cashier> {
-    const [updatedCashier] = await db.update(cashiers)
-      .set({ venueIds })
-      .where(eq(cashiers.id, id))
-      .returning();
-      
-    if (!updatedCashier) {
+    // First check if the cashier exists
+    const [cashier] = await db.select().from(cashiers).where(eq(cashiers.id, id));
+    
+    if (!cashier) {
       throw new Error(`Cashier with ID ${id} not found`);
     }
     
-    return updatedCashier;
+    // Use a transaction to ensure consistency
+    await db.transaction(async (tx) => {
+      // Delete all existing venue associations for this cashier
+      await tx.delete(cashierVenues).where(eq(cashierVenues.cashierId, id));
+      
+      // Insert new venue associations
+      if (venueIds && venueIds.length > 0) {
+        for (const venueId of venueIds) {
+          await tx.insert(cashierVenues).values({
+            cashierId: id,
+            venueId
+          });
+        }
+      }
+    });
+    
+    return cashier;
   }
   
   async deleteCashier(id: number): Promise<boolean> {
@@ -414,8 +443,13 @@ export class DatabaseStorage implements IStorage {
         return false;
       }
       
-      // Delete the cashier
-      await db.delete(cashiers).where(eq(cashiers.id, id));
+      await db.transaction(async (tx) => {
+        // First, delete all venue associations for this cashier
+        await tx.delete(cashierVenues).where(eq(cashierVenues.cashierId, id));
+        
+        // Then delete the cashier record
+        await tx.delete(cashiers).where(eq(cashiers.id, id));
+      });
       
       return true;
     } catch (error) {

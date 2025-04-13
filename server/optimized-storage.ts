@@ -15,6 +15,7 @@ import {
   venues, 
   rentals,
   cashiers,
+  cashierVenues,
   eventShares,
   type User,
   type Event,
@@ -23,10 +24,12 @@ import {
   type Venue,
   type Rental,
   type Cashier,
+  type CashierVenue,
   type EventShare,
   type InsertUser,
   type InsertVenue, 
   type InsertCashier,
+  type InsertCashierVenue,
   type InsertEventShare,
   type RentalStatus,
   type PaymentStatus,
@@ -486,8 +489,13 @@ export class OptimizedStorage implements IStorage {
         return false;
       }
       
-      // Delete the cashier
-      await db.delete(cashiers).where(eq(cashiers.id, id));
+      await db.transaction(async (tx) => {
+        // First, delete all venue associations for this cashier
+        await tx.delete(cashierVenues).where(eq(cashierVenues.cashierId, id));
+        
+        // Then delete the cashier record
+        await tx.delete(cashiers).where(eq(cashiers.id, id));
+      });
       
       // Invalidate caches
       this.invalidateCache('cashier', id);

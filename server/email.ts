@@ -225,6 +225,102 @@ export async function sendPasswordResetEmail(details: PasswordResetEmailDetails)
 }
 
 /**
+ * Interface for cashier invitation email data
+ */
+interface CashierInvitationDetails {
+  email: string;
+  name?: string;
+  tempPassword: string;
+  centerName: string;
+}
+
+/**
+ * Send a cashier invitation email
+ */
+export async function sendCashierInvitationEmail(details: CashierInvitationDetails): Promise<boolean> {
+  if (!transporter) {
+    console.error('Email transporter not initialized. Check email credentials.');
+    return false;
+  }
+  
+  const { email, name, tempPassword, centerName } = details;
+  const displayName = name || email.split('@')[0];
+  
+  // Create login URL
+  const baseUrl = process.env.APP_URL || 'https://eventtix.replit.app';
+  const loginUrl = `${baseUrl}/auth`;
+  
+  // Email content
+  const emailContent = {
+    from: `"Event Ticketing" <${process.env.GMAIL_EMAIL}>`,
+    to: email,
+    subject: "You've Been Added as a Cashier",
+    text: `
+      Hello ${displayName},
+      
+      You've been added as a cashier for ${centerName} on our Event Ticketing platform.
+      
+      Login Information:
+      - Username: ${email}
+      - Temporary Password: ${tempPassword}
+      
+      Please login using the link below and change your password as soon as possible:
+      ${loginUrl}
+      
+      If you have any questions, please contact your center manager.
+    `,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e1e1e1; border-radius: 8px;">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <h1 style="color: #6366F1; margin-bottom: 5px;">Welcome to Our Team!</h1>
+          <p style="color: #4b5563; font-size: 16px;">Hello ${displayName}!</p>
+        </div>
+        
+        <div style="background-color: #f9f9f9; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+          <p>You've been added as a cashier for <strong>${centerName}</strong> on our Event Ticketing platform.</p>
+          
+          <div style="border: 1px solid #e1e1e1; border-radius: 8px; padding: 15px; margin: 20px 0; background-color: white;">
+            <h3 style="margin-top: 0; color: #111827;">Your Login Information</h3>
+            <p><strong>Username:</strong> ${email}</p>
+            <p><strong>Temporary Password:</strong> ${tempPassword}</p>
+          </div>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${loginUrl}" style="background-color: #6366F1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">Login Now</a>
+          </div>
+          
+          <p style="font-size: 14px;">Please login and change your password as soon as possible.</p>
+        </div>
+        
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e1e1e1; text-align: center; color: #6b7280; font-size: 14px;">
+          <p>If you have any questions, please contact your center manager.</p>
+        </div>
+      </div>
+    `,
+  };
+
+  try {
+    console.log(`Attempting to send cashier invitation email to ${email}`);
+    const info = await transporter.sendMail(emailContent);
+    console.log(`Cashier invitation email sent to ${email}`);
+    console.log('Email response:', info.response);
+    console.log('Message ID:', info.messageId);
+    return true;
+  } catch (error) {
+    console.error('Failed to send cashier invitation email:', error);
+    console.error('Error details:', JSON.stringify(error, null, 2));
+    console.error('Email configuration:', {
+      from: emailContent.from,
+      to: emailContent.to,
+      subject: emailContent.subject,
+      emailProvider: process.env.GMAIL_EMAIL ? 'Gmail' : 'Not configured',
+      hasCredentials: !!process.env.GMAIL_APP_PASSWORD
+    });
+    return false;
+  }
+}
+
+/**
  * Send a ticket confirmation email
  */
 export async function sendTicketConfirmationEmail(details: TicketDetails): Promise<boolean> {

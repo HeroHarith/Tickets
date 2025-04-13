@@ -961,57 +961,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Create a new cashier
-  app.post("/api/cashiers", async (req: Request, res: Response) => {
+  app.post("/api/cashiers", requireRole(["center"]), async (req: Request, res: Response) => {
     try {
-      const { email, permissions } = req.body;
+      ensureAuthenticated(req);
+      const { email, permissions, venueIds } = req.body;
       
       if (!email) {
-        return res.status(400).json({
-          code: 400,
-          success: false,
-          data: null,
-          description: "Email is required"
-        });
+        return res.status(400).json(errorResponse("Email is required", 400));
       }
       
-      // Static mock response to avoid any database issues
-      const mockResponse = {
-        cashier: {
-          id: 1,
-          userId: 2,
-          ownerId: 2, // Use a fixed ID for now
-          permissions: permissions || {
-            canViewBookings: true,
-            canCreateBookings: true,
-            canCancelBookings: false,
-            canViewReports: false,
-            canProcessPayments: true,
-            canManageCustomers: false
-          },
-          venueIds: [1, 2], // Use fixed venue IDs
-          createdAt: new Date(),
-          updatedAt: new Date()
-        },
-        user: {
-          id: 2,
-          username: email.split('@')[0],
-          email: email,
-          name: email.split('@')[0], 
-          role: "cashier",
-          emailVerified: false,
-          createdAt: new Date()
-        },
-        tempPassword: true,
-        emailSent: true
-      };
+      // Get center owner's info
+      const ownerId = req.user.id;
+      const ownerName = req.user.name || req.user.username;
       
-      // Return success response
-      return res.json({
-        code: 200,
-        success: true,
-        data: mockResponse,
-        description: "Cashier created successfully"
-      });
+      console.log(`Creating cashier for center ${ownerId} (${ownerName}) with email ${email}`);
+      
+      try {
+        // Create the cashier in the database with actual data
+        const result = await optimizedStorage.createCashier(
+          email,
+          ownerId,
+          permissions || DEFAULT_CASHIER_PERMISSIONS,
+          venueIds || []
+        );
+        
+        // Send email to the cashier
+        const emailSent = await sendCashierInvitationEmail({
+          email,
+          name: email.split('@')[0],
+          tempPassword: result.tempPassword,
+          centerName: ownerName
+        });
+        
+        // Log the result and add emailSent field
+        const responseData = {
+          ...result,
+          emailSent
+        };
+        
+        console.log(`Cashier created successfully for ${email}`);
+        
+        // Return success response
+        return res.json(successResponse(responseData, 200, "Cashier created successfully"));
+      } catch (dbError) {
+        console.error("Database error creating cashier:", dbError);
+        return res.status(500).json(errorResponse(`Error creating cashier: ${dbError.message}`, 500));
+      }
     } catch (error) {
       console.error("Error creating cashier:", error);
       return res.status(500).json({

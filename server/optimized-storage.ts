@@ -919,6 +919,65 @@ export class OptimizedStorage implements IStorage {
       .where(eq(tickets.eventId, eventId));
   }
   
+  /**
+   * Get tickets by payment session ID
+   */
+  async getTicketsByPaymentSession(sessionId: string): Promise<Ticket[]> {
+    const cacheKey = this.getCacheKey('paymentTickets', sessionId);
+    const cached = cache.get(cacheKey);
+    
+    if (cached) {
+      return cached as Ticket[];
+    }
+    
+    // Get tickets with this payment session ID
+    const ticketsData = await db.select()
+      .from(tickets)
+      .where(eq(tickets.paymentSessionId, sessionId));
+    
+    if (!ticketsData || ticketsData.length === 0) {
+      return [];
+    }
+    
+    // Get ticket types for these tickets
+    const ticketTypeIds = [...new Set(ticketsData.map(t => t.ticketTypeId))];
+    const ticketTypesData = await db.select()
+      .from(ticketTypes)
+      .where(inArray(ticketTypes.id, ticketTypeIds));
+    
+    // Create a map for quick lookup
+    const ticketTypeMap = new Map();
+    ticketTypesData.forEach(tt => ticketTypeMap.set(tt.id, tt));
+    
+    // Enhance tickets with additional information
+    const enhancedTickets = ticketsData.map(ticket => {
+      const ticketType = ticketTypeMap.get(ticket.ticketTypeId);
+      let attendeeName = '';
+      let attendeeEmail = '';
+      
+      // Extract attendee information from attendeeDetails if it exists
+      if (ticket.attendeeDetails && typeof ticket.attendeeDetails === 'object') {
+        const details = ticket.attendeeDetails as any;
+        attendeeName = details.fullName || details.name || '';
+        attendeeEmail = details.email || '';
+      }
+      
+      return {
+        ...ticket,
+        ticketTypeName: ticketType ? ticketType.name : 'Unknown Ticket Type',
+        price: ticketType ? ticketType.price : ticket.totalPrice,
+        attendeeName,
+        attendeeEmail,
+        uuid: nanoid(10) // Generate a unique ID for display purposes
+      };
+    });
+    
+    // Cache the result
+    cache.set(cacheKey, enhancedTickets, TTL.MEDIUM);
+    
+    return enhancedTickets;
+  }
+  
   async removeTicket(ticketId: number): Promise<void> {
     const ticket = await this.getTicket(ticketId);
     if (!ticket) return;

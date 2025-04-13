@@ -74,6 +74,7 @@ export const tickets = pgTable("tickets", {
   seatAssignment: jsonb("seat_assignment"), // For seated events: [{"row": "A", "seat": 5}, ...]
   attendeeDetails: jsonb("attendee_details"), // Store customer details for each ticket
   emailSent: boolean("email_sent").default(false).notNull(), // Track if confirmation email was sent
+  paymentSessionId: text("payment_session_id"), // Thawani payment session ID
 });
 
 // Customer details schema for ticket purchase

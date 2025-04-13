@@ -23,6 +23,10 @@ import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { successResponse, errorResponse } from "./utils/api-response";
 import { sql } from "drizzle-orm";
+import thawaniService, { 
+  CustomerDetails, 
+  ProductDetails 
+} from "./thawani";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
@@ -395,6 +399,285 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error creating event:", error);
       return res.status(500).json(errorResponse("Error creating event", 500));
     }
+  });
+
+  // === Thawani Payment Integration ===
+
+  // Create payment session for ticket purchase
+  app.post("/api/payments/tickets", requireRole(["customer", "admin"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      const { eventId, ticketTypeIds, quantities, customer } = req.body;
+      
+      if (!eventId || !ticketTypeIds || !quantities || !customer) {
+        return res.status(400).json(errorResponse("Missing required fields", 400));
+      }
+      
+      // Get event details
+      const event = await storage.getEvent(parseInt(eventId));
+      if (!event) {
+        return res.status(404).json(errorResponse("Event not found", 404));
+      }
+      
+      // Get ticket types for this event
+      const ticketTypes = await storage.getTicketTypes(parseInt(eventId));
+      
+      // Create payment session
+      const paymentSession = await thawaniService.createTicketPaymentSession(
+        event,
+        ticketTypes,
+        quantities,
+        customer
+      );
+      
+      if (!paymentSession) {
+        return res.status(500).json(errorResponse("Failed to create payment session", 500));
+      }
+      
+      return res.json(successResponse(paymentSession, 200, "Payment session created"));
+    } catch (error) {
+      console.error("Error creating ticket payment session:", error);
+      return res.status(500).json(errorResponse("Error creating payment session", 500));
+    }
+  });
+  
+  // Create payment session for venue rental
+  app.post("/api/payments/rentals", requireRole(["customer", "admin"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      const { venueId, startTime, endTime, customer } = req.body;
+      
+      if (!venueId || !startTime || !endTime || !customer) {
+        return res.status(400).json(errorResponse("Missing required fields", 400));
+      }
+      
+      // Get venue details
+      const venue = await storage.getVenue(parseInt(venueId));
+      if (!venue) {
+        return res.status(404).json(errorResponse("Venue not found", 404));
+      }
+      
+      // Calculate rental hours
+      const start = new Date(startTime);
+      const end = new Date(endTime);
+      
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        return res.status(400).json(errorResponse("Invalid date format", 400));
+      }
+      
+      if (start >= end) {
+        return res.status(400).json(errorResponse("End time must be after start time", 400));
+      }
+      
+      // Calculate hours and total price
+      const hours = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60));
+      const totalPrice = parseFloat(venue.hourlyRate) * hours;
+      
+      // Create payment session
+      const paymentSession = await thawaniService.createRentalPaymentSession(
+        venue.id,
+        venue.name,
+        customer.firstName + " " + customer.lastName,
+        totalPrice,
+        start,
+        end,
+        customer
+      );
+      
+      if (!paymentSession) {
+        return res.status(500).json(errorResponse("Failed to create payment session", 500));
+      }
+      
+      return res.json(successResponse(paymentSession, 200, "Payment session created"));
+    } catch (error) {
+      console.error("Error creating rental payment session:", error);
+      return res.status(500).json(errorResponse("Error creating payment session", 500));
+    }
+  });
+  
+  // Check payment status
+  app.get("/api/payments/status/:sessionId", async (req: Request, res: Response) => {
+    try {
+      const { sessionId } = req.params;
+      
+      if (!sessionId) {
+        return res.status(400).json(errorResponse("Missing session ID", 400));
+      }
+      
+      const status = await thawaniService.checkPaymentStatus(sessionId);
+      
+      return res.json(successResponse({ status }, 200, "Payment status retrieved"));
+    } catch (error) {
+      console.error("Error checking payment status:", error);
+      return res.status(500).json(errorResponse("Error checking payment status", 500));
+    }
+  });
+  
+  // Payment success webhook
+  app.post("/api/payments/webhook", async (req: Request, res: Response) => {
+    try {
+      const { session_id, metadata } = req.body;
+      
+      if (!session_id) {
+        return res.status(400).json(errorResponse("Missing session ID", 400));
+      }
+      
+      // Verify payment status with Thawani
+      const status = await thawaniService.checkPaymentStatus(session_id);
+      
+      if (status !== 'paid') {
+        return res.status(400).json(errorResponse("Payment not completed", 400));
+      }
+      
+      // Get session details to extract metadata
+      const sessionDetails = await thawaniService.getSessionDetails(session_id);
+      
+      if (!sessionDetails || !sessionDetails.metadata) {
+        return res.status(400).json(errorResponse("Invalid session details", 400));
+      }
+      
+      // Process the payment based on metadata
+      if (sessionDetails.metadata.event_id) {
+        // This is a ticket purchase
+        const eventId = sessionDetails.metadata.event_id;
+        const ticketDetails = sessionDetails.metadata.ticket_details;
+        const customer = sessionDetails.metadata.customer;
+        
+        // Here you would create tickets in your database and send confirmation emails
+        // This is a placeholder for the actual implementation
+        console.log(`Processing ticket purchase for event ${eventId}`);
+        console.log('Ticket details:', ticketDetails);
+        console.log('Customer:', customer);
+        
+        // Return success
+        return res.json(successResponse(null, 200, "Ticket purchase processed"));
+      } else if (sessionDetails.metadata.venue_id) {
+        // This is a venue rental
+        const venueId = sessionDetails.metadata.venue_id;
+        const startTime = new Date(sessionDetails.metadata.start_time);
+        const endTime = new Date(sessionDetails.metadata.end_time);
+        const customerName = sessionDetails.metadata.customer_name;
+        
+        // Here you would create a rental in your database and send confirmation emails
+        // This is a placeholder for the actual implementation
+        console.log(`Processing venue rental for venue ${venueId}`);
+        console.log(`Time: ${startTime.toISOString()} - ${endTime.toISOString()}`);
+        console.log(`Customer: ${customerName}`);
+        
+        // Return success
+        return res.json(successResponse(null, 200, "Venue rental processed"));
+      } else {
+        return res.status(400).json(errorResponse("Unknown payment type", 400));
+      }
+    } catch (error) {
+      console.error("Error processing payment webhook:", error);
+      return res.status(500).json(errorResponse("Error processing payment", 500));
+    }
+  });
+
+  // Payment success and cancel pages
+  app.get("/payment-success", (req: Request, res: Response) => {
+    res.send(`
+      <html>
+        <head>
+          <title>Payment Successful</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              height: 100vh;
+              text-align: center;
+              margin: 0;
+              background-color: #f8f9fa;
+            }
+            .container {
+              max-width: 600px;
+              padding: 30px;
+              background-color: white;
+              border-radius: 8px;
+              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            }
+            h1 {
+              color: #4CAF50;
+              margin-bottom: 20px;
+            }
+            .back-button {
+              display: inline-block;
+              margin-top: 20px;
+              padding: 10px 20px;
+              background-color: #6366F1;
+              color: white;
+              text-decoration: none;
+              border-radius: 4px;
+              font-weight: bold;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>Payment Successful!</h1>
+            <p>Your payment has been processed successfully. Thank you for your purchase.</p>
+            <p>You will receive a confirmation email shortly with all the details.</p>
+            <a href="/" class="back-button">Return to Home</a>
+          </div>
+        </body>
+      </html>
+    `);
+  });
+
+  app.get("/payment-cancel", (req: Request, res: Response) => {
+    res.send(`
+      <html>
+        <head>
+          <title>Payment Cancelled</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              height: 100vh;
+              text-align: center;
+              margin: 0;
+              background-color: #f8f9fa;
+            }
+            .container {
+              max-width: 600px;
+              padding: 30px;
+              background-color: white;
+              border-radius: 8px;
+              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            }
+            h1 {
+              color: #F44336;
+              margin-bottom: 20px;
+            }
+            .back-button {
+              display: inline-block;
+              margin-top: 20px;
+              padding: 10px 20px;
+              background-color: #6366F1;
+              color: white;
+              text-decoration: none;
+              border-radius: 4px;
+              font-weight: bold;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>Payment Cancelled</h1>
+            <p>Your payment was cancelled or did not complete.</p>
+            <p>No charges have been made to your account.</p>
+            <a href="/" class="back-button">Return to Home</a>
+          </div>
+        </body>
+      </html>
+    `);
   });
 
   const httpServer = createServer(app);

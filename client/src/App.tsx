@@ -22,8 +22,10 @@ import CenterReportsPage from "@/pages/center-reports";
 import CenterCashiersPage from "@/pages/center-cashiers";
 import AuthPage from "@/pages/auth-page";
 import ProfilePage from "@/pages/profile";
+import PaymentStatus from "@/pages/payment-status";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
+import { PaymentStatusChecker } from "@/components/domain/payments";
 
 // Note: We've moved the authenticated layout into the ProtectedRoute component
 
@@ -32,6 +34,8 @@ function Router() {
     <div className="flex flex-col min-h-screen">
       <Switch>
         <Route path="/auth" component={AuthPage} />
+        <Route path="/payment-success" component={PaymentStatus} />
+        <Route path="/payment-cancel" component={PaymentStatus} />
         <ProtectedRoute path="/" component={Home} />
         <ProtectedRoute path="/events/:id" component={EventDetails} />
         <ProtectedRoute 
@@ -118,6 +122,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <Router />
+        <PaymentStatusChecker />
         <Toaster />
       </AuthProvider>
     </QueryClientProvider>

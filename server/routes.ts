@@ -956,9 +956,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       ensureAuthenticated(req);
       
-      // For now, return empty array since we don't have the cashiers table fully set up
-      // This will allow the frontend to display the "no cashiers yet" state
-      return res.status(200).json(successResponse([], 200, "Cashiers retrieved successfully"));
+      try {
+        // Fetch cashiers for the center user
+        const cashiers = await storage.getCashiers(req.user.id);
+        
+        // For each cashier, also get the associated user data for display
+        const cashiersWithUserDetails = await Promise.all(
+          cashiers.map(async (cashier) => {
+            // Get the user details
+            const user = await storage.getUser(cashier.userId);
+            
+            // Return combined data
+            return {
+              ...cashier,
+              user: user ? {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                name: user.name,
+                emailVerified: user.emailVerified
+              } : null
+            };
+          })
+        );
+        
+        return res.status(200).json(successResponse(cashiersWithUserDetails, 200, "Cashiers retrieved successfully"));
+      } catch (dbError: any) {
+        console.error("Database error fetching cashiers:", dbError);
+        const errorMessage = dbError.message || "Unknown database error";
+        return res.status(500).json(errorResponse(`Error fetching cashiers: ${errorMessage}`, 500));
+      }
     } catch (error) {
       console.error("Error fetching cashiers:", error);
       return res.status(500).json(errorResponse("Error fetching cashiers", 500));
@@ -1116,20 +1143,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Delete a cashier
-  app.delete("/api/cashiers/:id", async (req: Request, res: Response) => {
+  app.delete("/api/cashiers/:id", requireRole(["center"]), async (req: Request, res: Response) => {
     try {
+      ensureAuthenticated(req);
       const cashierId = parseInt(req.params.id);
       
-      // For now, just return a successful response code for deletion
-      return res.status(204).send();
+      try {
+        // Get the cashier to check ownership
+        const cashiers = await storage.getCashiers(req.user.id);
+        const cashier = cashiers.find(c => c.id === cashierId);
+        
+        if (!cashier) {
+          return res.status(404).json(errorResponse("Cashier not found or you don't have access", 404));
+        }
+        
+        // Delete the cashier from the database
+        const success = await storage.deleteCashier(cashierId);
+        
+        if (success) {
+          // Return no content on successful deletion
+          return res.status(204).send();
+        } else {
+          return res.status(500).json(errorResponse("Failed to delete cashier", 500));
+        }
+      } catch (dbError: any) {
+        console.error("Database error deleting cashier:", dbError);
+        const errorMessage = dbError.message || "Unknown database error";
+        return res.status(500).json(errorResponse(`Error deleting cashier: ${errorMessage}`, 500));
+      }
     } catch (error) {
       console.error("Error deleting cashier:", error);
-      return res.status(500).json({
-        code: 500,
-        success: false,
-        data: null,
-        description: "Error deleting cashier"
-      });
+      return res.status(500).json(errorResponse("Error deleting cashier", 500));
     }
   });
   
@@ -1530,56 +1574,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Venue Sales Report endpoint
-  app.get("/api/venues/sales-report", async (req: Request, res: Response) => {
+  app.get("/api/venues/sales-report", requireRole(["center", "admin"]), async (req: Request, res: Response) => {
     try {
-      // No database calls needed for this mock data
-      // Static mock data response for sales report
-      const mockSalesReport = {
-        totalRevenue: 1250.00,
-        timeBreakdown: [
-          { period: "2023-01", revenue: 150, bookings: 3 },
-          { period: "2023-02", revenue: 200, bookings: 4 },
-          { period: "2023-03", revenue: 400, bookings: 8 },
-          { period: "2023-04", revenue: 500, bookings: 10 }
-        ],
-        paidBookings: 20,
-        pendingPayments: 5,
-        refundedBookings: 2,
-        completedBookings: 18,
-        canceledBookings: 4,
-        averageBookingValue: 62.50,
-        venueBreakdown: [
-          { 
-            venueId: 1,
-            venueName: "Main Hall",
-            bookings: 15,
-            revenue: 750
-          },
-          {
-            venueId: 2,
-            venueName: "Conference Room",
-            bookings: 10,
-            revenue: 500
-          }
-        ]
-      };
+      ensureAuthenticated(req);
       
-      // Return with success response wrapper
-      return res.json({
-        code: 200,
-        success: true,
-        data: mockSalesReport,
-        description: "Venue sales report retrieved successfully"
-      });
+      // Parse query parameters
+      const venueId = req.query.venueId ? parseInt(req.query.venueId as string) : undefined;
+      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+      
+      try {
+        // If venue ID is specified, verify ownership
+        if (venueId) {
+          const venue = await storage.getVenue(venueId);
+          
+          if (!venue) {
+            return res.status(404).json(errorResponse("Venue not found", 404));
+          }
+          
+          // Check if center user has permission for this venue
+          if (req.user.role === "center" && venue.ownerId !== req.user.id) {
+            return res.status(403).json(errorResponse("You don't have permission to view this venue's reports", 403));
+          }
+        }
+        
+        // Generate the sales report from the storage layer
+        const salesReport = await storage.getVenueSalesReport(
+          // Filter by user's venues if center role
+          req.user.role === "center" ? req.user.id : undefined,
+          venueId,
+          startDate,
+          endDate
+        );
+        
+        return res.json(successResponse(salesReport, 200, "Venue sales report retrieved successfully"));
+      } catch (dbError: any) {
+        console.error("Database error generating sales report:", dbError);
+        const errorMessage = dbError.message || "Unknown database error";
+        return res.status(500).json(errorResponse(`Error generating sales report: ${errorMessage}`, 500));
+      }
     } catch (error) {
       console.error('Error generating venue sales report:', error);
-      // Return with error response wrapper
-      return res.status(500).json({
-        code: 500,
-        success: false,
-        data: null,
-        description: "Error generating venue sales report"
-      });
+      return res.status(500).json(errorResponse("Error generating venue sales report", 500));
     }
   });
 

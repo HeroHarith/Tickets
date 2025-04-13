@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { EventCard, EventSearch } from "@/components/domain/events";
-import { TabsComponent } from "@/components/common/ui/tabs-component";
+import TabsComponent from "@/components/common/ui/tabs-component";
 import { Button } from "@/components/common/ui/button";
 import { Event, TicketType } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";

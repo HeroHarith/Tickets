@@ -1,6 +1,6 @@
 import React from "react";
-import Header from "@/components/common/layout/header";
-import CenterSidebar from "@/components/common/layout/center-sidebar";
+import { Header } from "@/components/common/layout";
+import { CenterSidebar } from "@/components/common/layout";
 
 interface CenterLayoutProps {
   children: React.ReactNode;

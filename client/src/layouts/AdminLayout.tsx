@@ -1,6 +1,6 @@
 import React from "react";
-import Header from "@/components/common/layout/header";
-import Sidebar from "@/components/common/layout/sidebar";
+import { Header } from "@/components/common/layout";
+import { Sidebar } from "@/components/common/layout";
 
 interface AdminLayoutProps {
   children: React.ReactNode;

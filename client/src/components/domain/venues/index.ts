@@ -1,2 +1,2 @@
-export { default as VenueEditDialog } from './venue-edit-dialog';
-export { default as VenueSalesReport } from './venue-sales-report';
+export { VenueEditDialog } from './venue-edit-dialog';
+export { VenueSalesReport } from './venue-sales-report';

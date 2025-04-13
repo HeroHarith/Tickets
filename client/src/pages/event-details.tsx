@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { useState } from "react";
-import { Calendar, MapPin, CreditCard, Mail, User } from "lucide-react";
+import { Calendar, MapPin, CreditCard, Mail, User, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { queryClient } from "@/lib/queryClient";
@@ -20,6 +20,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import PaymentService, { CustomerDetails } from "@/services/PaymentService";
 
 type TicketSelection = {
   ticketTypeId: number;
@@ -43,6 +44,8 @@ const EventDetails = () => {
   
   const [ticketSelections, setTicketSelections] = useState<TicketSelection[]>([]);
   const [showCheckout, setShowCheckout] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
   
   // Initialize form with default values
   const form = useForm<z.infer<typeof customerDetailsSchema>>({
@@ -176,21 +179,84 @@ const EventDetails = () => {
     setShowCheckout(false);
   };
   
-  const handlePurchase = (values: z.infer<typeof customerDetailsSchema>) => {
-    // Get attendee details from form
-    const { saveToWallet, agreeToTerms, ...customerDetails } = values;
-    
-    // Prepare purchase data
-    purchaseMutation.mutate({
-      eventId,
-      customerDetails,
-      ticketSelections: ticketSelections
-        .filter(ts => ts.quantity > 0)
-        .map(ts => ({
-          ...ts,
-          attendeeDetails: ts.attendeeDetails || Array(ts.quantity).fill(customerDetails)
-        }))
-    });
+  const handlePurchase = async (values: z.infer<typeof customerDetailsSchema>) => {
+    try {
+      // Reset payment states
+      setIsProcessingPayment(true);
+      setPaymentError(null);
+      
+      // Get attendee details from form
+      const { saveToWallet, agreeToTerms, ...customerDetails } = values;
+      
+      // Prepare customer details for Thawani
+      const [firstName, ...lastNameParts] = customerDetails.fullName.split(' ');
+      const lastName = lastNameParts.join(' ') || firstName;
+      
+      const thawaniCustomer: CustomerDetails = {
+        firstName,
+        lastName,
+        email: customerDetails.email,
+        phone: customerDetails.phone || '9999999999' // Phone is required by Thawani
+      };
+      
+      // Create quantities object for the payment request
+      const quantities: Record<number, number> = {};
+      ticketSelections.forEach(selection => {
+        quantities[selection.ticketTypeId] = selection.quantity;
+      });
+      
+      // Create payment session with Thawani
+      const paymentSession = await PaymentService.createTicketPayment(
+        eventId,
+        quantities,
+        thawaniCustomer
+      );
+      
+      if (!paymentSession) {
+        setPaymentError('Failed to create payment session');
+        setIsProcessingPayment(false);
+        toast({
+          title: "Payment Error",
+          description: "There was an error setting up the payment. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Open the checkout page in a new window
+      const checkoutWindow = PaymentService.openCheckoutPage(paymentSession.checkout_url);
+      
+      // Show success message
+      toast({
+        title: "Payment Initiated",
+        description: "We've opened the payment page in a new window. Complete your payment there.",
+        variant: "default",
+      });
+      
+      // Store the purchase data in local storage to be used after payment completes
+      localStorage.setItem('pendingPurchase', JSON.stringify({
+        eventId,
+        customerDetails,
+        ticketSelections: ticketSelections
+          .filter(ts => ts.quantity > 0)
+          .map(ts => ({
+            ...ts,
+            attendeeDetails: ts.attendeeDetails || Array(ts.quantity).fill(customerDetails)
+          })),
+        sessionId: paymentSession.session_id
+      }));
+      
+      setIsProcessingPayment(false);
+    } catch (error: any) {
+      console.error('Payment error:', error);
+      setPaymentError(error.message || 'Payment processing error');
+      setIsProcessingPayment(false);
+      toast({
+        title: "Payment Error",
+        description: error.message || "There was an error processing your payment.",
+        variant: "destructive",
+      });
+    }
   };
   
   if (eventQuery.isLoading) {

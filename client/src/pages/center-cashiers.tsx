@@ -560,7 +560,7 @@ export default function CenterCashiersPage() {
                       <FormItem>
                         <FormLabel>Assign Venues</FormLabel>
                         <div className="grid grid-cols-2 gap-3 mt-2">
-                          {venues.map((venue) => (
+                          {venues.map((venue: Venue) => (
                             <div key={venue.id} className="flex items-center space-x-3">
                               <Checkbox 
                                 id={`venue-${venue.id}`}
@@ -660,7 +660,7 @@ export default function CenterCashiersPage() {
                       <FormItem>
                         <FormLabel>Assign Venues</FormLabel>
                         <div className="grid grid-cols-2 gap-3 mt-2">
-                          {venues.map((venue) => (
+                          {venues.map((venue: Venue) => (
                             <div key={venue.id} className="flex items-center space-x-3">
                               <Checkbox 
                                 id={`edit-venue-${venue.id}`}

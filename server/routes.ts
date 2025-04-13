@@ -1339,6 +1339,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json(errorResponse("Error retrieving event share analytics", 500));
     }
   });
+  
+  // Venue Sales Report endpoint
+  app.get("/api/venues/sales-report", requireRole(["center", "admin"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      // Parse query parameters
+      let venueId: number | undefined = undefined;
+      let startDate: Date | undefined = undefined;
+      let endDate: Date | undefined = undefined;
+      
+      if (req.query.venueId) {
+        venueId = parseInt(req.query.venueId as string);
+      }
+      
+      if (req.query.startDate) {
+        startDate = new Date(req.query.startDate as string);
+      }
+      
+      if (req.query.endDate) {
+        endDate = new Date(req.query.endDate as string);
+      }
+      
+      // If center role, ensure they can only see their own venues
+      if (req.user.role === "center" && venueId) {
+        const venue = await storage.getVenue(venueId);
+        if (!venue || venue.ownerId !== req.user.id) {
+          return res.status(403).json(errorResponse(
+            "You don't have permission to view sales for this venue", 
+            403
+          ));
+        }
+      }
+      
+      // Get sales report
+      const salesReport = await storage.getVenueSalesReport(venueId, startDate, endDate);
+      
+      return res.status(200).json(successResponse(
+        salesReport, 
+        200, 
+        "Venue sales report retrieved successfully"
+      ));
+    } catch (error) {
+      console.error('Error generating venue sales report:', error);
+      return res.status(500).json(errorResponse(
+        "Error generating venue sales report", 
+        500
+      ));
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

@@ -380,10 +380,12 @@ export class OptimizedStorage implements IStorage {
         user = existingUser;
       } else {
         // Create a new user with the cashier role
+        const username = email.split('@')[0];
         const [newUser] = await tx.insert(users).values({
-          username: email.split('@')[0] + '-' + nanoid(4),
+          username: username + '-' + nanoid(4),
           email,
           password: hashedPassword,
+          name: username.charAt(0).toUpperCase() + username.slice(1), // Capitalize first letter for display name
           role: 'customer', // Cashiers are given customer role initially
           emailVerified: false // They will need to verify their email
         }).returning();

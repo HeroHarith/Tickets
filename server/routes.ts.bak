@@ -1600,6 +1600,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Generate the sales report from the storage layer
         const salesReport = await storage.getVenueSalesReport(
+          // Filter by user's venues if center role
+          req.user.role === "center" ? req.user.id : undefined,
           venueId,
           startDate,
           endDate

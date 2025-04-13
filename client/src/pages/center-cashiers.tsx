@@ -121,7 +121,7 @@ export default function CenterCashiersPage() {
     data: cashiersResponse, 
     isLoading: cashiersLoading,
     error: cashiersError
-  } = useQuery<{data: Cashier[]}>({
+  } = useQuery({
     queryKey: ["/api/cashiers"],
     enabled: user?.role === "center"
   });
@@ -130,7 +130,7 @@ export default function CenterCashiersPage() {
   const { 
     data: venuesResponse, 
     isLoading: venuesLoading
-  } = useQuery<{data: Venue[]}>({
+  } = useQuery({
     queryKey: ["/api/venues"],
     enabled: user?.role === "center"
   });

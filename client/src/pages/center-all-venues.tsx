@@ -135,7 +135,7 @@ export default function CenterAllVenuesPage() {
               onClick={() => handleOpenDialog(undefined)}
             >
               <Plus className="mr-2 h-4 w-4" />
-              Manage Venues
+              Create Venue
             </Button>
           </div>
         </div>

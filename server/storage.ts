@@ -102,6 +102,32 @@ export interface IStorage {
   // Event shares operations
   trackEventShare(shareData: InsertEventShare): Promise<EventShare>;
   getEventShareAnalytics(eventId: number): Promise<EventShareAnalytics>;
+  
+  // Venue sales reports
+  getVenueSalesReport(
+    venueId?: number, 
+    startDate?: Date, 
+    endDate?: Date
+  ): Promise<{
+    totalRevenue: number;
+    completedBookings: number;
+    canceledBookings: number;
+    pendingPayments: number;
+    paidBookings: number;
+    refundedBookings: number;
+    averageBookingValue: number;
+    venueBreakdown?: {
+      venueId: number;
+      venueName: string;
+      revenue: number;
+      bookings: number;
+    }[];
+    timeBreakdown: {
+      period: string;
+      revenue: number;
+      bookings: number;
+    }[];
+  }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1015,6 +1041,204 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error('Error getting event share analytics:', error);
       throw new Error('Failed to get event share analytics');
+    }
+  }
+  
+  async getVenueSalesReport(
+    venueId?: number, 
+    startDate?: Date, 
+    endDate?: Date
+  ): Promise<{
+    totalRevenue: number;
+    completedBookings: number;
+    canceledBookings: number;
+    pendingPayments: number;
+    paidBookings: number;
+    refundedBookings: number;
+    averageBookingValue: number;
+    venueBreakdown?: {
+      venueId: number;
+      venueName: string;
+      revenue: number;
+      bookings: number;
+    }[];
+    timeBreakdown: {
+      period: string;
+      revenue: number;
+      bookings: number;
+    }[];
+  }> {
+    try {
+      // Build query based on filters
+      let query = db.select().from(rentals);
+      const conditions: SQL[] = [];
+      
+      // Apply venue filter if provided
+      if (venueId) {
+        conditions.push(eq(rentals.venueId, venueId));
+      }
+      
+      // Apply date filters if provided
+      if (startDate) {
+        conditions.push(sql`${rentals.startTime} >= ${startDate.toISOString()}`);
+      }
+      
+      if (endDate) {
+        conditions.push(sql`${rentals.endTime} <= ${endDate.toISOString()}`);
+      }
+      
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions)) as any;
+      }
+      
+      const rentalResults = await query;
+      
+      // If no rentals found, return empty report
+      if (rentalResults.length === 0) {
+        return {
+          totalRevenue: 0,
+          completedBookings: 0,
+          canceledBookings: 0,
+          pendingPayments: 0,
+          paidBookings: 0,
+          refundedBookings: 0,
+          averageBookingValue: 0,
+          venueBreakdown: [],
+          timeBreakdown: []
+        };
+      }
+      
+      // Calculate summary metrics
+      let totalRevenue = 0;
+      let completedBookings = 0;
+      let canceledBookings = 0;
+      const venueMap = new Map<number, { venueName: string; revenue: number; bookings: number }>();
+      const timeMap = new Map<string, { revenue: number; bookings: number }>();
+      
+      // Payment status counters
+      let pendingPayments = 0;
+      let paidBookings = 0;
+      let refundedBookings = 0;
+      
+      // Initialize time periods for breakdown (monthly for the past year)
+      const now = new Date();
+      for (let i = 0; i < 12; i++) {
+        const date = new Date(now);
+        date.setMonth(now.getMonth() - i);
+        const period = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        timeMap.set(period, { revenue: 0, bookings: 0 });
+      }
+      
+      // Get all venues to populate the venue map
+      let venuesData: Venue[] = [];
+      if (!venueId) {
+        venuesData = await db.select().from(venues);
+        venuesData.forEach(venue => {
+          venueMap.set(venue.id, { venueName: venue.name, revenue: 0, bookings: 0 });
+        });
+      } else {
+        const venue = await this.getVenue(venueId);
+        if (venue) {
+          venueMap.set(venue.id, { venueName: venue.name, revenue: 0, bookings: 0 });
+        }
+      }
+      
+      // Process each rental for metrics
+      for (const rental of rentalResults) {
+        const rentalAmount = Number(rental.totalPrice);
+        totalRevenue += rentalAmount;
+        
+        // Count by status
+        if (rental.status === 'completed') {
+          completedBookings++;
+        } else if (rental.status === 'canceled') {
+          canceledBookings++;
+        }
+        
+        // Count by payment status
+        if (rental.paymentStatus === 'unpaid') {
+          pendingPayments++;
+        } else if (rental.paymentStatus === 'paid') {
+          paidBookings++;
+        } else if (rental.paymentStatus === 'refunded') {
+          refundedBookings++;
+        }
+        
+        // Add to venue breakdown
+        const venueEntry = venueMap.get(rental.venueId);
+        if (venueEntry) {
+          venueEntry.revenue += rentalAmount;
+          venueEntry.bookings++;
+          venueMap.set(rental.venueId, venueEntry);
+        } else {
+          // If venue not in map (could be deleted venue)
+          const venueName = await this.getVenueName(rental.venueId);
+          venueMap.set(rental.venueId, { 
+            venueName, 
+            revenue: rentalAmount, 
+            bookings: 1 
+          });
+        }
+        
+        // Add to time breakdown
+        const rentalDate = new Date(rental.startTime);
+        const period = `${rentalDate.getFullYear()}-${String(rentalDate.getMonth() + 1).padStart(2, '0')}`;
+        
+        const timeEntry = timeMap.get(period);
+        if (timeEntry) {
+          timeEntry.revenue += rentalAmount;
+          timeEntry.bookings++;
+          timeMap.set(period, timeEntry);
+        } else {
+          timeMap.set(period, { revenue: rentalAmount, bookings: 1 });
+        }
+      }
+      
+      // Calculate average booking value
+      const totalBookings = rentalResults.length;
+      const averageBookingValue = totalBookings > 0 ? totalRevenue / totalBookings : 0;
+      
+      // Prepare venue breakdown for output
+      const venueBreakdown = Array.from(venueMap.entries()).map(([venueId, data]) => ({
+        venueId,
+        venueName: data.venueName,
+        revenue: data.revenue,
+        bookings: data.bookings
+      }));
+      
+      // Prepare time breakdown for output
+      const timeBreakdown = Array.from(timeMap.entries())
+        .map(([period, data]) => ({
+          period,
+          revenue: data.revenue,
+          bookings: data.bookings
+        }))
+        .sort((a, b) => a.period.localeCompare(b.period));
+      
+      return {
+        totalRevenue,
+        completedBookings,
+        canceledBookings,
+        pendingPayments,
+        paidBookings,
+        refundedBookings,
+        averageBookingValue,
+        venueBreakdown,
+        timeBreakdown
+      };
+    } catch (error) {
+      console.error('Error generating venue sales report:', error);
+      throw new Error('Failed to generate venue sales report');
+    }
+  }
+  
+  // Helper method to get venue name
+  private async getVenueName(venueId: number): Promise<string> {
+    try {
+      const venue = await this.getVenue(venueId);
+      return venue ? venue.name : `Venue #${venueId}`;
+    } catch (error) {
+      return `Venue #${venueId}`;
     }
   }
 }

@@ -70,22 +70,22 @@ const editCashierSchema = z.object({
 
 // Default cashier permissions
 const DEFAULT_PERMISSIONS = {
-  canViewBookings: true,
-  canCreateBookings: true,
-  canCancelBookings: false,
-  canViewReports: false,
-  canProcessPayments: true,
-  canManageCustomers: false
+  viewBookings: true,
+  createBookings: true,
+  cancelBookings: false,
+  viewReports: false,
+  processPayments: true,
+  manageCustomers: false
 };
 
 // Permission labels for display
 const PERMISSION_LABELS: Record<string, string> = {
-  canViewBookings: "View Bookings",
-  canCreateBookings: "Create Bookings",
-  canCancelBookings: "Cancel Bookings",
-  canViewReports: "View Reports",
-  canProcessPayments: "Process Payments",
-  canManageCustomers: "Manage Customers"
+  viewBookings: "View Bookings",
+  createBookings: "Create Bookings",
+  cancelBookings: "Cancel Bookings",
+  viewReports: "View Reports",
+  processPayments: "Process Payments",
+  manageCustomers: "Manage Customers"
 };
 
 export default function CenterCashiersPage() {

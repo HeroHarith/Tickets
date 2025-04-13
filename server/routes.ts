@@ -13,7 +13,12 @@ import * as schema from "@shared/schema";
 import { ZodError, z } from "zod";
 import { setupAuth, requireRole } from "./auth";
 import { generateAppleWalletPassUrl, generateGooglePayPassUrl } from "./wallet";
-import { sendVerificationEmail, sendPasswordResetEmail } from "./email";
+import { 
+  sendVerificationEmail, 
+  sendPasswordResetEmail,
+  sendTicketConfirmationEmail,
+  sendCashierInvitationEmail
+} from "./email";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { successResponse, errorResponse } from "./utils/api-response";
@@ -978,10 +983,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       try {
         // Create the cashier in the database with actual data
-        const result = await optimizedStorage.createCashier(
-          email,
+        const result = await storage.createCashier(
           ownerId,
-          permissions || DEFAULT_CASHIER_PERMISSIONS,
+          email,
+          permissions || schema.DEFAULT_CASHIER_PERMISSIONS,
           venueIds || []
         );
         
@@ -1003,9 +1008,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Return success response
         return res.json(successResponse(responseData, 200, "Cashier created successfully"));
-      } catch (dbError) {
+      } catch (dbError: any) {
         console.error("Database error creating cashier:", dbError);
-        return res.status(500).json(errorResponse(`Error creating cashier: ${dbError.message}`, 500));
+        // Use the error message if available, otherwise use a generic message
+        const errorMessage = dbError.message || "Unknown database error";
+        return res.status(500).json(errorResponse(`Error creating cashier: ${errorMessage}`, 500));
       }
     } catch (error) {
       console.error("Error creating cashier:", error);
@@ -1019,37 +1026,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Update cashier permissions
-  app.patch("/api/cashiers/:id/permissions", async (req: Request, res: Response) => {
+  app.patch("/api/cashiers/:id/permissions", requireRole(["center"]), async (req: Request, res: Response) => {
     try {
+      ensureAuthenticated(req);
       const cashierId = parseInt(req.params.id);
       const { permissions } = req.body;
       
       if (!permissions) {
-        return res.status(400).json({
-          code: 400,
-          success: false,
-          data: null,
-          description: "Permissions are required"
-        });
+        return res.status(400).json(errorResponse("Permissions are required", 400));
       }
       
-      // Return static mock response
-      const mockCashier = {
-        id: cashierId,
-        userId: 100,
-        ownerId: 2, // Fixed ID
-        permissions: permissions,
-        venueIds: [1, 2], // Fixed venue IDs
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      
-      return res.json({
-        code: 200,
-        success: true,
-        data: mockCashier,
-        description: "Cashier permissions updated successfully"
-      });
+      try {
+        // Get the cashier to check ownership
+        const cashiers = await storage.getCashiers(req.user.id);
+        const cashier = cashiers.find(c => c.id === cashierId);
+        
+        if (!cashier) {
+          return res.status(404).json(errorResponse("Cashier not found or you don't have access", 404));
+        }
+        
+        // Update permissions in database
+        const updatedCashier = await storage.updateCashierPermissions(cashierId, permissions);
+        
+        return res.json(successResponse(updatedCashier, 200, "Cashier permissions updated successfully"));
+      } catch (dbError: any) {
+        console.error("Database error updating cashier permissions:", dbError);
+        const errorMessage = dbError.message || "Unknown database error";
+        return res.status(500).json(errorResponse(`Error updating permissions: ${errorMessage}`, 500));
+      }
     } catch (error) {
       console.error("Error updating cashier permissions:", error);
       return res.status(500).json({
@@ -1062,44 +1066,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Update cashier venues
-  app.patch("/api/cashiers/:id/venues", async (req: Request, res: Response) => {
+  app.patch("/api/cashiers/:id/venues", requireRole(["center"]), async (req: Request, res: Response) => {
     try {
+      ensureAuthenticated(req);
       const cashierId = parseInt(req.params.id);
       const { venueIds } = req.body;
       
       if (!venueIds || !Array.isArray(venueIds)) {
-        return res.status(400).json({
-          code: 400,
-          success: false,
-          data: null,
-          description: "Valid venue IDs array is required"
-        });
+        return res.status(400).json(errorResponse("Valid venue IDs array is required", 400));
       }
       
-      // Static mock response
-      const mockCashier = {
-        id: cashierId,
-        userId: 100,
-        ownerId: 2, // Fixed ID
-        permissions: {
-          canViewBookings: true,
-          canCreateBookings: true,
-          canCancelBookings: false,
-          canViewReports: false,
-          canProcessPayments: true,
-          canManageCustomers: false
-        },
-        venueIds: venueIds,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      
-      return res.json({
-        code: 200,
-        success: true,
-        data: mockCashier,
-        description: "Cashier venues updated successfully"
-      });
+      try {
+        // Get the cashier to check ownership
+        const cashiers = await storage.getCashiers(req.user.id);
+        const cashier = cashiers.find(c => c.id === cashierId);
+        
+        if (!cashier) {
+          return res.status(404).json(errorResponse("Cashier not found or you don't have access", 404));
+        }
+        
+        // Get center's venues to verify the venueIds are valid
+        const venues = await storage.getVenues(req.user.id);
+        const centerVenueIds = venues.map(v => v.id);
+        
+        // Check if all venue IDs are valid
+        const invalidVenueIds = venueIds.filter(id => !centerVenueIds.includes(id));
+        if (invalidVenueIds.length > 0) {
+          return res.status(400).json(errorResponse(`Invalid venue IDs: ${invalidVenueIds.join(', ')}`, 400));
+        }
+        
+        // Update venue access in database
+        const updatedCashier = await storage.updateCashierVenues(cashierId, venueIds);
+        
+        return res.json(successResponse(updatedCashier, 200, "Cashier venue access updated successfully"));
+      } catch (dbError: any) {
+        console.error("Database error updating cashier venues:", dbError);
+        const errorMessage = dbError.message || "Unknown database error";
+        return res.status(500).json(errorResponse(`Error updating venue access: ${errorMessage}`, 500));
+      }
     } catch (error) {
       console.error("Error updating cashier venues:", error);
       return res.status(500).json({

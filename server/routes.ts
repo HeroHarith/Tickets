@@ -48,8 +48,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // Add all your routes here...
+  
+  // Venues API endpoints
+  app.get("/api/venues", requireRole(["center", "admin"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      // Get all venues for the center user
+      let venues;
+      if (req.user.role === "center") {
+        venues = await storage.getVenues(req.user.id);
+      } else {
+        // Admin sees all venues
+        venues = await storage.getVenues();
+      }
+      
+      return res.json(successResponse(venues, 200, "Venues retrieved successfully"));
+    } catch (error) {
+      console.error("Error retrieving venues:", error);
+      return res.status(500).json(errorResponse("Error retrieving venues", 500));
+    }
+  });
 
-  // Venue Sales Report endpoint
+  // Venue Sales Report endpoint - IMPORTANT: placing this first to avoid route conflicts
   app.get("/api/venues/sales-report", requireRole(["center", "admin"]), async (req: Request, res: Response) => {
     try {
       ensureAuthenticated(req);
@@ -149,6 +170,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error generating venue sales report:', error);
       return res.status(500).json(errorResponse("Error generating venue sales report", 500));
+    }
+  });
+  
+  app.get("/api/venues/:id", requireRole(["center", "admin", "customer"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      const venueId = parseInt(req.params.id);
+      if (isNaN(venueId)) {
+        return res.status(400).json(errorResponse("Invalid venue ID", 400));
+      }
+      
+      const venue = await storage.getVenue(venueId);
+      
+      if (!venue) {
+        return res.status(404).json(errorResponse("Venue not found", 404));
+      }
+      
+      // If user is a center, ensure they own this venue
+      if (req.user.role === "center" && venue.ownerId !== req.user.id) {
+        return res.status(403).json(errorResponse("You don't have permission to view this venue", 403));
+      }
+      
+      return res.json(successResponse(venue, 200, "Venue retrieved successfully"));
+    } catch (error) {
+      console.error("Error retrieving venue:", error);
+      return res.status(500).json(errorResponse("Error retrieving venue", 500));
     }
   });
 

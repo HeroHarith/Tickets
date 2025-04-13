@@ -1591,7 +1591,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ensureAuthenticated(req);
       
       // Parse query parameters
-      const venueId = req.query.venueId ? parseInt(req.query.venueId as string) : undefined;
+      let venueId: number | undefined = undefined;
+      if (req.query.venueId && req.query.venueId !== 'all') {
+        const parsedId = parseInt(req.query.venueId as string);
+        if (!isNaN(parsedId)) {
+          venueId = parsedId;
+        }
+      }
+      
       const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
       const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
       

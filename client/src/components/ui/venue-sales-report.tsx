@@ -122,7 +122,8 @@ export function VenueSalesReport({ venues }: VenueSalesReportProps) {
   });
   
   // Extract data from the standardized response format
-  const salesReport = salesReportResponse?.data as SalesReportData;
+  const salesReport = salesReportResponse && 'data' in salesReportResponse ? 
+    salesReportResponse.data as SalesReportData : undefined;
   
   // Pie chart colors
   const STATUS_COLORS = ['#10B981', '#F97316', '#6366F1', '#EC4899'];

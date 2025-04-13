@@ -96,6 +96,11 @@ function Router() {
           component={CenterSchedulePage}
           requiredRoles={["center"]}
         />
+        <ProtectedRoute
+          path="/center/reports"
+          component={CenterReportsPage}
+          requiredRoles={["center"]}
+        />
         <ProtectedRoute path="*" component={NotFound} />
       </Switch>
     </div>

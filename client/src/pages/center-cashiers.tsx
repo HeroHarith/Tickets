@@ -136,21 +136,37 @@ export default function CenterCashiersPage() {
   });
   
   // Extract data from the standardized response format
-  const cashiers = Array.isArray(cashiersResponse) ? cashiersResponse : (cashiersResponse?.data || []);
-  const venues = Array.isArray(venuesResponse) ? venuesResponse : (venuesResponse?.data || []);
+  const cashiers: Cashier[] = Array.isArray(cashiersResponse) 
+    ? cashiersResponse 
+    : (cashiersResponse && typeof cashiersResponse === 'object' && 'data' in cashiersResponse 
+        ? cashiersResponse.data as Cashier[] 
+        : []);
+  
+  const venues: Venue[] = Array.isArray(venuesResponse) 
+    ? venuesResponse 
+    : (venuesResponse && typeof venuesResponse === 'object' && 'data' in venuesResponse 
+        ? venuesResponse.data as Venue[] 
+        : []);
   
   // Add cashier mutation
   const addCashierMutation = useMutation({
     mutationFn: async (data: z.infer<typeof addCashierSchema>) => {
       const res = await apiRequest("POST", "/api/cashiers", data);
-      return await res.json();
+      const responseData = await res.json();
+      // Handle standardized API response format
+      console.log('Cashier create response:', responseData);
+      if (responseData && responseData.success === true && responseData.data) {
+        return responseData.data;
+      }
+      // If no standardized format, return raw response
+      return responseData;
     },
     onSuccess: (data) => {
+      // Extract data from the response
+      console.log('Add cashier success with data:', data);
       toast({
         title: "Cashier added",
-        description: data.emailSent 
-          ? "Cashier has been added successfully and an email has been sent to them."
-          : "Cashier has been added successfully, but the email could not be sent.",
+        description: "Cashier has been added successfully",
       });
       setIsAddCashierDialogOpen(false);
       addForm.reset();
@@ -169,9 +185,18 @@ export default function CenterCashiersPage() {
   // Delete cashier mutation
   const deleteCashierMutation = useMutation({
     mutationFn: async (cashierId: number) => {
-      await apiRequest("DELETE", `/api/cashiers/${cashierId}`);
+      const res = await apiRequest("DELETE", `/api/cashiers/${cashierId}`);
+      const responseData = await res.json();
+      console.log('Delete cashier response:', responseData);
+      // Handle standardized API response format
+      if (responseData && responseData.success === true && responseData.data) {
+        return responseData.data;
+      }
+      // If no standardized format, return raw response
+      return responseData;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Delete cashier success with data:', data);
       toast({
         title: "Cashier deleted",
         description: "Cashier has been deleted successfully.",
@@ -194,9 +219,17 @@ export default function CenterCashiersPage() {
   const updateCashierPermissionsMutation = useMutation({
     mutationFn: async ({ cashierId, permissions }: { cashierId: number, permissions: Record<string, boolean> }) => {
       const res = await apiRequest("PATCH", `/api/cashiers/${cashierId}/permissions`, { permissions });
-      return await res.json();
+      const responseData = await res.json();
+      console.log('Permissions update response:', responseData);
+      // Handle standardized API response format
+      if (responseData && responseData.success === true && responseData.data) {
+        return responseData.data;
+      }
+      // If no standardized format, return raw response
+      return responseData;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Permissions update success with data:', data);
       toast({
         title: "Permissions updated",
         description: "Cashier permissions have been updated successfully.",
@@ -219,9 +252,17 @@ export default function CenterCashiersPage() {
   const updateCashierVenuesMutation = useMutation({
     mutationFn: async ({ cashierId, venueIds }: { cashierId: number, venueIds: number[] }) => {
       const res = await apiRequest("PATCH", `/api/cashiers/${cashierId}/venues`, { venueIds });
-      return await res.json();
+      const responseData = await res.json();
+      console.log('Venues update response:', responseData);
+      // Handle standardized API response format
+      if (responseData && responseData.success === true && responseData.data) {
+        return responseData.data;
+      }
+      // If no standardized format, return raw response
+      return responseData;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Venues update success with data:', data);
       toast({
         title: "Venues updated",
         description: "Cashier venue access has been updated successfully.",
@@ -286,7 +327,7 @@ export default function CenterCashiersPage() {
   
   // Render venue name from ID
   const getVenueName = (venueId: number) => {
-    const venue = venues.find(v => v.id === venueId);
+    const venue = venues.find((v: Venue) => v.id === venueId);
     return venue ? venue.name : `Venue ${venueId}`;
   };
   
@@ -371,7 +412,7 @@ export default function CenterCashiersPage() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-            {cashiers.map((cashier) => (
+            {cashiers.map((cashier: Cashier) => (
               <Card key={cashier.id} className="overflow-hidden">
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center">
@@ -392,7 +433,7 @@ export default function CenterCashiersPage() {
                       </h4>
                       <div className="flex flex-wrap gap-2">
                         {cashier.venueIds && cashier.venueIds.length > 0 ? (
-                          cashier.venueIds.map((venueId) => (
+                          cashier.venueIds.map((venueId: number) => (
                             <Badge key={venueId} variant="outline">
                               {getVenueName(venueId)}
                             </Badge>

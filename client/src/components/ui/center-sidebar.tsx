@@ -13,7 +13,8 @@ import {
   Menu, 
   Settings, 
   UsersRound,
-  Building2 
+  Building2,
+  BarChart3
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -56,6 +57,11 @@ export function CenterSidebar({ className }: SidebarNavProps) {
       title: "Schedule",
       href: "/center/schedule",
       icon: <Clock className="mr-2 h-4 w-4" />,
+    },
+    {
+      title: "Sales Reports",
+      href: "/center/reports",
+      icon: <BarChart3 className="mr-2 h-4 w-4" />,
     },
     {
       title: "Customers",

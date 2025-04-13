@@ -18,6 +18,7 @@ import CenterHomePage from "@/pages/center-home";
 import CenterBookingsPage from "@/pages/center-bookings";
 import CenterVenuesPage from "@/pages/center-venues";
 import CenterSchedulePage from "@/pages/center-schedule";
+import CenterReportsPage from "@/pages/center-reports";
 import AuthPage from "@/pages/auth-page";
 import ProfilePage from "@/pages/profile";
 import { AuthProvider } from "@/hooks/use-auth";

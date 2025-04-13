@@ -39,11 +39,21 @@ import {
 } from "lucide-react";
 import { Venue } from "@/lib/types";
 import { format } from "date-fns";
+import { VenueEditDialog } from "@/components/ui/venue-edit-dialog";
 
 export default function CenterAllVenuesPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedVenue, setSelectedVenue] = useState<Venue | undefined>(undefined);
+  
+  // Function to handle opening the dialog for creating or editing a venue
+  const handleOpenDialog = (venue?: Venue) => {
+    console.log("Opening dialog with venue:", venue);
+    setSelectedVenue(venue);
+    setEditDialogOpen(true);
+  };
   
   // Load venues
   const { 
@@ -124,12 +134,10 @@ export default function CenterAllVenuesPage() {
               />
             </div>
             
-            <Link href="/center/venues">
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Create Venue
-              </Button>
-            </Link>
+            <Button onClick={() => handleOpenDialog(undefined)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Venue
+            </Button>
           </div>
         </div>
         
@@ -257,12 +265,15 @@ export default function CenterAllVenuesPage() {
                         </div>
                       </div>
                     )}
-                    <Link href={`/center/venue/${venue.id}`}>
-                      <Button variant="outline" size="sm" className="ml-auto mt-2">
-                        <Eye className="mr-2 h-3.5 w-3.5" />
-                        Edit
-                      </Button>
-                    </Link>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="ml-auto mt-2"
+                      onClick={() => handleOpenDialog(venue)}
+                    >
+                      <Eye className="mr-2 h-3.5 w-3.5" />
+                      Edit
+                    </Button>
                   </CardFooter>
                 </Card>
               ))
@@ -279,20 +290,26 @@ export default function CenterAllVenuesPage() {
                         ? "You don't have any inactive venues" 
                         : "Get started by creating your first venue"}
                 </p>
-                <Link href="/center/venues">
-                  <Button 
-                    variant="outline" 
-                    className="mt-4"
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add a Venue
-                  </Button>
-                </Link>
+                <Button 
+                  variant="outline" 
+                  className="mt-4"
+                  onClick={() => handleOpenDialog(undefined)}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add a Venue
+                </Button>
               </div>
             )}
           </div>
         </Tabs>
       </div>
+      
+      {/* Venue Edit Dialog */}
+      <VenueEditDialog
+        venue={selectedVenue}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+      />
     </CenterLayout>
   );
 }

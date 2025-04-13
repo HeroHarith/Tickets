@@ -1020,6 +1020,12 @@ export class OptimizedStorage implements IStorage {
   // VENUES AND RENTALS IMPLEMENTATION
   // These would follow the same pattern as above
   async getVenue(id: number): Promise<Venue | undefined> {
+    // Validate input
+    if (id === undefined || id === null || isNaN(id)) {
+      console.error(`Invalid venue ID: ${id}`);
+      return undefined;
+    }
+    
     const cacheKey = this.getCacheKey('venue', id);
     const cachedVenue = cache.get<Venue>(cacheKey);
     
@@ -1027,15 +1033,20 @@ export class OptimizedStorage implements IStorage {
       return cachedVenue;
     }
     
-    const [venue] = await db.select()
-      .from(venues)
-      .where(eq(venues.id, id));
-    
-    if (venue) {
-      cache.set(cacheKey, venue, TTL.MEDIUM);
+    try {
+      const [venue] = await db.select()
+        .from(venues)
+        .where(eq(venues.id, id));
+      
+      if (venue) {
+        cache.set(cacheKey, venue, TTL.MEDIUM);
+      }
+      
+      return venue;
+    } catch (error) {
+      console.error(`Error fetching venue ${id}:`, error);
+      return undefined;
     }
-    
-    return venue;
   }
   
   async getVenues(centerId?: number): Promise<Venue[]> {

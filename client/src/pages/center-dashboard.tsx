@@ -233,7 +233,7 @@ export default function CenterDashboard() {
   // Update venue mutation
   const updateVenueMutation = useMutation({
     mutationFn: async ({ venueId, data }: { venueId: number, data: z.infer<typeof venueFormSchema> }) => {
-      const res = await apiRequest("PUT", `/api/venues/${venueId}`, data);
+      const res = await apiRequest("PATCH", `/api/venues/${venueId}`, data);
       return await res.json();
     },
     onSuccess: () => {

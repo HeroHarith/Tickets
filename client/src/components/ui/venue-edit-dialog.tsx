@@ -54,6 +54,12 @@ export function VenueEditDialog({ venue, open, onOpenChange }: VenueEditDialogPr
   const queryClient = useQueryClient();
   const isNewVenue = !venue;
 
+  console.log("Dialog open state:", open);
+  console.log("Selected venue:", venue);
+
+  // Reset form when dialog is opened or venue selection changes
+  const [lastFormReset, setLastFormReset] = useState<number>(0);
+  
   // Setup form with default values
   const form = useForm<VenueFormValues>({
     resolver: zodResolver(venueFormSchema),
@@ -67,6 +73,22 @@ export function VenueEditDialog({ venue, open, onOpenChange }: VenueEditDialogPr
       facilities: venue?.facilities?.join(", ") || "",
     },
   });
+  
+  // Reset form when venue changes or dialog opens
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        name: venue?.name || "",
+        location: venue?.location || "",
+        description: venue?.description || "",
+        hourlyRate: venue?.hourlyRate?.toString() || "",
+        capacity: venue?.capacity?.toString() || "",
+        isActive: venue?.isActive ?? true,
+        facilities: venue?.facilities?.join(", ") || "",
+      });
+      setLastFormReset(Date.now());
+    }
+  }, [venue, open, form]);
 
   // Update venue mutation
   const updateVenueMutation = useMutation({

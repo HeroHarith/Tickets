@@ -131,7 +131,7 @@ export default function CenterAllVenuesPage() {
               }}
             >
               <Plus className="mr-2 h-4 w-4" />
-              Create Venue
+              Manage Venues
             </Button>
           </div>
         </div>

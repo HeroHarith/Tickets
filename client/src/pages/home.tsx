@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import TabsComponent from "@/components/ui/tabs-component";
 import { Button } from "@/components/ui/button";
 import { Event, TicketType } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { EventCard, EventSearch } from "@/components/domain/events";
+import { Tabs } from "@/components/common/navigation";
 
 const Home = () => {
   const { user } = useAuth();
@@ -176,7 +176,7 @@ const Home = () => {
   
   return (
     <div>
-      <TabsComponent
+      <Tabs
         tabs={getNavTabs()}
         activeTab="browse"
       />

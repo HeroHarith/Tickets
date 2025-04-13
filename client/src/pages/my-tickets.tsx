@@ -28,7 +28,9 @@ const MyTickets = () => {
     queryFn: async () => {
       const res = await fetch("/api/tickets/user");
       if (!res.ok) throw new Error("Failed to fetch tickets");
-      return res.json();
+      const jsonResponse = await res.json();
+      // Check if the response has a data property (our standard API response format)
+      return jsonResponse.data || [];
     }
   });
   
@@ -74,8 +76,9 @@ const MyTickets = () => {
     try {
       const res = await fetch(`/api/tickets/${ticketId}/qr`);
       if (!res.ok) throw new Error('Failed to fetch QR code');
-      const data = await res.json();
-      return data.qrCode;
+      const response = await res.json();
+      // Handle our standardized API response format
+      return response.data?.qrCode || null;
     } catch (error) {
       console.error('Error fetching QR code:', error);
       return null;

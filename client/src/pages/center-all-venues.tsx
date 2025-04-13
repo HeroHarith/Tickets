@@ -48,6 +48,13 @@ export default function CenterAllVenuesPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedVenue, setSelectedVenue] = useState<Venue | undefined>(undefined);
   
+  // Function to handle opening the dialog for creating or editing a venue
+  const handleOpenDialog = (venue?: Venue) => {
+    console.log("Opening dialog with venue:", venue);
+    setSelectedVenue(venue);
+    setEditDialogOpen(true);
+  };
+  
   // Load venues
   const { 
     data: venues = [], 
@@ -125,10 +132,7 @@ export default function CenterAllVenuesPage() {
             </div>
             
             <Button
-              onClick={() => {
-                setSelectedVenue(undefined);
-                setEditDialogOpen(true);
-              }}
+              onClick={() => handleOpenDialog(undefined)}
             >
               <Plus className="mr-2 h-4 w-4" />
               Manage Venues
@@ -264,10 +268,7 @@ export default function CenterAllVenuesPage() {
                       variant="outline" 
                       size="sm" 
                       className="ml-auto mt-2"
-                      onClick={() => {
-                        setSelectedVenue(venue);
-                        setEditDialogOpen(true);
-                      }}
+                      onClick={() => handleOpenDialog(venue)}
                     >
                       <Eye className="mr-2 h-3.5 w-3.5" />
                       Edit
@@ -291,10 +292,7 @@ export default function CenterAllVenuesPage() {
                 <Button 
                   variant="outline" 
                   className="mt-4"
-                  onClick={() => {
-                    setSelectedVenue(undefined);
-                    setEditDialogOpen(true);
-                  }}
+                  onClick={() => handleOpenDialog(undefined)}
                 >
                   <Plus className="mr-2 h-4 w-4" />
                   Add a Venue

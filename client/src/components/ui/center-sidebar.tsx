@@ -14,7 +14,8 @@ import {
   Settings, 
   UsersRound,
   Building2,
-  BarChart3
+  BarChart3,
+  UserPlus
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -62,6 +63,11 @@ export function CenterSidebar({ className }: SidebarNavProps) {
       title: "Sales Reports",
       href: "/center/reports",
       icon: <BarChart3 className="mr-2 h-4 w-4" />,
+    },
+    {
+      title: "Cashiers",
+      href: "/center/cashiers",
+      icon: <UserPlus className="mr-2 h-4 w-4" />,
     },
     {
       title: "Customers",

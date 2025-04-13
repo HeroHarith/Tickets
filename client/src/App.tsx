@@ -19,6 +19,7 @@ import CenterBookingsPage from "@/pages/center-bookings";
 import CenterVenuesPage from "@/pages/center-venues";
 import CenterSchedulePage from "@/pages/center-schedule";
 import CenterReportsPage from "@/pages/center-reports";
+import CenterCashiersPage from "@/pages/center-cashiers";
 import AuthPage from "@/pages/auth-page";
 import ProfilePage from "@/pages/profile";
 import { AuthProvider } from "@/hooks/use-auth";
@@ -99,6 +100,11 @@ function Router() {
         <ProtectedRoute
           path="/center/reports"
           component={CenterReportsPage}
+          requiredRoles={["center"]}
+        />
+        <ProtectedRoute
+          path="/center/cashiers"
+          component={CenterCashiersPage}
           requiredRoles={["center"]}
         />
         <ProtectedRoute path="*" component={NotFound} />

@@ -69,6 +69,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json(errorResponse("Error retrieving venues", 500));
     }
   });
+  
+  // Create venue endpoint
+  app.post("/api/venues", requireRole(["center", "admin"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      // Validate request body
+      // For center users, enforce their ID as owner
+      if (req.user.role === "center") {
+        req.body.ownerId = req.user.id;
+      }
+      
+      try {
+        const venue = await storage.createVenue(req.body);
+        return res.status(201).json(successResponse(venue, 201, "Venue created successfully"));
+      } catch (error: any) {
+        console.error("Error creating venue:", error);
+        
+        if (error.message?.includes("Zod")) {
+          return res.status(400).json(errorResponse("Invalid venue data: " + error.message, 400));
+        }
+        
+        return res.status(500).json(errorResponse("Error creating venue: " + error.message, 500));
+      }
+    } catch (error) {
+      console.error("Error creating venue:", error);
+      return res.status(500).json(errorResponse("Error creating venue", 500));
+    }
+  });
 
   // Venue Sales Report endpoint - IMPORTANT: placing this first to avoid route conflicts
   app.get("/api/venues/sales-report", requireRole(["center", "admin"]), async (req: Request, res: Response) => {
@@ -197,6 +226,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error retrieving venue:", error);
       return res.status(500).json(errorResponse("Error retrieving venue", 500));
+    }
+  });
+  
+  // Venue update endpoint
+  app.patch("/api/venues/:id", requireRole(["center", "admin"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      const venueId = parseInt(req.params.id);
+      if (isNaN(venueId)) {
+        return res.status(400).json(errorResponse("Invalid venue ID", 400));
+      }
+      
+      // Get the venue to check ownership
+      const venue = await storage.getVenue(venueId);
+      
+      if (!venue) {
+        return res.status(404).json(errorResponse("Venue not found", 404));
+      }
+      
+      // Check ownership unless admin
+      if (req.user.role === "center" && venue.ownerId !== req.user.id) {
+        return res.status(403).json(errorResponse("You don't have permission to edit this venue", 403));
+      }
+      
+      // Perform the update
+      try {
+        const updatedVenue = await storage.updateVenue(venueId, req.body);
+        return res.json(successResponse(updatedVenue, 200, "Venue updated successfully"));
+      } catch (error: any) {
+        console.error("Error updating venue:", error);
+        
+        if (error.message?.includes("Zod")) {
+          return res.status(400).json(errorResponse("Invalid venue data: " + error.message, 400));
+        }
+        
+        return res.status(500).json(errorResponse("Error updating venue", 500));
+      }
+    } catch (error) {
+      console.error("Error updating venue:", error);
+      return res.status(500).json(errorResponse("Error updating venue", 500));
+    }
+  });
+  
+  // Venue delete endpoint
+  app.delete("/api/venues/:id", requireRole(["center", "admin"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      const venueId = parseInt(req.params.id);
+      if (isNaN(venueId)) {
+        return res.status(400).json(errorResponse("Invalid venue ID", 400));
+      }
+      
+      // Get the venue to check ownership
+      const venue = await storage.getVenue(venueId);
+      
+      if (!venue) {
+        return res.status(404).json(errorResponse("Venue not found", 404));
+      }
+      
+      // Check ownership unless admin
+      if (req.user.role === "center" && venue.ownerId !== req.user.id) {
+        return res.status(403).json(errorResponse("You don't have permission to delete this venue", 403));
+      }
+      
+      // Perform the delete
+      try {
+        await storage.deleteVenue(venueId);
+        return res.json(successResponse(null, 200, "Venue deleted successfully"));
+      } catch (error: any) {
+        console.error("Error deleting venue:", error);
+        return res.status(500).json(errorResponse("Error deleting venue: " + error.message, 500));
+      }
+    } catch (error) {
+      console.error("Error deleting venue:", error);
+      return res.status(500).json(errorResponse("Error deleting venue", 500));
     }
   });
 

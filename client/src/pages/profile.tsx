@@ -125,18 +125,18 @@ export default function ProfilePage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-1 gap-1">
                   <Label className="text-muted-foreground text-xs font-normal">Full Name</Label>
-                  <div className="font-medium">{user.name}</div>
+                  <div className="font-medium">{user.name || user.username || 'Not Set'}</div>
                 </div>
                 
                 <div className="grid grid-cols-1 gap-1">
                   <Label className="text-muted-foreground text-xs font-normal">Username</Label>
-                  <div className="font-medium">{user.username}</div>
+                  <div className="font-medium">{user.username || 'Not Set'}</div>
                 </div>
                 
                 <div className="grid grid-cols-1 gap-1">
                   <Label className="text-muted-foreground text-xs font-normal">Email</Label>
                   <div className="flex items-center gap-2">
-                    <span className="font-medium">{user.email}</span>
+                    <span className="font-medium">{user.email || 'Not Set'}</span>
                     {user.emailVerified ? (
                       <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200 text-xs">
                         <Check className="h-3 w-3 mr-1" /> Verified
@@ -151,13 +151,13 @@ export default function ProfilePage() {
                 
                 <div className="grid grid-cols-1 gap-1">
                   <Label className="text-muted-foreground text-xs font-normal">Role</Label>
-                  <div className="font-medium capitalize">{user.role}</div>
+                  <div className="font-medium capitalize">{user.role || 'Customer'}</div>
                 </div>
                 
                 <div className="grid grid-cols-1 gap-1">
                   <Label className="text-muted-foreground text-xs font-normal">Member Since</Label>
                   <div className="font-medium">
-                    {new Date(user.createdAt).toLocaleDateString()}
+                    {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Invalid Date'}
                   </div>
                 </div>
               </div>

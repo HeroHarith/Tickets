@@ -288,7 +288,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Ticket routes
-  app.post("/api/tickets/purchase", requireRole(["customer", "eventManager", "admin"]), async (req: Request, res: Response) => {
+  app.post("/api/tickets/purchase", requireRole(["customer", "eventManager", "admin", "center"]), async (req: Request, res: Response) => {
     const { data, error } = validateRequest(purchaseTicketSchema, req.body);
     if (error) return res.status(400).json(error);
 
@@ -304,7 +304,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/tickets/user", requireRole(["customer", "eventManager", "admin"]), async (req: Request, res: Response) => {
+  app.get("/api/tickets/user", requireRole(["customer", "eventManager", "admin", "center"]), async (req: Request, res: Response) => {
     try {
       // Ensure user is authenticated and get their ID
       ensureAuthenticated(req);
@@ -362,7 +362,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // QR code generation for ticket
-  app.get("/api/tickets/:id/qr", requireRole(["customer", "eventManager", "admin"]), async (req: Request, res: Response) => {
+  app.get("/api/tickets/:id/qr", requireRole(["customer", "eventManager", "admin", "center"]), async (req: Request, res: Response) => {
     try {
       const ticketId = parseInt(req.params.id);
       
@@ -377,7 +377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Ticket validation - requires event manager or admin role
-  app.post("/api/tickets/:id/validate", requireRole(["eventManager", "admin"]), async (req: Request, res: Response) => {
+  app.post("/api/tickets/:id/validate", requireRole(["eventManager", "admin", "center"]), async (req: Request, res: Response) => {
     try {
       const ticketId = parseInt(req.params.id);
       const isValid = await storage.validateTicket(ticketId);

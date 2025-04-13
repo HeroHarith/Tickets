@@ -1374,7 +1374,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get sales report
-      const salesReport = await storage.getVenueSalesReport(venueId, startDate, endDate);
+      const salesReport = await optimizedStorage.getVenueSalesReport(venueId, startDate, endDate);
       
       return res.status(200).json(successResponse(
         salesReport, 

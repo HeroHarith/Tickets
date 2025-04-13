@@ -938,6 +938,180 @@ export class OptimizedStorage implements IStorage {
     return result;
   }
   
+  /**
+   * Generate a sales report for venues, optionally filtered by venue, date range
+   */
+  async getVenueSalesReport(
+    venueId?: number, 
+    startDate?: Date, 
+    endDate?: Date
+  ): Promise<{
+    totalRevenue: number;
+    completedBookings: number;
+    canceledBookings: number;
+    pendingPayments: number;
+    paidBookings: number;
+    refundedBookings: number;
+    averageBookingValue: number;
+    venueBreakdown?: {
+      venueId: number;
+      venueName: string;
+      revenue: number;
+      bookings: number;
+    }[];
+    timeBreakdown: {
+      period: string;
+      revenue: number;
+      bookings: number;
+    }[];
+  }> {
+    // Generate cache key based on parameters
+    const cacheKey = this.getCacheKey('venue-sales-report', 
+      `${venueId || 'all'}-${startDate?.toISOString() || 'any'}-${endDate?.toISOString() || 'any'}`);
+    
+    // Try to get from cache first
+    const cachedReport = cache.get(cacheKey);
+    if (cachedReport) {
+      return cachedReport;
+    }
+    
+    try {
+      // Build the query with filters
+      let query = db.select({
+        id: rentals.id,
+        venueId: rentals.venueId,
+        totalPrice: rentals.totalPrice,
+        status: rentals.status,
+        paymentStatus: rentals.paymentStatus,
+        startTime: rentals.startTime,
+        endTime: rentals.endTime
+      }).from(rentals);
+      
+      // Apply filters
+      if (venueId) {
+        query = query.where(eq(rentals.venueId, venueId));
+      }
+      
+      if (startDate) {
+        query = query.where(sql`${rentals.startTime} >= ${startDate}`);
+      }
+      
+      if (endDate) {
+        query = query.where(sql`${rentals.startTime} <= ${endDate}`);
+      }
+      
+      // Execute query
+      const rentalRecords = await query;
+      
+      // Initialize counters and aggregates
+      let totalRevenue = 0;
+      let completedBookings = 0;
+      let canceledBookings = 0;
+      let pendingPayments = 0;
+      let paidBookings = 0;
+      let refundedBookings = 0;
+      
+      // Map to track venue-specific data
+      const venueData: Map<number, { 
+        revenue: number; 
+        bookings: number;
+        venueName?: string;
+      }> = new Map();
+      
+      // Map to track time-based data by month (format: YYYY-MM)
+      const timeData: Map<string, { 
+        revenue: number; 
+        bookings: number;
+      }> = new Map();
+      
+      // Process rentals
+      for (const rental of rentalRecords) {
+        const price = parseFloat(rental.totalPrice);
+        const rentalDate = new Date(rental.startTime);
+        const period = `${rentalDate.getFullYear()}-${String(rentalDate.getMonth() + 1).padStart(2, '0')}`;
+        
+        // Only count revenue for paid bookings
+        if (rental.paymentStatus === 'paid') {
+          totalRevenue += price;
+          
+          // Add to venue breakdown
+          if (!venueData.has(rental.venueId)) {
+            venueData.set(rental.venueId, { revenue: 0, bookings: 0 });
+          }
+          const venueInfo = venueData.get(rental.venueId)!;
+          venueInfo.revenue += price;
+          venueInfo.bookings += 1;
+          
+          // Add to time breakdown
+          if (!timeData.has(period)) {
+            timeData.set(period, { revenue: 0, bookings: 0 });
+          }
+          const periodData = timeData.get(period)!;
+          periodData.revenue += price;
+          periodData.bookings += 1;
+        }
+        
+        // Count by status
+        if (rental.status === 'completed') completedBookings++;
+        if (rental.status === 'canceled') canceledBookings++;
+        
+        // Count by payment status
+        if (rental.paymentStatus === 'unpaid') pendingPayments++;
+        if (rental.paymentStatus === 'paid') paidBookings++;
+        if (rental.paymentStatus === 'refunded') refundedBookings++;
+      }
+      
+      // Fetch venue names if needed
+      if (venueData.size > 0) {
+        const venueIds = Array.from(venueData.keys());
+        const venueRecords = await db.select({
+          id: venues.id,
+          name: venues.name
+        }).from(venues).where(inArray(venues.id, venueIds));
+        
+        // Add venue names to the data
+        for (const venue of venueRecords) {
+          const data = venueData.get(venue.id);
+          if (data) {
+            data.venueName = venue.name;
+          }
+        }
+      }
+      
+      // Prepare the final report
+      const report = {
+        totalRevenue,
+        completedBookings,
+        canceledBookings,
+        pendingPayments,
+        paidBookings,
+        refundedBookings,
+        averageBookingValue: paidBookings > 0 ? totalRevenue / paidBookings : 0,
+        venueBreakdown: venueId ? undefined : Array.from(venueData.entries()).map(([venueId, data]) => ({
+          venueId,
+          venueName: data.venueName || `Venue #${venueId}`,
+          revenue: data.revenue,
+          bookings: data.bookings
+        })),
+        timeBreakdown: Array.from(timeData.entries())
+          .map(([period, data]) => ({
+            period,
+            revenue: data.revenue,
+            bookings: data.bookings
+          }))
+          .sort((a, b) => a.period.localeCompare(b.period))
+      };
+      
+      // Cache the report
+      cache.set(cacheKey, report, TTL.MEDIUM);
+      
+      return report;
+    } catch (error) {
+      console.error('Error generating venue sales report:', error);
+      throw error;
+    }
+  }
+  
   // RENTAL OPERATIONS
   async getRental(id: number): Promise<Rental | undefined> {
     const cacheKey = this.getCacheKey('rental', id);

@@ -944,6 +944,183 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // ===== Cashier Management Routes =====
+  
+  // Get all cashiers for the current center
+  app.get("/api/cashiers", requireRole(["center"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      const cashiers = await storage.getCashiers(req.user.id);
+      
+      // Enhance cashier data with user information
+      const enhancedCashiers = await Promise.all(
+        cashiers.map(async (cashier) => {
+          const user = await storage.getUser(cashier.userId);
+          return {
+            ...cashier,
+            user: user ? {
+              id: user.id,
+              username: user.username,
+              email: user.email,
+              name: user.name
+            } : null
+          };
+        })
+      );
+      
+      return successResponse(res, enhancedCashiers);
+    } catch (error) {
+      console.error("Error fetching cashiers:", error);
+      return errorResponse(res, 500, "Error fetching cashiers");
+    }
+  });
+  
+  // Create a new cashier
+  app.post("/api/cashiers", requireRole(["center"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      const { email, permissions, venueIds } = req.body;
+      
+      if (!email) {
+        return errorResponse(res, 400, "Email is required");
+      }
+      
+      // Create the cashier
+      const result = await storage.createCashier(
+        req.user.id,
+        email,
+        permissions,
+        venueIds
+      );
+      
+      // Send email to the new cashier if it's a new user
+      if (result.tempPassword) {
+        try {
+          const baseUrl = `${req.protocol}://${req.get('host')}`;
+          await sendVerificationEmail(result.user.email, result.user.id, baseUrl);
+          
+          // Don't send password in response, only indicate that it exists
+          return successResponse(res, {
+            ...result,
+            tempPassword: result.tempPassword ? true : false, // Just indicate if a temp password was created
+            emailSent: true
+          });
+        } catch (emailError) {
+          console.error("Error sending email to new cashier:", emailError);
+          return successResponse(res, {
+            ...result,
+            tempPassword: result.tempPassword ? true : false,
+            emailSent: false,
+            message: "Cashier created, but email could not be sent"
+          });
+        }
+      }
+      
+      return successResponse(res, {
+        ...result,
+        tempPassword: false
+      });
+    } catch (error) {
+      console.error("Error creating cashier:", error);
+      return errorResponse(res, 500, "Error creating cashier");
+    }
+  });
+  
+  // Update cashier permissions
+  app.patch("/api/cashiers/:id/permissions", requireRole(["center"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      const cashierId = parseInt(req.params.id);
+      const { permissions } = req.body;
+      
+      if (!permissions) {
+        return errorResponse(res, 400, "Permissions are required");
+      }
+      
+      // Verify ownership of this cashier
+      const cashiers = await storage.getCashiers(req.user.id);
+      const isCashierOwned = cashiers.some(c => c.id === cashierId);
+      
+      if (!isCashierOwned) {
+        return errorResponse(res, 403, "You don't have permission to update this cashier");
+      }
+      
+      const updatedCashier = await storage.updateCashierPermissions(cashierId, permissions);
+      return successResponse(res, updatedCashier);
+    } catch (error) {
+      console.error("Error updating cashier permissions:", error);
+      return errorResponse(res, 500, "Error updating cashier permissions");
+    }
+  });
+  
+  // Update cashier venues
+  app.patch("/api/cashiers/:id/venues", requireRole(["center"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      const cashierId = parseInt(req.params.id);
+      const { venueIds } = req.body;
+      
+      if (!venueIds || !Array.isArray(venueIds)) {
+        return errorResponse(res, 400, "Valid venue IDs array is required");
+      }
+      
+      // Verify ownership of this cashier
+      const cashiers = await storage.getCashiers(req.user.id);
+      const isCashierOwned = cashiers.some(c => c.id === cashierId);
+      
+      if (!isCashierOwned) {
+        return errorResponse(res, 403, "You don't have permission to update this cashier");
+      }
+      
+      // Verify ownership of all venues
+      const venues = await storage.getVenues(req.user.id);
+      const ownedVenueIds = venues.map(v => v.id);
+      const allVenuesOwned = venueIds.every(id => ownedVenueIds.includes(id));
+      
+      if (!allVenuesOwned) {
+        return errorResponse(res, 403, "You don't have permission to assign some of these venues");
+      }
+      
+      const updatedCashier = await storage.updateCashierVenues(cashierId, venueIds);
+      return successResponse(res, updatedCashier);
+    } catch (error) {
+      console.error("Error updating cashier venues:", error);
+      return errorResponse(res, 500, "Error updating cashier venues");
+    }
+  });
+  
+  // Delete a cashier
+  app.delete("/api/cashiers/:id", requireRole(["center"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      const cashierId = parseInt(req.params.id);
+      
+      // Verify ownership of this cashier
+      const cashiers = await storage.getCashiers(req.user.id);
+      const isCashierOwned = cashiers.some(c => c.id === cashierId);
+      
+      if (!isCashierOwned) {
+        return errorResponse(res, 403, "You don't have permission to delete this cashier");
+      }
+      
+      const success = await storage.deleteCashier(cashierId);
+      
+      if (success) {
+        return res.status(204).send();
+      } else {
+        return errorResponse(res, 404, "Cashier not found");
+      }
+    } catch (error) {
+      console.error("Error deleting cashier:", error);
+      return errorResponse(res, 500, "Error deleting cashier");
+    }
+  });
+  
   // ===== Rental Management Routes =====
   
   // Get rentals with various filters

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { CenterLayout } from "@/components/ui/center-layout";
+import { Link } from "wouter";
 import { 
   Card, 
   CardContent, 
@@ -120,10 +121,12 @@ export default function CenterAllVenuesPage() {
               />
             </div>
             
-            <Button onClick={() => window.location.href = "/center/venues"}>
-              <Plus className="mr-2 h-4 w-4" />
-              Manage Venues
-            </Button>
+            <Link href="/center/venues">
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Manage Venues
+              </Button>
+            </Link>
           </div>
         </div>
         
@@ -251,10 +254,12 @@ export default function CenterAllVenuesPage() {
                         </div>
                       </div>
                     )}
-                    <Button variant="outline" size="sm" className="ml-auto mt-2" onClick={() => window.location.href = "/center/venues"}>
-                      <Eye className="mr-2 h-3.5 w-3.5" />
-                      Manage
-                    </Button>
+                    <Link href={`/center/venue/${venue.id}`}>
+                      <Button variant="outline" size="sm" className="ml-auto mt-2">
+                        <Eye className="mr-2 h-3.5 w-3.5" />
+                        Manage
+                      </Button>
+                    </Link>
                   </CardFooter>
                 </Card>
               ))

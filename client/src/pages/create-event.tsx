@@ -30,7 +30,7 @@ interface SpeakerInput {
   socialLinks?: Record<string, string>; // Social media links
   presentationTopic?: string;
   presentationDescription?: string;
-  presentationTime?: Date;
+  presentationTime: Date; // Making this required to match implementation
 }
 
 interface WorkshopInput {
@@ -73,7 +73,7 @@ const eventFormSchema = createEventSchema.extend({
     socialLinks: z.record(z.string()).optional(),
     presentationTopic: z.string().optional(),
     presentationDescription: z.string().optional(),
-    presentationTime: z.date().optional()
+    presentationTime: z.date() // Required field
   })).optional().default([]),
   workshops: z.array(z.object({
     title: z.string(),
@@ -154,7 +154,7 @@ const CreateEvent = () => {
           availableQuantity: 100
         }
       ],
-      speakers: [], // Empty array for speakers
+      speakers: [], // Empty array for speakers - we'll instantiate fully in the addSpeaker function
       workshops: [] // Empty array for workshops
     }
   });

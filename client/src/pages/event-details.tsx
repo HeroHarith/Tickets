@@ -611,6 +611,13 @@ const EventDetails = () => {
                       )}
                     />
                     
+                    {paymentError && (
+                      <div className="bg-red-50 border border-red-200 text-red-800 rounded-md p-4 my-4">
+                        <p className="text-sm font-medium">Payment Error: {paymentError}</p>
+                        <p className="text-xs mt-1">Please try again or contact support if the problem persists.</p>
+                      </div>
+                    )}
+                    
                     <div className="bg-gray-50 rounded-md p-4 my-6">
                       <h3 className="font-semibold mb-2">Order Summary</h3>
                       {ticketSelections.map(selection => {
@@ -644,10 +651,19 @@ const EventDetails = () => {
                       </Button>
                       <Button 
                         type="submit" 
-                        disabled={purchaseMutation.isPending}
+                        disabled={isProcessingPayment || purchaseMutation.isPending}
                         className="bg-primary hover:bg-primary/90"
                       >
-                        {purchaseMutation.isPending ? "Processing..." : "Complete Purchase"}
+                        {isProcessingPayment ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Processing Payment...
+                          </>
+                        ) : purchaseMutation.isPending ? (
+                          "Processing..."
+                        ) : (
+                          "Pay Now"
+                        )}
                       </Button>
                     </div>
                   </form>

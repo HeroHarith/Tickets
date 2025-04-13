@@ -46,12 +46,6 @@ export const events = pgTable("events", {
   featured: boolean("featured").default(false).notNull(),
 });
 
-// Define the events relationships
-export const eventsRelations = relations(events, ({ many }) => ({
-  ticketTypes: many(ticketTypes),
-  shares: many(eventShares),
-}));
-
 // Ticket Type model
 export const ticketTypes = pgTable("ticket_types", {
   id: serial("id").primaryKey(),
@@ -394,3 +388,79 @@ export type EventShareAnalytics = {
   total: number;
   platforms: Record<SharePlatform, number>;
 };
+
+// Speaker model for event speakers
+export const speakers = pgTable("speakers", {
+  id: serial("id").primaryKey(),
+  eventId: integer("event_id").notNull(), // References events.id
+  name: text("name").notNull(),
+  bio: text("bio"),
+  profileImage: text("profile_image"),
+  title: text("title"), // Job title or role
+  company: text("company"),
+  socialLinks: jsonb("social_links"), // JSON object with social media links
+  presentationTopic: text("presentation_topic"),
+  presentationDescription: text("presentation_description"),
+  presentationTime: timestamp("presentation_time"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Workshop model for event workshops
+export const workshops = pgTable("workshops", {
+  id: serial("id").primaryKey(),
+  eventId: integer("event_id").notNull(), // References events.id
+  title: text("title").notNull(),
+  description: text("description"),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time").notNull(),
+  location: text("location"), // Room or specific location within the event venue
+  capacity: integer("capacity"),
+  instructor: text("instructor"),
+  prerequisites: text("prerequisites"),
+  materials: jsonb("materials"), // JSON array of required materials
+  registrationRequired: boolean("registration_required").default(false).notNull(),
+  registeredAttendees: jsonb("registered_attendees"), // JSON array of registered user IDs
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Define the speaker relationships
+export const speakersRelations = relations(speakers, ({ one }) => ({
+  event: one(events, {
+    fields: [speakers.eventId],
+    references: [events.id],
+  }),
+}));
+
+// Define the workshop relationships
+export const workshopsRelations = relations(workshops, ({ one }) => ({
+  event: one(events, {
+    fields: [workshops.eventId],
+    references: [events.id],
+  }),
+}));
+
+// Insert schemas for speakers and workshops
+export const insertSpeakerSchema = createInsertSchema(speakers).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertWorkshopSchema = createInsertSchema(workshops).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Types
+export type Speaker = typeof speakers.$inferSelect;
+export type InsertSpeaker = z.infer<typeof insertSpeakerSchema>;
+
+export type Workshop = typeof workshops.$inferSelect;
+export type InsertWorkshop = z.infer<typeof insertWorkshopSchema>;
+
+// Now define the events relationships after all tables are defined
+export const eventsRelations = relations(events, ({ many }) => ({
+  ticketTypes: many(ticketTypes),
+  shares: many(eventShares),
+  speakers: many(speakers),
+  workshops: many(workshops),
+}));

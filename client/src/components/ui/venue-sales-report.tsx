@@ -62,9 +62,21 @@ interface VenueSalesReportProps {
 }
 
 export function VenueSalesReport({ venues }: VenueSalesReportProps) {
+  // Default to "all" to show all venues
   const [selectedVenueId, setSelectedVenueId] = useState<string>("all");
+  // Default start date 6 months ago
   const [startDate, setStartDate] = useState<Date | undefined>(subMonths(new Date(), 6));
+  // Default end date to today
   const [endDate, setEndDate] = useState<Date | undefined>(new Date());
+  
+  // Log venue data for debugging
+  useEffect(() => {
+    if (venues.length > 0) {
+      console.log(`Available venues: ${venues.map(v => `${v.name} (ID: ${v.id})`).join(', ')}`);
+    } else {
+      console.log('No venues available');
+    }
+  }, [venues]);
   
   // Convert display period to human-readable format
   const formatPeriod = (period: string) => {

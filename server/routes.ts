@@ -891,7 +891,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         location: z.string().min(1).optional(),
         capacity: z.number().optional().nullable(),
         hourlyRate: z.coerce.number().min(0.01).optional().transform(val => val ? String(val) : undefined),
-        dailyRate: z.coerce.number().optional().nullable().transform(val => val !== null ? String(val) : null),
+        dailyRate: z.coerce.number().optional().transform(val => val !== undefined ? String(val) : undefined),
         facilities: z.any().optional(),
         availabilityHours: z.any().optional(),
         images: z.any().optional(),
@@ -1285,10 +1285,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalPrice = durationHours * Number(venue.hourlyRate);
       
       // Get the customer name from the form or use the current user's name
-      let customerName = req.body.customerName;
-      if (!customerName || customerName.trim() === '') {
-        customerName = req.user.name || req.user.username;
-      }
+      // Ensure customerName is always populated
+      const customerName = req.body.customerName && req.body.customerName.trim() !== '' 
+        ? req.body.customerName 
+        : req.user.name || req.user.username;
       
       // Validate rental data
       const rentalData = schema.createRentalSchema.parse({

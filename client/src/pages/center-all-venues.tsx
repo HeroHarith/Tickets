@@ -276,14 +276,15 @@ export default function CenterAllVenuesPage() {
                         ? "You don't have any inactive venues" 
                         : "Get started by creating your first venue"}
                 </p>
-                <Button 
-                  variant="outline" 
-                  className="mt-4"
-                  onClick={() => window.location.href = "/center/venues"}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add a Venue
-                </Button>
+                <Link href="/center/venues">
+                  <Button 
+                    variant="outline" 
+                    className="mt-4"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add a Venue
+                  </Button>
+                </Link>
               </div>
             )}
           </div>

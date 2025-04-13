@@ -105,7 +105,7 @@ export function VenueSalesReport({ venues }: VenueSalesReportProps) {
         queryParams.append("endDate", endDate.toISOString());
       }
       
-      const response = await fetch(\`/api/venues/sales-report?\${queryParams.toString()}\`);
+      const response = await fetch(`/api/venues/sales-report?${queryParams.toString()}`);
       
       if (!response.ok) {
         throw new Error("Failed to fetch sales report");

@@ -3,7 +3,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, PlusCircle, X, Check, Edit, Trash, Calendar, Clock, User, DollarSign } from "lucide-react";
+import { Loader2, PlusCircle, X, Check, Edit, Trash, Calendar, Clock, User, DollarSign, BarChart3 } from "lucide-react";
+import { VenueSalesReport } from "@/components/ui/venue-sales-report";
 import { format } from "date-fns";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -371,9 +372,13 @@ export default function CenterDashboard() {
       </div>
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full md:w-[400px] grid-cols-2">
+        <TabsList className="grid w-full md:w-[600px] grid-cols-3">
           <TabsTrigger value="venues">Venues</TabsTrigger>
           <TabsTrigger value="rentals">Rentals</TabsTrigger>
+          <TabsTrigger value="reports" className="flex items-center">
+            <BarChart3 className="mr-2 h-4 w-4" />
+            Sales Reports
+          </TabsTrigger>
         </TabsList>
         
         <div className="mt-6">
@@ -533,6 +538,17 @@ export default function CenterDashboard() {
               <div className="text-center my-8">
                 <p className="text-muted-foreground">No rentals found</p>
               </div>
+            )}
+          </TabsContent>
+          
+          {/* Reports Tab */}
+          <TabsContent value="reports">
+            {venuesLoading ? (
+              <div className="flex justify-center my-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : (
+              <VenueSalesReport venues={venues} />
             )}
           </TabsContent>
         </div>

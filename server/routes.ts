@@ -7,7 +7,8 @@ import {
   insertUserSchema, 
   purchaseTicketSchema,
   eventSearchSchema,
-  users as usersSchema
+  users as usersSchema,
+  PurchaseTicketInput
 } from "@shared/schema";
 import * as schema from "@shared/schema";
 import { ZodError, z } from "zod";
@@ -574,6 +575,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error processing payment webhook:", error);
       return res.status(500).json(errorResponse("Error processing payment", 500));
+    }
+  });
+  
+  // Get tickets by payment session ID
+  app.get("/api/tickets/payment/:sessionId", requireRole(["customer", "admin"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      const { sessionId } = req.params;
+      
+      if (!sessionId) {
+        return res.status(400).json(errorResponse("Session ID is required", 400));
+      }
+      
+      // Get tickets associated with this payment session
+      const tickets = await storage.getTicketsByPaymentSession(sessionId);
+      
+      if (!tickets || tickets.length === 0) {
+        return res.status(404).json(errorResponse("No tickets found for this payment session", 404));
+      }
+      
+      return res.json(successResponse(tickets, 200, "Tickets retrieved successfully"));
+    } catch (error) {
+      console.error("Error retrieving tickets:", error);
+      return res.status(500).json(errorResponse("Error retrieving tickets", 500));
     }
   });
   

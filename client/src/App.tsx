@@ -23,6 +23,7 @@ import CenterCashiersPage from "@/pages/center-cashiers";
 import AuthPage from "@/pages/auth-page";
 import ProfilePage from "@/pages/profile";
 import PaymentStatus from "@/pages/payment-status";
+import PaymentConfirmation from "@/pages/payment-confirmation";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { PaymentStatusChecker } from "@/components/domain/payments";
@@ -36,6 +37,7 @@ function Router() {
         <Route path="/auth" component={AuthPage} />
         <Route path="/payment-success" component={PaymentStatus} />
         <Route path="/payment-cancel" component={PaymentStatus} />
+        <ProtectedRoute path="/payment-confirmation/:sessionId" component={PaymentConfirmation} />
         <ProtectedRoute path="/" component={Home} />
         <ProtectedRoute path="/events/:id" component={EventDetails} />
         <ProtectedRoute 

@@ -48,7 +48,7 @@ interface Cashier {
   id: number;
   userId: number;
   ownerId: number;
-  permissions: Record<string, boolean>;
+  permissions: Record<string, boolean> | number[];
   venueIds: number[];
   createdAt: string;
   updatedAt: string;
@@ -69,7 +69,7 @@ const editCashierSchema = z.object({
 });
 
 // Default cashier permissions
-const DEFAULT_PERMISSIONS = {
+const DEFAULT_PERMISSIONS: Record<string, boolean> = {
   viewBookings: true,
   createBookings: true,
   cancelBookings: false,
@@ -138,10 +138,10 @@ export default function CenterCashiersPage() {
   });
   
   // Extract data from the standardized response format
-  const cashiers: Cashier[] = cashiersResponse?.data || [];
+  const cashiers: Cashier[] = (cashiersResponse && 'data' in cashiersResponse) ? cashiersResponse.data : [];
   console.log('Extracted cashiers:', cashiers);
   
-  const venues: Venue[] = venuesResponse?.data || [];
+  const venues: Venue[] = (venuesResponse && 'data' in venuesResponse) ? venuesResponse.data : [];
   console.log('Extracted venues:', venues);
   
   // Add cashier mutation
@@ -301,8 +301,33 @@ export default function CenterCashiersPage() {
   // Open edit dialog with cashier data
   const handleEditCashier = (cashier: Cashier) => {
     setSelectedCashier(cashier);
+    
+    // Handle the case where permissions might be an array instead of an object
+    let permissionsObj: Record<string, boolean> = { ...DEFAULT_PERMISSIONS };
+    if (cashier.permissions) {
+      if (Array.isArray(cashier.permissions)) {
+        // Convert array to object format using DEFAULT_PERMISSIONS as a template
+        
+        // Map array values to specific permissions
+        const permKeys = Object.keys(DEFAULT_PERMISSIONS);
+        cashier.permissions.forEach((value: number) => {
+          // If value is 1, 2, 3, etc. use it as an index (starting from 0)
+          if (typeof value === 'number' && value > 0 && value <= permKeys.length) {
+            const permKey = permKeys[value - 1];
+            if (permKey) {
+              permissionsObj[permKey] = true;
+            }
+          }
+        });
+      } else {
+        // Safely convert to Record<string, boolean>
+        const permissions = cashier.permissions as Record<string, boolean>;
+        permissionsObj = { ...DEFAULT_PERMISSIONS, ...permissions };
+      }
+    }
+    
     editForm.reset({
-      permissions: cashier.permissions || DEFAULT_PERMISSIONS,
+      permissions: permissionsObj,
       venueIds: cashier.venueIds || []
     });
     setIsEditCashierDialogOpen(true);
@@ -449,14 +474,20 @@ export default function CenterCashiersPage() {
                       </h4>
                       <div className="grid grid-cols-2 gap-1">
                         {cashier.permissions ? (
-                          Object.entries(cashier.permissions).map(([key, value]) => (
-                            <div key={key} className="flex items-center gap-2 text-sm">
-                              <div className={`w-2 h-2 rounded-full ${value ? 'bg-green-500' : 'bg-red-500'}`} />
-                              <span className={value ? 'text-foreground' : 'text-muted-foreground'}>
-                                {PERMISSION_LABELS[key] || key}
-                              </span>
-                            </div>
-                          ))
+                          Array.isArray(cashier.permissions) ? (
+                            <span className="text-sm text-muted-foreground">
+                              {cashier.permissions.length} permission(s) set
+                            </span>
+                          ) : (
+                            Object.entries(cashier.permissions).map(([key, value]) => (
+                              <div key={key} className="flex items-center gap-2 text-sm">
+                                <div className={`w-2 h-2 rounded-full ${value ? 'bg-green-500' : 'bg-red-500'}`} />
+                                <span className={value ? 'text-foreground' : 'text-muted-foreground'}>
+                                  {PERMISSION_LABELS[key] || key}
+                                </span>
+                              </div>
+                            ))
+                          )
                         ) : (
                           <span className="text-sm text-muted-foreground">
                             No permissions set

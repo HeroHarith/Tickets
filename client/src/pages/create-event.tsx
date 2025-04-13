@@ -12,13 +12,38 @@ import CreateEventForm from "@/components/ui/create-event-form";
 import TabsComponent from "@/components/ui/tabs-component";
 import { useAuth } from "@/hooks/use-auth";
 
-// Define the form TicketTypeInput with the correct availableQuantity type
+// Define the form input types
 interface TicketTypeInput {
   name: string;
   description?: string | null;
   price: string; // String to match numeric in Postgres
   quantity: number;
   availableQuantity: number; // Required field
+}
+
+interface SpeakerInput {
+  name: string;
+  bio?: string;
+  profileImage?: string;
+  title?: string; // Job title or role
+  company?: string;
+  socialLinks?: Record<string, string>; // Social media links
+  presentationTopic?: string;
+  presentationDescription?: string;
+  presentationTime?: Date;
+}
+
+interface WorkshopInput {
+  title: string;
+  description?: string;
+  startTime: Date;
+  endTime: Date;
+  location?: string; // Room or specific location within the event venue
+  capacity?: number;
+  instructor?: string;
+  prerequisites?: string;
+  materials?: string[]; // Array of required materials
+  registrationRequired?: boolean;
 }
 
 // Extended schema with form-specific validation
@@ -38,6 +63,30 @@ const eventFormSchema = createEventSchema.extend({
     quantity: z.number(),
     availableQuantity: z.number()
   })),
+  // Add speakers and workshops
+  speakers: z.array(z.object({
+    name: z.string(),
+    bio: z.string().optional(),
+    profileImage: z.string().optional(),
+    title: z.string().optional(),
+    company: z.string().optional(),
+    socialLinks: z.record(z.string()).optional(),
+    presentationTopic: z.string().optional(),
+    presentationDescription: z.string().optional(),
+    presentationTime: z.date().optional()
+  })).optional().default([]),
+  workshops: z.array(z.object({
+    title: z.string(),
+    description: z.string().optional(),
+    startTime: z.date(),
+    endTime: z.date(),
+    location: z.string().optional(),
+    capacity: z.number().optional(),
+    instructor: z.string().optional(),
+    prerequisites: z.string().optional(),
+    materials: z.array(z.string()).optional(),
+    registrationRequired: z.boolean().default(false)
+  })).optional().default([]),
   // Make sure featured is always required and a boolean
   featured: z.boolean().default(false)
 });
@@ -56,6 +105,8 @@ interface EventFormValues {
   eventType?: "general" | "conference" | "seated"; // Typed to match EVENT_TYPES
   seatingMap?: Record<string, any> | null; // For seated events
   ticketTypes: TicketTypeInput[];
+  speakers: SpeakerInput[];
+  workshops: WorkshopInput[];
 };
 
 const CreateEvent = () => {
@@ -102,7 +153,9 @@ const CreateEvent = () => {
           quantity: 100,
           availableQuantity: 100
         }
-      ]
+      ],
+      speakers: [], // Empty array for speakers
+      workshops: [] // Empty array for workshops
     }
   });
   

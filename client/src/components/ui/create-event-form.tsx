@@ -132,7 +132,7 @@ const CreateEventForm = ({ form, onSubmit, isPending, categories }: CreateEventF
   const removeSpeaker = (index: number) => {
     const currentSpeakers = form.getValues("speakers") || [];
     form.setValue("speakers", 
-      currentSpeakers.filter((_, i) => i !== index)
+      currentSpeakers.filter((_: SpeakerInput, i: number) => i !== index)
     );
   };
   
@@ -164,7 +164,7 @@ const CreateEventForm = ({ form, onSubmit, isPending, categories }: CreateEventF
   const removeWorkshop = (index: number) => {
     const currentWorkshops = form.getValues("workshops") || [];
     form.setValue("workshops", 
-      currentWorkshops.filter((_, i) => i !== index)
+      currentWorkshops.filter((_: WorkshopInput, i: number) => i !== index)
     );
   };
   
@@ -503,7 +503,7 @@ const CreateEventForm = ({ form, onSubmit, isPending, categories }: CreateEventF
                                   const sections = form.getValues("seatingMap")?.sections || [];
                                   form.setValue("seatingMap", {
                                     ...form.getValues("seatingMap"),
-                                    sections: sections.filter((_, index) => index !== i)
+                                    sections: sections.filter((_: string, index: number) => index !== i)
                                   });
                                 }}
                               >

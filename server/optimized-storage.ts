@@ -337,9 +337,23 @@ export class OptimizedStorage implements IStorage {
       return cachedCashiers;
     }
     
-    const result = await db.select()
+    // Get cashiers
+    const cashiersList = await db.select()
       .from(cashiers)
       .where(eq(cashiers.ownerId, ownerId));
+    
+    // For each cashier, get their associated venue IDs
+    const result = await Promise.all(cashiersList.map(async cashier => {
+      const venueRelations = await db.select()
+        .from(cashierVenues)
+        .where(eq(cashierVenues.cashierId, cashier.id));
+      
+      // Add venueIds to the cashier object
+      return {
+        ...cashier,
+        venueIds: venueRelations.map(rel => rel.venueId)
+      };
+    }));
     
     // Cache the results
     cache.set(cacheKey, result, TTL.MEDIUM);
@@ -355,9 +369,23 @@ export class OptimizedStorage implements IStorage {
       return cachedCashiers;
     }
     
-    const result = await db.select()
+    // Get cashiers
+    const cashiersList = await db.select()
       .from(cashiers)
       .where(eq(cashiers.userId, userId));
+    
+    // For each cashier, get their associated venue IDs
+    const result = await Promise.all(cashiersList.map(async cashier => {
+      const venueRelations = await db.select()
+        .from(cashierVenues)
+        .where(eq(cashierVenues.cashierId, cashier.id));
+      
+      // Add venueIds to the cashier object
+      return {
+        ...cashier,
+        venueIds: venueRelations.map(rel => rel.venueId)
+      };
+    }));
     
     // Cache the results
     cache.set(cacheKey, result, TTL.MEDIUM);
@@ -478,7 +506,16 @@ export class OptimizedStorage implements IStorage {
     this.invalidateTypeCache('cashiers-by-owner');
     this.invalidateTypeCache('cashiers-by-user');
     
-    return cashier;
+    // Get the venue relations to return with the cashier
+    const venueRelations = await db.select()
+      .from(cashierVenues)
+      .where(eq(cashierVenues.cashierId, id));
+    
+    // Return cashier with the updated venue IDs
+    return {
+      ...cashier,
+      venueIds: venueRelations.map(rel => rel.venueId)
+    };
   }
   
   async deleteCashier(id: number): Promise<boolean> {

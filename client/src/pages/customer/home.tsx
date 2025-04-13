@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import EventCard from "@/components/ui/event-card";
-import TabsComponent from "@/components/ui/tabs-component";
-import EventSearch from "@/components/ui/event-search";
-import { Button } from "@/components/ui/button";
+import { EventCard, EventSearch } from "@/components/domain/events";
+import { TabsComponent } from "@/components/common/ui/tabs-component";
+import { Button } from "@/components/common/ui/button";
 import { Event, TicketType } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
+import MainLayout from "@/layouts/MainLayout";
 
 const Home = () => {
   const { user } = useAuth();
@@ -176,13 +176,14 @@ const Home = () => {
   const isLoading = featuredEventsQuery.isLoading || eventsQuery.isLoading || ticketTypesQueries.isLoading;
   
   return (
-    <div>
-      <TabsComponent
-        tabs={getNavTabs()}
-        activeTab="browse"
-      />
-      
-      <EventSearch onSearch={handleSearch} />
+    <MainLayout>
+      <div>
+        <TabsComponent
+          tabs={getNavTabs()}
+          activeTab="browse"
+        />
+        
+        <EventSearch onSearch={handleSearch} />
       
       {/* Featured Events Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -290,6 +291,7 @@ const Home = () => {
         )}
       </div>
     </div>
+    </MainLayout>
   );
 };
 

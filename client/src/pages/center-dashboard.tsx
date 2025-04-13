@@ -168,33 +168,42 @@ export default function CenterDashboard() {
   
   // Load venues
   const { 
-    data: venues = [], 
+    data: venuesResponse, 
     isLoading: venuesLoading, 
     error: venuesError 
-  } = useQuery<Venue[]>({
+  } = useQuery<{data: Venue[]}>({
     queryKey: ["/api/venues"],
     enabled: user?.role === "center"
   });
   
+  // Extract venues from the standardized response format
+  const venues = venuesResponse?.data || [];
+  
   // Load rentals
   const { 
-    data: rentals = [], 
+    data: rentalsResponse, 
     isLoading: rentalsLoading, 
     error: rentalsError 
-  } = useQuery<Rental[]>({
+  } = useQuery<{data: Rental[]}>({
     queryKey: ["/api/rentals"],
     enabled: user?.role === "center"
   });
   
+  // Extract rentals from the standardized response format
+  const rentals = rentalsResponse?.data || [];
+  
   // Load cashiers
   const {
-    data: cashiers = [],
+    data: cashiersResponse,
     isLoading: cashiersLoading,
     error: cashiersError
-  } = useQuery<Cashier[]>({
+  } = useQuery<{data: Cashier[]}>({
     queryKey: ["/api/cashiers"],
     enabled: user?.role === "center"
   });
+  
+  // Extract cashiers from the standardized response format
+  const cashiers = cashiersResponse?.data || [];
   
   // Create venue mutation
   const createVenueMutation = useMutation({

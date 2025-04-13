@@ -112,6 +112,10 @@ export function VenueSalesReport({ venues }: VenueSalesReportProps) {
       }
       
       const result = await response.json();
+      // Handle the standardized API response format
+      if (result.success === false) {
+        throw new Error(result.description || "Failed to fetch sales report");
+      }
       return result.data;
     },
     enabled: venues.length > 0

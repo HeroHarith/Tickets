@@ -46,12 +46,15 @@ export default function CenterAllVenuesPage() {
   
   // Load venues
   const { 
-    data: venues = [], 
+    data: venuesResponse, 
     isLoading: venuesLoading 
-  } = useQuery<Venue[]>({
+  } = useQuery<{data: Venue[]}>({
     queryKey: ["/api/venues"],
     enabled: user?.role === "center"
   });
+  
+  // Extract venues from the standardized response format
+  const venues = venuesResponse?.data || [];
 
   // Stats
   const activeVenues = venues.filter(venue => venue.isActive).length;

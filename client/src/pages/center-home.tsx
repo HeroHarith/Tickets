@@ -25,21 +25,27 @@ export default function CenterHomePage() {
   
   // Load venues
   const { 
-    data: venues = [], 
+    data: venuesResponse, 
     isLoading: venuesLoading
-  } = useQuery<Venue[]>({
+  } = useQuery<{data: Venue[]}>({
     queryKey: ["/api/venues"],
     enabled: user?.role === "center"
   });
   
+  // Extract venues from the standardized response format
+  const venues = venuesResponse?.data || [];
+  
   // Load rentals
   const { 
-    data: rentals = [], 
+    data: rentalsResponse, 
     isLoading: rentalsLoading
-  } = useQuery<Rental[]>({
+  } = useQuery<{data: Rental[]}>({
     queryKey: ["/api/rentals"],
     enabled: user?.role === "center"
   });
+  
+  // Extract rentals from the standardized response format
+  const rentals = rentalsResponse?.data || [];
 
   useEffect(() => {
     if (venues && rentals) {

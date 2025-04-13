@@ -136,8 +136,8 @@ export default function CenterCashiersPage() {
   });
   
   // Extract data from the standardized response format
-  const cashiers = cashiersResponse?.data || [];
-  const venues = venuesResponse?.data || [];
+  const cashiers = Array.isArray(cashiersResponse) ? cashiersResponse : (cashiersResponse?.data || []);
+  const venues = Array.isArray(venuesResponse) ? venuesResponse : (venuesResponse?.data || []);
   
   // Add cashier mutation
   const addCashierMutation = useMutation({

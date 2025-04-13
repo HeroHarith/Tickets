@@ -83,11 +83,11 @@ export function VenueSalesReport({ venues }: VenueSalesReportProps) {
   
   // Query for the sales report data
   const { 
-    data: salesReport, 
+    data: salesReportResponse, 
     isLoading, 
     error,
     refetch 
-  } = useQuery<SalesReportData>({
+  } = useQuery({
     queryKey: ["/api/venues/sales-report", selectedVenueId, startDate, endDate],
     queryFn: async () => {
       // Build query parameters
@@ -116,10 +116,13 @@ export function VenueSalesReport({ venues }: VenueSalesReportProps) {
       if (result.success === false) {
         throw new Error(result.description || "Failed to fetch sales report");
       }
-      return result.data;
+      return result;
     },
     enabled: venues.length > 0
   });
+  
+  // Extract data from the standardized response format
+  const salesReport = salesReportResponse?.data as SalesReportData;
   
   // Pie chart colors
   const STATUS_COLORS = ['#10B981', '#F97316', '#6366F1', '#EC4899'];

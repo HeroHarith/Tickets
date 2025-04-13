@@ -23,6 +23,8 @@ import ProfilePage from "@/pages/profile";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 
+// Note: We've moved the authenticated layout into the ProtectedRoute component
+
 function Router() {
   return (
     <div className="flex flex-col min-h-screen">
@@ -31,11 +33,10 @@ function Router() {
           <AuthPage />
         </Route>
         <Route>
-          <Header />
           <main className="flex-grow">
             <Switch>
-              <Route path="/" component={Home} />
-              <Route path="/events/:id" component={EventDetails} />
+              <ProtectedRoute path="/" component={Home} />
+              <ProtectedRoute path="/events/:id" component={EventDetails} />
               <ProtectedRoute 
                 path="/create-event" 
                 component={CreateEvent} 
@@ -102,7 +103,6 @@ function Router() {
               <Route component={NotFound} />
             </Switch>
           </main>
-          <Footer />
         </Route>
       </Switch>
     </div>

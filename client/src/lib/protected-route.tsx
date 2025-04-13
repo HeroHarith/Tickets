@@ -1,16 +1,20 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
 import { Redirect, Route } from "wouter";
+import Header from "@/components/ui/header";
+import Footer from "@/components/ui/footer";
+
+type ProtectedRouteProps = {
+  path: string;
+  component: () => React.JSX.Element;
+  requiredRoles?: string[];
+};
 
 export function ProtectedRoute({
   path,
   component: Component,
   requiredRoles = [],
-}: {
-  path: string;
-  component: () => React.JSX.Element;
-  requiredRoles?: string[];
-}) {
+}: ProtectedRouteProps) {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
@@ -43,5 +47,16 @@ export function ProtectedRoute({
     );
   }
 
-  return <Route path={path} component={Component} />;
+  // Wrap the component with the authenticated layout
+  return (
+    <Route path={path}>
+      <>
+        <Header />
+        <main className="flex-grow">
+          <Component />
+        </main>
+        <Footer />
+      </>
+    </Route>
+  );
 }

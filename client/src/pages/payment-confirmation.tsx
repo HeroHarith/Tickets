@@ -7,10 +7,10 @@ import { Separator } from '@/components/ui/separator';
 import { CheckCircle, Download, Calendar, Clock, MapPin, Ticket as TicketIcon, User, Mail, QrCode } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { Event, Ticket as TicketBase } from '@shared/schema';
+import { Event, Ticket } from '@shared/schema';
 
 // Extended ticket type that includes additional properties from our API
-interface EnhancedTicket extends TicketBase {
+interface EnhancedTicket extends Ticket {
   ticketTypeName: string;
   price: string | number;
   attendeeName: string;

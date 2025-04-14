@@ -174,12 +174,9 @@ router.post('/payment-success', async (req, res) => {
     );
   } catch (error: any) {
     console.error('Error processing subscription payment:', error);
-    return res.status(500).json({
-      code: 500,
-      success: false,
-      data: null,
-      description: error.message || 'Error processing subscription payment'
-    });
+    return res.status(500).json(
+      errorResponse(error.message || 'Error processing subscription payment', 500)
+    );
   }
 });
 
@@ -192,23 +189,21 @@ router.post('/cancel', requireLogin, async (req, res) => {
     const subscription = await subscriptionService.getUserSubscription(userId);
     
     if (!subscription) {
-      return res.status(404).json({
-        code: 404,
-        success: false,
-        data: null,
-        description: 'No active subscription found'
-      });
+      return res.status(404).json(
+        errorResponse('No active subscription found', 404)
+      );
     }
     
     // Cancel the subscription
     const updatedSubscription = await subscriptionService.cancelSubscriptionAtPeriodEnd(subscription.id);
     
-    return res.json({
-      code: 200,
-      success: true,
-      data: updatedSubscription,
-      description: 'Subscription cancelled successfully. Access will remain until the end of the current billing period.'
-    });
+    return res.json(
+      successResponse(
+        updatedSubscription, 
+        200, 
+        'Subscription cancelled successfully. Access will remain until the end of the current billing period.'
+      )
+    );
   } catch (error: any) {
     console.error('Error cancelling subscription:', error);
     return res.status(500).json({

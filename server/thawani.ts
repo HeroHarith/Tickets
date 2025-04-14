@@ -236,10 +236,86 @@ export const createRentalPaymentSession = async (
   return createPaymentSession(products, customer, metadata);
 };
 
+/**
+ * Create a payment session for subscription purchase
+ */
+export const createSubscriptionPaymentSession = async (
+  planId: number,
+  planName: string,
+  planPrice: number,
+  billingPeriod: string,
+  customer: CustomerDetails
+): Promise<{ session_id: string; checkout_url: string } | null> => {
+  try {
+    // Convert price from OMR to baisa (1 OMR = 1000 baisa)
+    const unitAmount = Math.round(planPrice * 1000);
+    
+    const products: ProductDetails[] = [
+      {
+        name: `${planName} Subscription (${billingPeriod})`,
+        quantity: 1,
+        unitAmount
+      }
+    ];
+    
+    // Add subscription metadata for post-payment processing
+    const metadata = {
+      subscription_type: 'new', // new or renewal
+      plan_id: planId,
+      billing_period: billingPeriod
+    };
+    
+    return createPaymentSession(products, customer, metadata);
+  } catch (error) {
+    console.error('Error creating subscription payment session:', error);
+    return null;
+  }
+};
+
+/**
+ * Create a payment session for subscription renewal
+ */
+export const createSubscriptionRenewalSession = async (
+  subscriptionId: number,
+  planId: number,
+  planName: string,
+  planPrice: number,
+  billingPeriod: string,
+  customer: CustomerDetails
+): Promise<{ session_id: string; checkout_url: string } | null> => {
+  try {
+    // Convert price from OMR to baisa (1 OMR = 1000 baisa)
+    const unitAmount = Math.round(planPrice * 1000);
+    
+    const products: ProductDetails[] = [
+      {
+        name: `Renew ${planName} Subscription (${billingPeriod})`,
+        quantity: 1,
+        unitAmount
+      }
+    ];
+    
+    // Add subscription metadata for post-payment processing
+    const metadata = {
+      subscription_type: 'renewal',
+      subscription_id: subscriptionId,
+      plan_id: planId,
+      billing_period: billingPeriod
+    };
+    
+    return createPaymentSession(products, customer, metadata);
+  } catch (error) {
+    console.error('Error creating subscription renewal session:', error);
+    return null;
+  }
+};
+
 export default {
   createPaymentSession,
   getSessionDetails,
   checkPaymentStatus,
   createTicketPaymentSession,
-  createRentalPaymentSession
+  createRentalPaymentSession,
+  createSubscriptionPaymentSession,
+  createSubscriptionRenewalSession
 };

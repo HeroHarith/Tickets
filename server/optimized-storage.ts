@@ -17,6 +17,9 @@ import {
   cashiers,
   cashierVenues,
   eventShares,
+  subscriptionPlans,
+  subscriptions,
+  subscriptionPayments,
   type User,
   type Event,
   type TicketType,
@@ -26,13 +29,19 @@ import {
   type Cashier,
   type CashierVenue,
   type EventShare,
+  type SubscriptionPlan,
+  type Subscription,
+  type SubscriptionPayment,
   type InsertUser,
   type InsertVenue, 
   type InsertCashier,
   type InsertCashierVenue,
   type InsertEventShare,
+  type InsertSubscription,
+  type InsertSubscriptionPayment,
   type RentalStatus,
   type PaymentStatus,
+  type BillingPeriod,
   DEFAULT_CASHIER_PERMISSIONS
 } from '@shared/schema';
 import { 
@@ -1560,7 +1569,7 @@ export class OptimizedStorage implements IStorage {
     // Return rental with venue data
     return {
       ...rental,
-      venue
+      venueName: venue ? venue.name : 'Unknown Venue'
     };
   }
 }

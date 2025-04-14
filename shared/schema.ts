@@ -495,6 +495,115 @@ export type Workshop = typeof workshops.$inferSelect;
 export type InsertWorkshop = z.infer<typeof insertWorkshopSchema>;
 
 // Now define the events relationships after all tables are defined
+// Subscription Plan Types
+export const PLAN_TYPES = ["eventManager", "center"] as const;
+export const planTypeSchema = z.enum(PLAN_TYPES);
+export type PlanType = z.infer<typeof planTypeSchema>;
+
+// Billing Periods
+export const BILLING_PERIODS = ["monthly", "yearly"] as const;
+export const billingPeriodSchema = z.enum(BILLING_PERIODS);
+export type BillingPeriod = z.infer<typeof billingPeriodSchema>;
+
+// Subscription Plans
+export const subscriptionPlans = pgTable("subscription_plans", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  type: text("type").notNull(), // eventManager or center
+  price: numeric("price", { precision: 10, scale: 2 }).notNull(),
+  billingPeriod: text("billing_period").notNull(), // monthly or yearly
+  features: jsonb("features"), // Array of features included in the plan
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Subscriptions 
+export const subscriptions = pgTable("subscriptions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(), // References users.id
+  planId: integer("plan_id").notNull(), // References subscription_plans.id
+  startDate: timestamp("start_date").defaultNow().notNull(),
+  endDate: timestamp("end_date").notNull(),
+  status: text("status").default("active").notNull(), // active, cancelled, expired
+  paymentSessionId: text("payment_session_id"), // Thawani payment session ID
+  renewalSessionId: text("renewal_session_id"), // For tracking renewal payments
+  metadata: jsonb("metadata"), // Additional subscription data
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Subscription Payment History
+export const subscriptionPayments = pgTable("subscription_payments", {
+  id: serial("id").primaryKey(), 
+  subscriptionId: integer("subscription_id").notNull(), // References subscriptions.id
+  amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
+  paymentDate: timestamp("payment_date").defaultNow().notNull(),
+  paymentSessionId: text("payment_session_id").notNull(), // Thawani payment session ID
+  status: text("status").default("pending").notNull(), // pending, paid, failed, refunded
+  metaData: jsonb("metadata"), // Payment metadata
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Define relations
+export const subscriptionPlansRelations = relations(subscriptionPlans, ({ many }) => ({
+  subscriptions: many(subscriptions),
+}));
+
+export const subscriptionsRelations = relations(subscriptions, ({ one, many }) => ({
+  plan: one(subscriptionPlans, {
+    fields: [subscriptions.planId],
+    references: [subscriptionPlans.id],
+  }),
+  user: one(users, {
+    fields: [subscriptions.userId],
+    references: [users.id],
+  }),
+  payments: many(subscriptionPayments),
+}));
+
+export const subscriptionPaymentsRelations = relations(subscriptionPayments, ({ one }) => ({
+  subscription: one(subscriptions, {
+    fields: [subscriptionPayments.subscriptionId],
+    references: [subscriptions.id],
+  }),
+}));
+
+// Add user relation to subscriptions
+export const usersRelations = relations(users, ({ one }) => ({
+  subscription: one(subscriptions, {
+    fields: [users.subscriptionId],
+    references: [subscriptions.id],
+  }),
+}));
+
+// Insert schemas for subscription plans and subscriptions
+export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSubscriptionPaymentSchema = createInsertSchema(subscriptionPayments).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Types
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
+export type InsertSubscriptionPlan = z.infer<typeof insertSubscriptionPlanSchema>;
+
+export type Subscription = typeof subscriptions.$inferSelect;
+export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
+
+export type SubscriptionPayment = typeof subscriptionPayments.$inferSelect;
+export type InsertSubscriptionPayment = z.infer<typeof insertSubscriptionPaymentSchema>;
+
 export const eventsRelations = relations(events, ({ many }) => ({
   ticketTypes: many(ticketTypes),
   shares: many(eventShares),

@@ -342,16 +342,21 @@ export class OptimizedStorage implements IStorage {
       .from(cashiers)
       .where(eq(cashiers.ownerId, ownerId));
     
-    // For each cashier, get their associated venue IDs
+    // For each cashier, get their associated venue IDs and user data
     const result = await Promise.all(cashiersList.map(async cashier => {
+      // Get venue relations
       const venueRelations = await db.select()
         .from(cashierVenues)
         .where(eq(cashierVenues.cashierId, cashier.id));
       
-      // Add venueIds to the cashier object
+      // Get user data
+      const user = await this.getUser(cashier.userId);
+      
+      // Add venueIds and user to the cashier object
       return {
         ...cashier,
-        venueIds: venueRelations.map(rel => rel.venueId)
+        venueIds: venueRelations.map(rel => rel.venueId),
+        user: user || undefined
       };
     }));
     
@@ -374,16 +379,21 @@ export class OptimizedStorage implements IStorage {
       .from(cashiers)
       .where(eq(cashiers.userId, userId));
     
-    // For each cashier, get their associated venue IDs
+    // For each cashier, get their associated venue IDs and user data
     const result = await Promise.all(cashiersList.map(async cashier => {
+      // Get venue relations
       const venueRelations = await db.select()
         .from(cashierVenues)
         .where(eq(cashierVenues.cashierId, cashier.id));
       
-      // Add venueIds to the cashier object
+      // Get user data
+      const user = await this.getUser(cashier.userId);
+      
+      // Add venueIds and user to the cashier object
       return {
         ...cashier,
-        venueIds: venueRelations.map(rel => rel.venueId)
+        venueIds: venueRelations.map(rel => rel.venueId),
+        user: user || undefined
       };
     }));
     

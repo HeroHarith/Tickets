@@ -75,34 +75,21 @@ router.get('/my-subscription', requireLogin, async (req, res) => {
     const subscription = await subscriptionService.getUserSubscription(userId);
     
     if (!subscription) {
-      return res.json({
-        code: 200,
-        success: true,
-        data: null,
-        description: 'User has no active subscription'
-      });
+      return res.json(successResponse(null, 200, 'User has no active subscription'));
     }
     
     // Get plan details to include with subscription
     const plan = await subscriptionService.getSubscriptionPlan(subscription.planId);
     
-    return res.json({
-      code: 200,
-      success: true,
-      data: {
-        ...subscription,
-        plan
-      },
-      description: 'Subscription retrieved successfully'
-    });
+    return res.json(successResponse({
+      ...subscription,
+      plan
+    }, 200, 'Subscription retrieved successfully'));
   } catch (error: any) {
     console.error('Error getting user subscription:', error);
-    return res.status(500).json({
-      code: 500,
-      success: false,
-      data: null,
-      description: error.message || 'Error retrieving user subscription'
-    });
+    return res.status(500).json(
+      errorResponse(error.message || 'Error retrieving user subscription', 500)
+    );
   }
 });
 
@@ -121,12 +108,9 @@ router.post('/purchase', requireLogin, async (req, res) => {
     
     const result = purchaseSchema.safeParse(req.body);
     if (!result.success) {
-      return res.status(400).json({
-        code: 400,
-        success: false,
-        data: null,
-        description: 'Invalid request data: ' + JSON.stringify(result.error.errors)
-      });
+      return res.status(400).json(
+        errorResponse('Invalid request data: ' + JSON.stringify(result.error.errors), 400)
+      );
     }
     
     const { planId, customer } = result.data;
@@ -135,12 +119,9 @@ router.post('/purchase', requireLogin, async (req, res) => {
     // Check if user already has an active subscription
     const existingSubscription = await subscriptionService.getUserSubscription(userId);
     if (existingSubscription && existingSubscription.status === 'active') {
-      return res.status(400).json({
-        code: 400,
-        success: false,
-        data: null,
-        description: 'User already has an active subscription'
-      });
+      return res.status(400).json(
+        errorResponse('User already has an active subscription', 400)
+      );
     }
     
     // Create a subscription payment session
@@ -151,32 +132,21 @@ router.post('/purchase', requireLogin, async (req, res) => {
     );
     
     if (!result2 || !result2.paymentInfo) {
-      return res.status(500).json({
-        code: 500,
-        success: false,
-        data: null,
-        description: 'Failed to create payment session'
-      });
+      return res.status(500).json(
+        errorResponse('Failed to create payment session', 500)
+      );
     }
     
-    return res.json({
-      code: 200,
-      success: true,
-      data: {
-        subscription: result2.subscription,
-        paymentUrl: result2.paymentInfo.checkout_url,
-        sessionId: result2.paymentInfo.session_id
-      },
-      description: 'Subscription payment session created successfully'
-    });
+    return res.json(successResponse({
+      subscription: result2.subscription,
+      paymentUrl: result2.paymentInfo.checkout_url,
+      sessionId: result2.paymentInfo.session_id
+    }, 200, 'Subscription payment session created successfully'));
   } catch (error: any) {
     console.error('Error purchasing subscription:', error);
-    return res.status(500).json({
-      code: 500,
-      success: false,
-      data: null,
-      description: error.message || 'Error purchasing subscription'
-    });
+    return res.status(500).json(
+      errorResponse(error.message || 'Error purchasing subscription', 500)
+    );
   }
 });
 
@@ -185,32 +155,23 @@ router.post('/payment-success', async (req, res) => {
   try {
     const sessionId = req.query.session_id?.toString();
     if (!sessionId) {
-      return res.status(400).json({
-        code: 400,
-        success: false,
-        data: null,
-        description: 'Missing session ID'
-      });
+      return res.status(400).json(
+        errorResponse('Missing session ID', 400)
+      );
     }
     
     // Process the payment
     const updatedSubscription = await subscriptionService.processSuccessfulSubscriptionPayment(sessionId);
     
     if (!updatedSubscription) {
-      return res.status(404).json({
-        code: 404,
-        success: false,
-        data: null,
-        description: 'Subscription not found or payment already processed'
-      });
+      return res.status(404).json(
+        errorResponse('Subscription not found or payment already processed', 404)
+      );
     }
     
-    return res.json({
-      code: 200,
-      success: true,
-      data: updatedSubscription,
-      description: 'Subscription payment processed successfully'
-    });
+    return res.json(
+      successResponse(updatedSubscription, 200, 'Subscription payment processed successfully')
+    );
   } catch (error: any) {
     console.error('Error processing subscription payment:', error);
     return res.status(500).json({

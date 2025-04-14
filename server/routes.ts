@@ -617,6 +617,146 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json(errorResponse("Error retrieving cashiers", 500));
     }
   });
+  
+  // Create a new cashier
+  app.post("/api/cashiers", requireRole(["center", "admin"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      const { email, name, permissions, venueIds } = req.body;
+      
+      if (!email) {
+        return res.status(400).json(errorResponse("Email is required", 400));
+      }
+      
+      const result = await storage.createCashier({
+        email,
+        name,
+        permissions: permissions || {},
+        ownerId: req.user.id,
+        venueIds: venueIds || []
+      });
+      
+      return res.json(successResponse(result, 201, "Cashier created successfully"));
+    } catch (error: any) {
+      console.error("Error creating cashier:", error);
+      
+      if (error.message?.includes("already exists")) {
+        return res.status(400).json(errorResponse(error.message, 400));
+      }
+      
+      return res.status(500).json(errorResponse("Error creating cashier", 500));
+    }
+  });
+  
+  // Delete a cashier
+  app.delete("/api/cashiers/:id", requireRole(["center", "admin"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      const cashierId = parseInt(req.params.id);
+      
+      if (isNaN(cashierId)) {
+        return res.status(400).json(errorResponse("Invalid cashier ID", 400));
+      }
+      
+      // First get the cashier to verify ownership
+      const cashiers = await storage.getCashiers(req.user.id);
+      const cashier = cashiers.find(c => c.id === cashierId);
+      
+      if (!cashier) {
+        return res.status(404).json(errorResponse("Cashier not found or not authorized", 404));
+      }
+      
+      const success = await storage.deleteCashier(cashierId);
+      
+      if (success) {
+        return res.json(successResponse(null, 200, "Cashier deleted successfully"));
+      } else {
+        return res.status(500).json(errorResponse("Failed to delete cashier", 500));
+      }
+    } catch (error) {
+      console.error("Error deleting cashier:", error);
+      return res.status(500).json(errorResponse("Error deleting cashier", 500));
+    }
+  });
+  
+  // Update cashier permissions
+  app.patch("/api/cashiers/:id/permissions", requireRole(["center", "admin"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      const cashierId = parseInt(req.params.id);
+      const { permissions } = req.body;
+      
+      if (isNaN(cashierId)) {
+        return res.status(400).json(errorResponse("Invalid cashier ID", 400));
+      }
+      
+      if (!permissions || typeof permissions !== 'object') {
+        return res.status(400).json(errorResponse("Invalid permissions format", 400));
+      }
+      
+      // First get the cashier to verify ownership
+      const cashiers = await storage.getCashiers(req.user.id);
+      const cashier = cashiers.find(c => c.id === cashierId);
+      
+      if (!cashier) {
+        return res.status(404).json(errorResponse("Cashier not found or not authorized", 404));
+      }
+      
+      const updatedCashier = await storage.updateCashierPermissions(cashierId, permissions);
+      
+      return res.json(successResponse(updatedCashier, 200, "Cashier permissions updated successfully"));
+    } catch (error) {
+      console.error("Error updating cashier permissions:", error);
+      return res.status(500).json(errorResponse("Error updating cashier permissions", 500));
+    }
+  });
+  
+  // Update cashier venue access
+  app.patch("/api/cashiers/:id/venues", requireRole(["center", "admin"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      const cashierId = parseInt(req.params.id);
+      const { venueIds } = req.body;
+      
+      if (isNaN(cashierId)) {
+        return res.status(400).json(errorResponse("Invalid cashier ID", 400));
+      }
+      
+      if (!Array.isArray(venueIds)) {
+        return res.status(400).json(errorResponse("venueIds must be an array", 400));
+      }
+      
+      // First get the cashier to verify ownership
+      const cashiers = await storage.getCashiers(req.user.id);
+      const cashier = cashiers.find(c => c.id === cashierId);
+      
+      if (!cashier) {
+        return res.status(404).json(errorResponse("Cashier not found or not authorized", 404));
+      }
+      
+      // Verify the venues belong to the user
+      const userVenues = await storage.getVenues(req.user.id);
+      const userVenueIds = userVenues.map(v => v.id);
+      
+      // Check if all venueIds are owned by the user
+      const unauthorized = venueIds.some(id => !userVenueIds.includes(id));
+      
+      if (unauthorized) {
+        return res.status(403).json(errorResponse("You can only assign venues that you own", 403));
+      }
+      
+      const updatedCashier = await storage.updateCashierVenues(cashierId, venueIds);
+      
+      return res.json(successResponse(updatedCashier, 200, "Cashier venue access updated successfully"));
+    } catch (error) {
+      console.error("Error updating cashier venue access:", error);
+      return res.status(500).json(errorResponse("Error updating cashier venue access", 500));
+    }
+  });
 
   // Complete ticket purchase after payment
   app.post("/api/tickets/purchase", requireRole(["customer", "admin"]), async (req: Request, res: Response) => {

@@ -402,6 +402,11 @@ export class OptimizedStorage implements IStorage {
   ): Promise<{ cashier: Cashier, user: User, tempPassword: string }> {
     const existingUser = await this.getUserByEmail(email);
     
+    // Validate email is provided
+    if (!email) {
+      throw new Error("Email is required to create a cashier");
+    }
+    
     return await db.transaction(async (tx) => {
       let user: User;
       const tempPassword = randomBytes(4).toString('hex'); // Generate a temporary password
@@ -412,6 +417,11 @@ export class OptimizedStorage implements IStorage {
         user = existingUser;
       } else {
         // Create a new user with the cashier role
+        // Make sure email is a string and properly formatted
+        if (!email.includes('@')) {
+          throw new Error("Invalid email format");
+        }
+        
         const username = email.split('@')[0];
         const [newUser] = await tx.insert(users).values({
           username: username + '-' + nanoid(4),

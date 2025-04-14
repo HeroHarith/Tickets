@@ -629,13 +629,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json(errorResponse("Email is required", 400));
       }
       
-      const result = await storage.createCashier({
-        email,
-        name,
-        permissions: permissions || {},
-        ownerId: req.user.id,
-        venueIds: venueIds || []
-      });
+      const result = await storage.createCashier(
+        req.user.id,  // ownerId
+        email,        // email
+        name || "",   // name - provide empty string if undefined
+        permissions || {},  // permissions
+        venueIds || []      // venueIds
+      );
       
       return res.json(successResponse(result, 201, "Cashier created successfully"));
     } catch (error: any) {

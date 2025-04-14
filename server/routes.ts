@@ -28,6 +28,8 @@ import thawaniService, {
   CustomerDetails, 
   ProductDetails 
 } from "./thawani";
+// Import subscription routes
+import subscriptionRoutes from './routes/subscription-routes';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
@@ -903,6 +905,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       </html>
     `);
   });
+
+
+  // Initialize subscription routes
+  const subscriptionRouteModule = await import('./routes/subscription-routes');
+  app.use('/api/subscriptions', subscriptionRouteModule.default);
 
   const httpServer = createServer(app);
   return httpServer;

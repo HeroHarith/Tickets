@@ -22,6 +22,11 @@ export const users = pgTable("users", {
   verificationTokenExpires: timestamp("verification_token_expires"),
   resetToken: text("reset_token"),
   resetTokenExpires: timestamp("reset_token_expires"),
+  
+  // Subscription related fields
+  subscriptionId: integer("subscription_id"), // References subscriptions.id
+  subscriptionStatus: text("subscription_status"), // active, cancelled, expired
+  subscriptionExpiresAt: timestamp("subscription_expires_at"),
 });
 
 // Event Types

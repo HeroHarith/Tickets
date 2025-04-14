@@ -400,12 +400,12 @@ export class OptimizedStorage implements IStorage {
     permissions: Record<string, boolean> = DEFAULT_CASHIER_PERMISSIONS,
     venueIds: number[] = []
   ): Promise<{ cashier: Cashier, user: User, tempPassword: string }> {
-    const existingUser = await this.getUserByEmail(email);
-    
     // Validate email is provided
     if (!email) {
       throw new Error("Email is required to create a cashier");
     }
+    
+    const existingUser = await this.getUserByEmail(email);
     
     return await db.transaction(async (tx) => {
       let user: User;

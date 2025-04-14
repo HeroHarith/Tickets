@@ -603,6 +603,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Get cashiers for center owner
+  app.get("/api/cashiers", requireRole(["center", "admin"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      const ownerId = req.user.id;
+      const cashiers = await storage.getCashiers(ownerId);
+      
+      return res.json(successResponse(cashiers, 200, "Cashiers retrieved successfully"));
+    } catch (error) {
+      console.error("Error retrieving cashiers:", error);
+      return res.status(500).json(errorResponse("Error retrieving cashiers", 500));
+    }
+  });
+
   // Complete ticket purchase after payment
   app.post("/api/tickets/purchase", requireRole(["customer", "admin"]), async (req: Request, res: Response) => {
     try {

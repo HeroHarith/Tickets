@@ -22,13 +22,18 @@ import * as thawani from './thawani';
  * Get all active subscription plans
  */
 export async function getSubscriptionPlans(type?: string): Promise<SubscriptionPlan[]> {
-  let query = db.select().from(subscriptionPlans).where(eq(subscriptionPlans.isActive, true));
+  let query = db.select().from(subscriptionPlans);
+  
+  let conditions = [];
+  conditions.push(eq(subscriptionPlans.isActive, true));
   
   if (type) {
-    query = query.where(eq(subscriptionPlans.type, type));
+    conditions.push(eq(subscriptionPlans.type, type));
   }
   
-  return await query;
+  return await db.select()
+    .from(subscriptionPlans)
+    .where(and(...conditions));
 }
 
 /**
@@ -261,7 +266,7 @@ export async function createSubscriptionPaymentSession(
       startDate,
       endDate,
       status: 'pending', // Start with pending until payment is confirmed
-      metaData: {
+      metadata: {
         planName: plan.name,
         planType: plan.type,
         billingPeriod: plan.billingPeriod

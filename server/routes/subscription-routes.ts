@@ -56,12 +56,7 @@ router.get('/plans/:id', async (req, res) => {
       });
     }
     
-    return res.json({
-      code: 200,
-      success: true,
-      data: plan,
-      description: 'Subscription plan retrieved successfully'
-    });
+    return res.json(successResponse(plan, 200, 'Subscription plan retrieved successfully'));
   } catch (error: any) {
     console.error('Error getting subscription plan:', error);
     return res.status(500).json({

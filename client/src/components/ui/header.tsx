@@ -223,16 +223,14 @@ const Header = () => {
                     My Tickets
                   </Link>
                 )}
-                {['eventManager', 'center', 'admin'].includes(user.role) && (
-                  <Link 
-                    href="/subscriptions" 
-                    className={`${location === '/subscriptions' ? 'text-primary' : 'text-gray-700'} flex items-center px-3 py-2 rounded-md text-base font-medium`}
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    Subscriptions
-                  </Link>
-                )}
+                <Link 
+                  href="/settings" 
+                  className={`${location === '/settings' ? 'text-primary' : 'text-gray-700'} flex items-center px-3 py-2 rounded-md text-base font-medium`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Settings
+                </Link>
               </>
             )}
             {showManagerOptions && (

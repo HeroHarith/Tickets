@@ -8,6 +8,7 @@ import {
   purchaseTicketSchema,
   eventSearchSchema,
   users as usersSchema,
+  tickets,
   PurchaseTicketInput
 } from "@shared/schema";
 import * as schema from "@shared/schema";
@@ -1026,15 +1027,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const passUrl = `https://example.com/passes/${ticket.passId}`;
       
       // Update the ticket with wallet info
-      await db.update(tickets)
+      await db.update(schema.tickets)
         .set({ 
           passStatus: 'added_to_wallet',
           passUrl 
         })
-        .where(eq(tickets.id, ticketId));
-      
-      // Invalidate ticket cache
-      optimizedStorage.invalidateCache('ticket', ticketId);
+        .where(eq(schema.tickets.id, ticketId));
       
       return res.json(successResponse({ 
         passId: ticket.passId,

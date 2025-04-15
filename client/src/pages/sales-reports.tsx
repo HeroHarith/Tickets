@@ -140,19 +140,25 @@ const SalesReports = () => {
     );
   }
   
-  const { event, totalSales, ticketsSold, salesByTicketType } = salesQuery.data;
+  // Ensure we have all the required data with fallbacks
+  const { 
+    event = {}, 
+    totalSales = 0, 
+    ticketsSold = 0, 
+    salesByTicketType = [] 
+  } = salesQuery.data || {};
   
-  // Prepare data for charts
-  const barChartData = salesByTicketType.map(item => ({
+  // Prepare data for charts with safety checks
+  const barChartData = Array.isArray(salesByTicketType) ? salesByTicketType.map(item => ({
     name: item.name,
     Sold: item.sold,
     Revenue: Number(Number(item.revenue).toFixed(2))
-  }));
+  })) : [];
   
-  const pieChartData = salesByTicketType.map(item => ({
+  const pieChartData = Array.isArray(salesByTicketType) ? salesByTicketType.map(item => ({
     name: item.name,
     value: Number(item.revenue)
-  }));
+  })) : [];
   
   const COLORS = ['#6366F1', '#EC4899', '#F59E0B', '#34D399', '#3B82F6', '#A855F7'];
   
@@ -171,15 +177,17 @@ const SalesReports = () => {
           </Button>
         </Link>
         
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">{event.title} - Sales Report</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">{event.title || 'Event'} - Sales Report</h1>
         <div className="flex flex-wrap gap-4 text-sm text-gray-600">
           <div className="flex items-center">
             <Calendar className="h-4 w-4 mr-1" />
-            {format(new Date(event.startDate), "MMMM d, yyyy")}
+            {event.startDate && !isNaN(new Date(event.startDate).getTime()) 
+              ? format(new Date(event.startDate), "MMMM d, yyyy") 
+              : 'Date not available'}
           </div>
           <div className="flex items-center">
             <MapPin className="h-4 w-4 mr-1" />
-            {event.location}
+            {event.location || 'Location not available'}
           </div>
         </div>
       </div>

@@ -53,7 +53,7 @@ const subscriptionPlanSchema = z.object({
   billingPeriod: z.enum(["monthly", "yearly"], {
     errorMap: () => ({ message: "Billing period must be monthly or yearly" }),
   }),
-  features: z.string().transform((val) => val.split("\n").filter(line => line.trim() !== "")),
+  features: z.string().transform((val) => val.split("\n").filter(line => line.trim() !== "") as string[]),
   isActive: z.boolean().default(true),
 });
 
@@ -166,7 +166,7 @@ export function SubscriptionPlanManagement() {
       type: "eventManager",
       price: 0,
       billingPeriod: "monthly",
-      features: "",
+      features: "" as unknown as string[],  // This will be transformed by Zod
       isActive: true,
     },
   });
@@ -180,11 +180,15 @@ export function SubscriptionPlanManagement() {
   const handleEditPlan = (plan: SubscriptionPlan) => {
     setSelectedPlan(plan);
     // Convert features array to string (one feature per line)
-    const featuresString = Array.isArray(plan.features)
-      ? plan.features.join("\n")
-      : typeof plan.features === "object"
-      ? Object.values(plan.features).join("\n")
-      : "";
+    let featuresString = "";
+    
+    if (Array.isArray(plan.features)) {
+      featuresString = plan.features.join("\n");
+    } else if (plan.features && typeof plan.features === "object") {
+      // Safely handle object values
+      const values = Object.values(plan.features as Record<string, string>);
+      featuresString = values.join("\n");
+    }
     
     editForm.reset({
       name: plan.name,
@@ -192,7 +196,7 @@ export function SubscriptionPlanManagement() {
       type: plan.type as "eventManager" | "center",
       price: parseFloat(plan.price.toString()),
       billingPeriod: plan.billingPeriod as "monthly" | "yearly",
-      features: featuresString,
+      features: featuresString as unknown as string[],  // This will be transformed by Zod
       isActive: plan.isActive,
     });
     setIsEditDialogOpen(true);

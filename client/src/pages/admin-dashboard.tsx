@@ -468,82 +468,108 @@ const AdminDashboard = () => {
         
         {/* Subscription Management Tab */}
         <TabsContent value="subscriptions" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>All Subscriptions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {subscriptionsQuery.isLoading ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-              ) : subscriptionsQuery.error ? (
-                <div className="text-center py-8">
-                  <p className="text-red-500 mb-2">Error loading subscriptions</p>
-                  <Button onClick={() => subscriptionsQuery.refetch()}>Try Again</Button>
-                </div>
-              ) : (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>ID</TableHead>
-                        <TableHead>User</TableHead>
-                        <TableHead>Plan</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Start Date</TableHead>
-                        <TableHead>End Date</TableHead>
-                        <TableHead>Price</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {!subscriptionsQuery.data?.data || subscriptionsQuery.data.data.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">
-                            No subscriptions found
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        subscriptionsQuery.data.data.map((item: any) => (
-                          <TableRow key={item.subscription.id}>
-                            <TableCell>{item.subscription.id}</TableCell>
-                            <TableCell>
-                              <div className="font-medium">{item.user.name}</div>
-                              <div className="text-sm text-muted-foreground">{item.user.email}</div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="font-medium">{item.plan.name}</div>
-                              <div className="text-xs">{item.plan.type} / {item.plan.billingPeriod}</div>
-                            </TableCell>
-                            <TableCell>
-                              <span className={`px-2 py-1 rounded-full text-xs ${
-                                item.subscription.status === "active" 
-                                  ? "bg-green-100 text-green-800" 
-                                  : item.subscription.status === "pending"
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : "bg-red-100 text-red-800"
-                              }`}>
-                                {item.subscription.status}
-                              </span>
-                            </TableCell>
-                            <TableCell>
-                              {new Date(item.subscription.startDate).toLocaleDateString()}
-                            </TableCell>
-                            <TableCell>
-                              {new Date(item.subscription.endDate).toLocaleDateString()}
-                            </TableCell>
-                            <TableCell>
-                              ${parseFloat(item.plan.price).toFixed(2)}
-                            </TableCell>
+          {/* Nested Tabs for Subscription Management */}
+          <Tabs defaultValue="subscriptions_list">
+            <TabsList className="mb-4">
+              <TabsTrigger value="subscriptions_list" className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4" />
+                Active Subscriptions
+              </TabsTrigger>
+              <TabsTrigger value="subscription_plans" className="flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                Subscription Plans
+              </TabsTrigger>
+            </TabsList>
+            
+            {/* Subscriptions List Tab */}
+            <TabsContent value="subscriptions_list" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>All Subscriptions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {subscriptionsQuery.isLoading ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : subscriptionsQuery.error ? (
+                    <div className="text-center py-8">
+                      <p className="text-red-500 mb-2">Error loading subscriptions</p>
+                      <Button onClick={() => subscriptionsQuery.refetch()}>Try Again</Button>
+                    </div>
+                  ) : (
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>ID</TableHead>
+                            <TableHead>User</TableHead>
+                            <TableHead>Plan</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Start Date</TableHead>
+                            <TableHead>End Date</TableHead>
+                            <TableHead>Price</TableHead>
                           </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                        </TableHeader>
+                        <TableBody>
+                          {!subscriptionsQuery.data?.data || subscriptionsQuery.data.data.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">
+                                No subscriptions found
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            subscriptionsQuery.data.data.map((item: any) => (
+                              <TableRow key={item.subscription.id}>
+                                <TableCell>{item.subscription.id}</TableCell>
+                                <TableCell>
+                                  <div className="font-medium">{item.user.name}</div>
+                                  <div className="text-sm text-muted-foreground">{item.user.email}</div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="font-medium">{item.plan.name}</div>
+                                  <div className="text-xs">{item.plan.type} / {item.plan.billingPeriod}</div>
+                                </TableCell>
+                                <TableCell>
+                                  <span className={`px-2 py-1 rounded-full text-xs ${
+                                    item.subscription.status === "active" 
+                                      ? "bg-green-100 text-green-800" 
+                                      : item.subscription.status === "pending"
+                                      ? "bg-yellow-100 text-yellow-800"
+                                      : "bg-red-100 text-red-800"
+                                  }`}>
+                                    {item.subscription.status}
+                                  </span>
+                                </TableCell>
+                                <TableCell>
+                                  {new Date(item.subscription.startDate).toLocaleDateString()}
+                                </TableCell>
+                                <TableCell>
+                                  {new Date(item.subscription.endDate).toLocaleDateString()}
+                                </TableCell>
+                                <TableCell>
+                                  ${parseFloat(item.plan.price).toFixed(2)}
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            {/* Subscription Plans Tab */}
+            <TabsContent value="subscription_plans">
+              <Card>
+                <CardContent className="p-6">
+                  <SubscriptionPlanManagement />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </TabsContent>
       </Tabs>
 

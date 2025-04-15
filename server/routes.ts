@@ -908,6 +908,147 @@ export async function registerRoutes(app: Express): Promise<Server> {
     `);
   });
 
+  // Get all tickets for a user
+  app.get("/api/tickets/user", requireRole(["customer", "eventManager", "admin"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      // Get all tickets for the user
+      const tickets = await optimizedStorage.getUserTickets(req.user.id);
+      
+      // Get events and ticket types to add details
+      const eventIds = [...new Set(tickets.map(t => t.eventId))];
+      const ticketTypeIds = [...new Set(tickets.map(t => t.ticketTypeId))];
+      
+      const events = await Promise.all(
+        eventIds.map(id => optimizedStorage.getEvent(id))
+      );
+      
+      const ticketTypes = await Promise.all(
+        ticketTypeIds.map(id => optimizedStorage.getTicketType(id))
+      );
+      
+      // Create maps for faster lookups
+      const eventMap = new Map();
+      const ticketTypeMap = new Map();
+      
+      events.forEach(event => {
+        if (event) eventMap.set(event.id, event);
+      });
+      
+      ticketTypes.forEach(tt => {
+        if (tt) ticketTypeMap.set(tt.id, tt);
+      });
+      
+      // Enhance tickets with related data
+      const enhancedTickets = tickets.map(ticket => ({
+        ...ticket,
+        event: eventMap.get(ticket.eventId),
+        ticketType: ticketTypeMap.get(ticket.ticketTypeId)
+      }));
+      
+      return res.json(successResponse(enhancedTickets));
+    } catch (error) {
+      console.error("Error fetching user tickets:", error);
+      return res.status(500).json(errorResponse("Error fetching tickets", 500));
+    }
+  });
+  
+  // Get QR code for a ticket
+  app.get("/api/tickets/:id/qr", requireRole(["customer", "eventManager", "admin"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      const ticketId = parseInt(req.params.id);
+      
+      // Get the ticket
+      const ticket = await optimizedStorage.getTicket(ticketId);
+      
+      if (!ticket) {
+        return res.status(404).json(errorResponse("Ticket not found", 404));
+      }
+      
+      // Check if user owns this ticket
+      if (ticket.userId !== req.user.id && req.user.role !== 'admin') {
+        return res.status(403).json(errorResponse("You don't have permission to access this ticket", 403));
+      }
+      
+      // Return existing QR code or generate a new one
+      if (ticket.qrCode) {
+        return res.json(successResponse({ qrCode: ticket.qrCode }));
+      } else {
+        const qrCode = await optimizedStorage.generateTicketQR(ticketId);
+        return res.json(successResponse({ qrCode }));
+      }
+    } catch (error) {
+      console.error("Error getting ticket QR code:", error);
+      return res.status(500).json(errorResponse("Error getting QR code", 500));
+    }
+  });
+  
+  // Create wallet pass for a digital pass
+  app.post("/api/tickets/:id/wallet-pass", requireRole(["customer", "admin"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      const ticketId = parseInt(req.params.id);
+      const { passType = 'standard', walletType = 'apple' } = req.body;
+      
+      // Get the ticket
+      const ticket = await optimizedStorage.getTicket(ticketId);
+      
+      if (!ticket) {
+        return res.status(404).json(errorResponse("Ticket not found", 404));
+      }
+      
+      // Check if user owns this ticket
+      if (ticket.userId !== req.user.id && req.user.role !== 'admin') {
+        return res.status(403).json(errorResponse("You don't have permission to access this ticket", 403));
+      }
+      
+      // Check if this is a digital pass
+      if (!ticket.passId) {
+        return res.status(400).json(errorResponse("This ticket is not a digital pass", 400));
+      }
+      
+      // Get event and ticket type for pass creation
+      const event = await optimizedStorage.getEvent(ticket.eventId);
+      const ticketType = await optimizedStorage.getTicketType(ticket.ticketTypeId);
+      
+      if (!event || !ticketType) {
+        return res.status(404).json(errorResponse("Event or ticket type not found", 404));
+      }
+      
+      // In a real implementation, we would generate the actual wallet pass file 
+      // using a library like Apple's PassKit or Google's Wallet API
+      
+      // For demonstration purposes, we'll simulate creating a pass
+      const passUrl = `https://example.com/passes/${ticket.passId}`;
+      
+      // Update the ticket with wallet info
+      await db.update(tickets)
+        .set({ 
+          passStatus: 'added_to_wallet',
+          passUrl 
+        })
+        .where(eq(tickets.id, ticketId));
+      
+      // Invalidate ticket cache
+      optimizedStorage.invalidateCache('ticket', ticketId);
+      
+      return res.json(successResponse({ 
+        passId: ticket.passId,
+        passUrl,
+        walletType,
+        passType,
+        status: 'added_to_wallet'
+      }));
+    } catch (error) {
+      console.error("Error creating wallet pass:", error);
+      return res.status(500).json(errorResponse("Error creating wallet pass", 500));
+    }
+  });
+
 
   // Initialize subscription routes
   const subscriptionRouteModule = await import('./routes/subscription-routes');

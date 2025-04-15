@@ -32,7 +32,7 @@ import { SubscriptionStatusChecker } from "@/components/domain/subscriptions";
 
 // Note: We've moved the authenticated layout into the ProtectedRoute component
 
-// Home redirect component to handle center users
+// Home redirect component to handle special user roles
 function HomeRedirect() {
   const { user } = useAuth();
   
@@ -41,7 +41,12 @@ function HomeRedirect() {
     return <Redirect to="/center" />;
   }
   
-  // Otherwise, render the regular Home component
+  // If user is admin, redirect to admin dashboard
+  if (user?.role === "admin") {
+    return <Redirect to="/admin" />;
+  }
+  
+  // Otherwise, render the regular Home component for customers and event managers
   return <Home />;
 }
 

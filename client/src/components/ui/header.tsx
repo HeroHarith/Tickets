@@ -131,7 +131,7 @@ const Header = () => {
           </div>
           
           <div className="hidden md:flex space-x-4">
-            {user?.role !== 'center' && (
+            {user && !['center', 'admin'].includes(user.role) && (
               <>
                 <Link 
                   href="/" 
@@ -139,14 +139,12 @@ const Header = () => {
                 >
                   Browse Events
                 </Link>
-                {user && (
-                  <Link 
-                    href="/my-tickets" 
-                    className={`${location === '/my-tickets' ? 'text-primary' : 'text-gray-700'} hover:text-primary px-3 py-2 rounded-md text-sm font-medium`}
-                  >
-                    My Tickets
-                  </Link>
-                )}
+                <Link 
+                  href="/my-tickets" 
+                  className={`${location === '/my-tickets' ? 'text-primary' : 'text-gray-700'} hover:text-primary px-3 py-2 rounded-md text-sm font-medium`}
+                >
+                  My Tickets
+                </Link>
               </>
             )}
             {showManagerOptions && (
@@ -200,7 +198,7 @@ const Header = () => {
         {/* Mobile menu */}
         {isMenuOpen && (
           <div className="md:hidden pt-2 pb-3 space-y-1">
-            {user?.role !== 'center' && (
+            {user && !['center', 'admin'].includes(user.role) && (
               <Link 
                 href="/" 
                 className={`${location === '/' ? 'text-primary' : 'text-gray-700'} block px-3 py-2 rounded-md text-base font-medium`}
@@ -218,7 +216,7 @@ const Header = () => {
                 >
                   My Profile
                 </Link>
-                {user.role !== 'center' && (
+                {!['center', 'admin'].includes(user.role) && (
                   <Link 
                     href="/my-tickets" 
                     className={`${location === '/my-tickets' ? 'text-primary' : 'text-gray-700'} block px-3 py-2 rounded-md text-base font-medium`}

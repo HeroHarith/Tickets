@@ -89,21 +89,8 @@ export default function CenterHomePage() {
     );
   }
 
-  // Redirect if not a center role
-  if (user?.role !== "center") {
-    return (
-      <CenterLayout>
-        <div className="h-full flex items-center justify-center">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold">Access Denied</h1>
-            <p className="mt-2 text-muted-foreground">
-              You need to have a center role to access this page.
-            </p>
-          </div>
-        </div>
-      </CenterLayout>
-    );
-  }
+  // We don't need redirect here since ProtectedRoute handles role access
+  // This was causing the maximum update depth error
 
   return (
     <CenterLayout>

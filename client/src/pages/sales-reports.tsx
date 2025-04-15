@@ -38,7 +38,7 @@ const SalesReports = () => {
     if (user && ['eventManager', 'admin'].includes(user.role)) {
       tabs.push(
         { id: "managed", label: "Managed Events", href: "/managed-events" },
-        { id: "sales", label: "Sales Reports", href: "/managed-events" }
+        { id: "sales", label: "Sales Reports", href: "/sales-reports" }
       );
     }
     
@@ -169,6 +169,9 @@ const SalesReports = () => {
         tabs={getNavTabs()}
         activeTab="sales"
       />
+      
+      {/* Add subscription status component at the top */}
+      <SubscriptionStatus />
       
       <div className="mb-6 mt-6">
         <Link href="/managed-events">

@@ -73,6 +73,26 @@ const TTL = {
  * An optimized version of the DatabaseStorage class that implements caching
  * for frequently accessed data
  */
+export interface IStorage {
+  sessionStore: session.Store;
+  
+  // User methods
+  getUser(id: number): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  createUser(user: any): Promise<User>;
+  updateUser(id: number, userData: any): Promise<User>;
+  deleteUser(id: number): Promise<boolean>;
+  getAllUsers(): Promise<User[]>;
+  
+  // Event methods
+  getEvent(id: number): Promise<Event | undefined>;
+  getEvents(options?: any): Promise<Event[]>;
+  createEvent(eventData: any): Promise<Event>;
+  
+  // Additional methods would continue here...
+}
+
 export class OptimizedStorage implements IStorage {
   sessionStore: session.Store;
   
@@ -207,6 +227,22 @@ export class OptimizedStorage implements IStorage {
       console.error('Error deleting user:', error);
       return false;
     }
+  }
+  
+  async getAllUsers(): Promise<User[]> {
+    const cacheKey = 'all-users';
+    const cachedUsers = cache.get<User[]>(cacheKey);
+    
+    if (cachedUsers) {
+      return cachedUsers;
+    }
+    
+    const allUsers = await db.select().from(users);
+    
+    // Cache the results for a shorter time since this is admin data
+    cache.set(cacheKey, allUsers, TTL.SHORT);
+    
+    return allUsers;
   }
   
   // EMAIL VERIFICATION OPERATIONS

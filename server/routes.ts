@@ -28,8 +28,9 @@ import thawaniService, {
   CustomerDetails, 
   ProductDetails 
 } from "./thawani";
-// Import subscription routes
+// Import routes
 import subscriptionRoutes from './routes/subscription-routes';
+import adminRoutes from './routes/admin-routes';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication

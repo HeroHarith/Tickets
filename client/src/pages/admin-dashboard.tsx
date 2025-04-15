@@ -246,8 +246,12 @@ const AdminDashboard = () => {
   // We don't need redirect here since ProtectedRoute handles role access
   // This can cause infinite loops or maximum update depth exceeded errors
 
-  // Loading state
-  if (usersQuery.isLoading || eventsQuery.isLoading) {
+  // Loading state for all tabs
+  if (
+    (selectedTab === "users" && usersQuery.isLoading) || 
+    (selectedTab === "events" && eventsQuery.isLoading) ||
+    (selectedTab === "subscriptions" && subscriptionsQuery.isLoading && !subscriptionsQuery.data)
+  ) {
     return (
       <div className="flex items-center justify-center h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -255,18 +259,26 @@ const AdminDashboard = () => {
     );
   }
 
-  // Error state
-  if (usersQuery.error || eventsQuery.error) {
+  // Error state for all tabs
+  if (
+    (selectedTab === "users" && usersQuery.error) || 
+    (selectedTab === "events" && eventsQuery.error) || 
+    (selectedTab === "subscriptions" && subscriptionsQuery.error && !subscriptionsQuery.data)
+  ) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-red-600 mb-2">Error</h1>
           <p className="text-gray-600 mb-4">
-            {usersQuery.error?.message || eventsQuery.error?.message || "An error occurred loading dashboard data"}
+            {selectedTab === "users" && usersQuery.error?.message || 
+             selectedTab === "events" && eventsQuery.error?.message || 
+             selectedTab === "subscriptions" && subscriptionsQuery.error?.message || 
+             "An error occurred loading dashboard data"}
           </p>
           <Button onClick={() => {
-            usersQuery.refetch();
-            eventsQuery.refetch();
+            if (selectedTab === "users") usersQuery.refetch();
+            if (selectedTab === "events") eventsQuery.refetch();
+            if (selectedTab === "subscriptions") subscriptionsQuery.refetch();
           }}>
             Try Again
           </Button>

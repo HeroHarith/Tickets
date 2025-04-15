@@ -43,7 +43,7 @@ const ManagedEvents = () => {
   };
   
   // Fetch events created by the current user
-  const eventsQuery = useQuery<Event[]>({
+  const eventsQuery = useQuery<{ data: Event[] }>({
     queryKey: ["/api/events", { organizer: user?.id }],
     enabled: !!user,
     queryFn: async () => {
@@ -55,14 +55,14 @@ const ManagedEvents = () => {
   
   // Fetch ticket types for each event
   const eventsWithTicketTypesQuery = useQuery<Record<number, TicketType[]>>({
-    queryKey: ["/api/events/ticketTypes", eventsQuery.data?.map(e => e.id)],
-    enabled: !!eventsQuery.data && eventsQuery.data.length > 0,
+    queryKey: ["/api/events/ticketTypes", eventsQuery.data?.data?.map(e => e.id)],
+    enabled: !!eventsQuery.data?.data && eventsQuery.data.data.length > 0,
     queryFn: async () => {
-      const eventIds = eventsQuery.data!.map(e => e.id);
+      const eventIds = eventsQuery.data!.data.map(e => e.id);
       const promises = eventIds.map(id => 
         fetch(`/api/events/${id}`)
           .then(res => res.json())
-          .then(data => ({ id, ticketTypes: data.ticketTypes }))
+          .then(data => ({ id, ticketTypes: data.data?.ticketTypes || [] }))
       );
       
       const results = await Promise.all(promises);
@@ -163,7 +163,7 @@ const ManagedEvents = () => {
           </Link>
         </div>
         
-        {!eventsQuery.data || eventsQuery.data.length === 0 ? (
+        {!eventsQuery.data?.data || eventsQuery.data.data.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg shadow-md">
             <div className="mx-auto w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
               <Calendar className="h-8 w-8 text-gray-400" />
@@ -176,7 +176,7 @@ const ManagedEvents = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {eventsQuery.data.map(event => (
+            {eventsQuery.data.data.map(event => (
               <Card key={event.id} className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
                 <div className="h-40 bg-gray-200 relative">
                   <img

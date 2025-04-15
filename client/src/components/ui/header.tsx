@@ -83,7 +83,7 @@ const UserProfile = () => {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href={`/sales/${user.id}`} className="w-full cursor-pointer">
+              <Link href="/sales-reports" className="w-full cursor-pointer">
                 Sales Reports
               </Link>
             </DropdownMenuItem>
@@ -154,8 +154,8 @@ const Header = () => {
                   Managed Events
                 </Link>
                 <Link 
-                  href={`/sales/${user.id}`}
-                  className={`${location.startsWith('/sales/') ? 'text-primary' : 'text-gray-700'} hover:text-primary px-3 py-2 rounded-md text-sm font-medium`}
+                  href="/sales-reports"
+                  className={`${location.startsWith('/sales-reports') ? 'text-primary' : 'text-gray-700'} hover:text-primary px-3 py-2 rounded-md text-sm font-medium`}
                 >
                   Sales Reports
                 </Link>
@@ -243,8 +243,8 @@ const Header = () => {
                   Managed Events
                 </Link>
                 <Link 
-                  href={`/sales/${user.id}`}
-                  className={`${location.startsWith('/sales/') ? 'text-primary' : 'text-gray-700'} block px-3 py-2 rounded-md text-base font-medium`}
+                  href="/sales-reports"
+                  className={`${location.startsWith('/sales-reports') ? 'text-primary' : 'text-gray-700'} block px-3 py-2 rounded-md text-base font-medium`}
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Sales Reports

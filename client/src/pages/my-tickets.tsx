@@ -7,7 +7,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import TabsComponent from "@/components/ui/tabs-component";
 import { format } from "date-fns";
 import { Event, TicketType } from "@shared/schema";
 import type { Ticket, BadgeInfo } from "@shared/schema";
@@ -40,7 +39,6 @@ const MyTickets = () => {
     }
   });
   
-  // Get navigation tabs based on user role
 
   
   // Group tickets by order ID for display

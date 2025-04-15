@@ -45,7 +45,8 @@ import { User, Event, USER_ROLES } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { Loader2, UserPlus, Pencil, Trash2, Package, Users, CreditCard } from "lucide-react";
+import { Loader2, UserPlus, Pencil, Trash2, Package, Users, CreditCard, Settings } from "lucide-react";
+import { SubscriptionPlanManagement } from "@/components/domain/admin/subscription-plan-management";
 
 // Define types for the forms
 interface UserFormData {

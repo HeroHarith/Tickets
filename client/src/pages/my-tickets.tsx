@@ -26,6 +26,7 @@ const MyTickets = () => {
   const [selectedTicket, setSelectedTicket] = useState<ExpandedTicket | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [addToWalletLoading, setAddToWalletLoading] = useState(false);
+  const [selectedWalletType, setSelectedWalletType] = useState<'apple' | 'google'>('apple');
   
   // Fetch user tickets
   const ticketsQuery = useQuery<ExpandedTicket[]>({
@@ -112,7 +113,7 @@ const MyTickets = () => {
         // For digital passes, we'll create a wallet pass and update the status
         const response = await apiRequest("POST", `/api/tickets/${selectedTicket.id}/wallet-pass`, {
           passType: selectedTicket.passType || 'standard',
-          walletType: 'apple' // Default to Apple wallet, could be a user selection in a more advanced UI
+          walletType: selectedWalletType // Use the selected wallet type
         });
         
         if (!response.ok) {

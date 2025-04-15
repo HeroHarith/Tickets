@@ -11,6 +11,7 @@ import { createEventSchema, EVENT_CATEGORIES, EVENT_TYPES } from "@shared/schema
 import CreateEventForm from "@/components/ui/create-event-form";
 import TabsComponent from "@/components/ui/tabs-component";
 import { useAuth } from "@/hooks/use-auth";
+import { SubscriptionStatus } from "@/components/subscription-status";
 
 // Define the form input types
 interface TicketTypeInput {
@@ -194,6 +195,9 @@ const CreateEvent = () => {
         activeTab="managed"
       />
     
+      {/* Add subscription status component at the top */}
+      <SubscriptionStatus />
+      
       <div className="bg-white rounded-lg shadow-md p-6 mt-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-6">Create Event</h1>
         

@@ -124,6 +124,9 @@ const SalesReportList = () => {
         activeTab="sales"
       />
       
+      {/* Add subscription status component at the top */}
+      <SubscriptionStatus />
+      
       <div className="mt-6 mb-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Sales Reports</h1>
         <p className="text-gray-600">View sales performance for all your events</p>

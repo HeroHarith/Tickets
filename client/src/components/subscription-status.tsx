@@ -25,7 +25,7 @@ export function SubscriptionStatus() {
 
   useEffect(() => {
     const fetchSubscription = async () => {
-      if (!user || user.role !== 'eventManager') return;
+      if (!user || (user.role !== 'eventManager' && user.role !== 'center')) return;
       
       try {
         setLoading(true);
@@ -49,7 +49,7 @@ export function SubscriptionStatus() {
     fetchSubscription();
   }, [user]);
 
-  if (!user || user.role !== 'eventManager') {
+  if (!user || (user.role !== 'eventManager' && user.role !== 'center')) {
     return null;
   }
 
@@ -76,22 +76,38 @@ export function SubscriptionStatus() {
   }
 
   if (!subscription) {
+    const isCenter = user.role === 'center';
+    
     return (
       <Card className="mb-6 border-orange-200 bg-orange-50">
         <CardHeader>
           <CardTitle className="text-orange-700">Subscription Required</CardTitle>
           <CardDescription>
-            You need a subscription to create events and view sales reports
+            {isCenter 
+              ? "You need a subscription to manage venues and view bookings" 
+              : "You need a subscription to create events and view sales reports"}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-orange-800 mb-4">
-            As an event manager, you need an active subscription to access all features:
+            {isCenter 
+              ? "As a venue owner, you need an active subscription to access all features:" 
+              : "As an event manager, you need an active subscription to access all features:"}
           </p>
           <ul className="list-disc pl-5 text-sm text-orange-800 space-y-1">
-            <li>Create and manage events</li>
-            <li>Access sales reports and analytics</li>
-            <li>Track attendance and ticket validation</li>
+            {isCenter ? (
+              <>
+                <li>Manage venues and availability</li>
+                <li>Access booking reports and analytics</li>
+                <li>Manage cashiers and staff accounts</li>
+              </>
+            ) : (
+              <>
+                <li>Create and manage events</li>
+                <li>Access sales reports and analytics</li>
+                <li>Track attendance and ticket validation</li>
+              </>
+            )}
           </ul>
         </CardContent>
         <CardFooter>
@@ -105,6 +121,7 @@ export function SubscriptionStatus() {
 
   const isActive = subscription.status === 'active' && new Date(subscription.endDate) > new Date();
   const expiryDate = new Date(subscription.endDate).toLocaleDateString();
+  const isCenter = user.role === 'center';
 
   return (
     <Card className={`mb-6 ${isActive ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
@@ -135,6 +152,13 @@ export function SubscriptionStatus() {
               {isActive ? 'Active' : 'Expired'}
             </span>
           </div>
+          {isActive && (
+            <div className="text-xs text-green-700 mt-2 pt-2 border-t border-green-200">
+              {isCenter 
+                ? "Your subscription grants you access to venue management, booking analytics, and all venue owner features."
+                : "Your subscription grants you access to event creation, sales analytics, and all event manager features."}
+            </div>
+          )}
         </div>
       </CardContent>
       <CardFooter>

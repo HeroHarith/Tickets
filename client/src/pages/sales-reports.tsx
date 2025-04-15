@@ -9,6 +9,7 @@ import { format } from "date-fns";
 import { Event } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { useState } from "react";
+import { SubscriptionStatus } from "@/components/subscription-status";
 
 interface SalesData {
   event: Event;

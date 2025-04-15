@@ -27,10 +27,11 @@ interface SubscriptionWithPlan extends Subscription {
 
 interface SubscriptionDetailsProps {
   subscription: SubscriptionWithPlan;
-  onCancelled: () => void;
+  onCancelled?: () => void;
+  compact?: boolean;
 }
 
-export function SubscriptionDetails({ subscription, onCancelled }: SubscriptionDetailsProps) {
+export function SubscriptionDetails({ subscription, onCancelled, compact = false }: SubscriptionDetailsProps) {
   const [isCancelling, setIsCancelling] = useState(false);
   const [payments, setPayments] = useState<SubscriptionPayment[]>([]);
   const [showPayments, setShowPayments] = useState(false);
@@ -55,7 +56,7 @@ export function SubscriptionDetails({ subscription, onCancelled }: SubscriptionD
         title: "Subscription cancelled",
         description: "Your subscription will remain active until the end of the current billing period.",
       });
-      onCancelled();
+      if (onCancelled) onCancelled();
     } catch (error) {
       console.error("Error cancelling subscription:", error);
       toast({

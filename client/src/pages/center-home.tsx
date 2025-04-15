@@ -29,7 +29,7 @@ export default function CenterHomePage() {
     isLoading: venuesLoading
   } = useQuery<{data: Venue[]}>({
     queryKey: ["/api/venues"],
-    enabled: user?.role === "center"
+    enabled: !!user && user.role === "center"
   });
   
   // Extract venues from the standardized response format
@@ -41,7 +41,7 @@ export default function CenterHomePage() {
     isLoading: rentalsLoading
   } = useQuery<{data: Rental[]}>({
     queryKey: ["/api/rentals"],
-    enabled: user?.role === "center"
+    enabled: !!user && user.role === "center"
   });
   
   // Extract rentals from the standardized response format

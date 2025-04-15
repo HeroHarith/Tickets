@@ -69,14 +69,12 @@ const UserProfile = () => {
             My Tickets
           </Link>
         </DropdownMenuItem>
-        {['eventManager', 'center', 'admin'].includes(user.role) && (
-          <DropdownMenuItem asChild>
-            <Link href="/subscriptions" className="w-full cursor-pointer flex items-center">
-              <CreditCard className="h-4 w-4 mr-2" />
-              Subscriptions
-            </Link>
-          </DropdownMenuItem>
-        )}
+        <DropdownMenuItem asChild>
+          <Link href="/settings" className="w-full cursor-pointer flex items-center">
+            <CreditCard className="h-4 w-4 mr-2" />
+            Settings
+          </Link>
+        </DropdownMenuItem>
         {['eventManager', 'admin'].includes(user.role) && (
           <>
             <DropdownMenuItem asChild>

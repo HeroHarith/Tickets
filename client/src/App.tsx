@@ -25,6 +25,7 @@ import ProfilePage from "@/pages/profile";
 import PaymentStatus from "@/pages/payment-status";
 import PaymentConfirmation from "@/pages/payment-confirmation";
 import Subscriptions from "@/pages/subscriptions";
+import Settings from "@/pages/settings";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { PaymentStatusChecker } from "@/components/domain/payments";
@@ -97,6 +98,7 @@ function Router() {
         
         {/* Common routes for all authenticated users */}
         <ProtectedRoute path="/profile" component={ProfilePage} />
+        <ProtectedRoute path="/settings" component={Settings} />
         <ProtectedRoute 
           path="/subscriptions" 
           component={Subscriptions} 

@@ -96,6 +96,54 @@ export function SubscriptionDetails({ subscription, onCancelled, compact = false
   const startDate = new Date(subscription.startDate);
   const endDate = new Date(subscription.endDate);
   
+  // For compact mode (used in settings page)
+  if (compact) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-medium">{plan?.name || "Subscription Plan"}</h3>
+            <p className="text-muted-foreground">{plan?.description}</p>
+          </div>
+          <Badge variant={subscription.status === 'active' ? 'default' : 'outline'}>
+            {subscription.status === 'active' ? 'Active' : 
+             subscription.status === 'pending' ? 'Pending' : 
+             subscription.status === 'cancelled' ? 'Cancelling' : 
+             subscription.status}
+          </Badge>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex items-center space-x-2">
+            <Calendar className="h-5 w-5 text-muted-foreground" />
+            <div>
+              <p className="text-sm text-muted-foreground">Start Date</p>
+              <p>{format(startDate, "PPP")}</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Calendar className="h-5 w-5 text-muted-foreground" />
+            <div>
+              <p className="text-sm text-muted-foreground">End Date</p>
+              <p>{format(endDate, "PPP")}</p>
+            </div>
+          </div>
+        </div>
+        
+        {subscription.status === 'cancelled' && (
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-3 rounded flex items-start space-x-2">
+            <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-yellow-800 dark:text-yellow-300">
+              Your subscription has been cancelled but will remain active until {format(endDate, "PPP")}.
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Full view (used in subscription page)
   return (
     <Card className="w-full">
       <CardHeader>
@@ -181,7 +229,7 @@ export function SubscriptionDetails({ subscription, onCancelled, compact = false
               : "View Payment History"}
         </Button>
         
-        {subscription.status === 'active' && (
+        {subscription.status === 'active' && onCancelled && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive">Cancel Subscription</Button>

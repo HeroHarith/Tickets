@@ -83,7 +83,7 @@ const AdminDashboard = () => {
   });
 
   // Fetch events (for event management tab)
-  const eventsQuery = useQuery<Event[]>({
+  const eventsQuery = useQuery<{ data: Event[] }>({
     queryKey: ["/api/admin/events"],
     queryFn: async () => {
       const res = await apiRequest("GET", "/api/admin/events");

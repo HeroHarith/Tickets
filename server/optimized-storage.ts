@@ -853,13 +853,12 @@ export class OptimizedStorage implements IStorage {
   }
   
   async purchaseTickets(purchase: PurchaseTicketInput, userId: number): Promise<Ticket[]> {
-    // Implementation remains similar to original
     // After successful purchase, invalidate relevant caches:
     this.invalidateCache('event', purchase.eventId);
     this.invalidateTypeCache('ticket-types');
     
-    // Continue with original implementation...
-    const { eventId, ticketSelections, customerDetails } = purchase;
+    // Get purchase details
+    const { eventId, ticketSelections, customerDetails, isDigitalPass, passType } = purchase;
     const orderId = nanoid(10);
     
     // Use a transaction to ensure atomicity
@@ -872,8 +871,11 @@ export class OptimizedStorage implements IStorage {
         throw new Error(`Event ${eventId} not found`);
       }
       
+      // Check if this is a conference or exhibition that can use digital passes
+      const isConferenceOrExhibition = event.eventType === 'conference';
+      
       for (const selection of ticketSelections) {
-        const { ticketTypeId, quantity, attendeeDetails = [] } = selection;
+        const { ticketTypeId, quantity, attendeeDetails = [], badgeInfo = [] } = selection;
         
         // Get ticket type
         const [ticketType] = await tx.select()
@@ -901,6 +903,22 @@ export class OptimizedStorage implements IStorage {
         const attendeeData = attendeeDetails.length > 0 ? 
           attendeeDetails : 
           Array(quantity).fill(customerDetails);
+        
+        // If this is a digital pass for a conference, prepare badge info
+        let badgeData = null;
+        if (isConferenceOrExhibition && isDigitalPass) {
+          // Use provided badge info or create default from attendee details
+          badgeData = badgeInfo.length > 0 ? 
+            badgeInfo[0] : 
+            {
+              badgeType: 'attendee',
+              accessLevel: 'standard'
+            };
+        }
+        
+        // Prepare digital pass data if applicable
+        const passId = isDigitalPass ? nanoid(12) : null;
+        const passStatus = isDigitalPass ? 'available' : null;
           
         // Create ticket purchase record
         const [ticket] = await tx.insert(tickets)
@@ -911,9 +929,67 @@ export class OptimizedStorage implements IStorage {
             quantity,
             totalPrice,
             orderId,
-            attendeeDetails: attendeeData
+            attendeeDetails: attendeeData,
+            // Digital pass fields
+            passId: passId,
+            passType: isDigitalPass ? passType : null,
+            passStatus: passStatus,
+            checkInStatus: isDigitalPass ? 'not_checked' : null,
+            badgeInfo: badgeData
           })
           .returning();
+        
+        // Generate QR code for the ticket
+        const ticketData = {
+          id: ticket.id,
+          eventId: ticket.eventId,
+          ticketTypeId: ticket.ticketTypeId,
+          orderId: ticket.orderId,
+          passId: ticket.passId,
+          timestamp: new Date().toISOString(),
+        };
+        
+        try {
+          // Generate a QR code in data URL format
+          const qrCodeDataURL = await QRCode.toDataURL(JSON.stringify(ticketData));
+          
+          // Update the ticket with the QR code
+          await tx.update(tickets)
+            .set({ qrCode: qrCodeDataURL })
+            .where(eq(tickets.id, ticket.id));
+          
+          // Update our local ticket object with QR code
+          ticket.qrCode = qrCodeDataURL;
+          
+          // Send email confirmation with the ticket details
+          if (customerDetails && customerDetails.email) {
+            try {
+              const emailSent = await sendTicketConfirmationEmail({
+                ticket,
+                event,
+                ticketType,
+                attendeeEmail: customerDetails.email,
+                attendeeName: customerDetails.fullName,
+                qrCodeDataUrl: qrCodeDataURL
+              });
+              
+              // Update the ticket with email sent status
+              if (emailSent) {
+                await tx.update(tickets)
+                  .set({ emailSent: true })
+                  .where(eq(tickets.id, ticket.id));
+                
+                ticket.emailSent = true;
+              }
+            } catch (emailError) {
+              console.error('Error sending ticket confirmation email:', emailError);
+              // Continue even if email sending fails
+            }
+          }
+        } catch (error) {
+          console.error('Error generating QR code:', error);
+          // Continue even if QR generation fails
+        }
         
         purchasedTickets.push(ticket);
       }

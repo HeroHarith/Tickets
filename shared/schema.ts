@@ -80,6 +80,13 @@ export const tickets = pgTable("tickets", {
   attendeeDetails: jsonb("attendee_details"), // Store customer details for each ticket
   emailSent: boolean("email_sent").default(false).notNull(), // Track if confirmation email was sent
   paymentSessionId: text("payment_session_id"), // Thawani payment session ID
+  // Digital pass features
+  passId: text("pass_id"), // Unique identifier for digital pass
+  passUrl: text("pass_url"), // URL to download the digital pass
+  passType: text("pass_type"), // Type of pass: "apple", "google", etc.
+  passStatus: text("pass_status"), // Status of the pass: "available", "generated", "added_to_wallet"
+  checkInStatus: text("check_in_status"), // Status of check-in: "not_checked", "checked_in"
+  badgeInfo: jsonb("badge_info"), // Information to display on a conference badge
 });
 
 // Customer details schema for ticket purchase
@@ -91,6 +98,17 @@ export const attendeeDetailsSchema = z.object({
 });
 
 export type AttendeeDetails = z.infer<typeof attendeeDetailsSchema>;
+
+// Badge information schema for conference/exhibition passes
+export const badgeInfoSchema = z.object({
+  badgeType: z.enum(['attendee', 'speaker', 'staff', 'sponsor', 'exhibitor', 'vip']),
+  company: z.string().optional(),
+  title: z.string().optional(),
+  accessLevel: z.enum(['standard', 'premium', 'vip', 'all-access']).optional(),
+  customFields: z.record(z.string()).optional(), // For custom badge fields
+});
+
+export type BadgeInfo = z.infer<typeof badgeInfoSchema>;
 
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
@@ -144,9 +162,14 @@ export const purchaseTicketSchema = z.object({
       attendeeDetails: z.array(attendeeDetailsSchema)
         .optional()
         .default([]),
+      badgeInfo: z.array(badgeInfoSchema)
+        .optional()
+        .default([]),
     })
   ).min(1, "At least one ticket must be selected"),
   eventId: z.number(),
+  isDigitalPass: z.boolean().optional().default(false),
+  passType: z.enum(['standard', 'apple-wallet', 'google-wallet']).optional(),
   // Primary attendee/purchaser details
   customerDetails: attendeeDetailsSchema
 });

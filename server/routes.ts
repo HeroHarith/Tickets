@@ -765,7 +765,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       ensureAuthenticated(req);
       
-      const { eventId, ticketSelections, customerDetails, paymentSessionId } = req.body;
+      const { eventId, ticketSelections, customerDetails, paymentSessionId, isDigitalPass, passType } = req.body;
       
       // Validate input
       if (!eventId || !ticketSelections || !customerDetails) {
@@ -785,7 +785,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const purchaseInput: PurchaseTicketInput = {
         eventId,
         ticketSelections,
-        customerDetails
+        customerDetails,
+        isDigitalPass: isDigitalPass || false,
+        passType: passType
       };
       
       // Process ticket purchase

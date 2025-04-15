@@ -11,6 +11,7 @@ import CreateEvent from "@/pages/create-event";
 import MyTickets from "@/pages/my-tickets";
 import ManagedEvents from "@/pages/managed-events";
 import SalesReports from "@/pages/sales-reports";
+import SalesReportList from "@/pages/sales-report-list";
 import TicketManagement from "@/pages/ticket-management";
 import CenterDashboard from "@/pages/center-dashboard";
 import CenterHomePage from "@/pages/center-home";
@@ -78,7 +79,7 @@ function Router() {
         />
         <ProtectedRoute 
           path="/sales-reports" 
-          component={ManagedEvents} 
+          component={SalesReportList} 
           requiredRoles={["eventManager"]} 
         />
         <ProtectedRoute 

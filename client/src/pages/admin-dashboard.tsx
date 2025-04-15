@@ -73,7 +73,7 @@ const AdminDashboard = () => {
   });
 
   // Fetch users
-  const usersQuery = useQuery<User[]>({
+  const usersQuery = useQuery<{ data: User[] }>({
     queryKey: ["/api/admin/users"],
     queryFn: async () => {
       const res = await apiRequest("GET", "/api/admin/users");
@@ -307,14 +307,14 @@ const AdminDashboard = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {usersQuery.data?.length === 0 ? (
+                    {!usersQuery.data?.data || usersQuery.data.data.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
                           No users found
                         </TableCell>
                       </TableRow>
                     ) : (
-                      usersQuery.data?.map((user) => (
+                      usersQuery.data.data.map((user) => (
                         <TableRow key={user.id}>
                           <TableCell>{user.id}</TableCell>
                           <TableCell>{user.username}</TableCell>
@@ -382,14 +382,14 @@ const AdminDashboard = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {eventsQuery.data?.length === 0 ? (
+                    {!eventsQuery.data?.data || eventsQuery.data.data.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
                           No events found
                         </TableCell>
                       </TableRow>
                     ) : (
-                      eventsQuery.data?.map((event) => (
+                      eventsQuery.data.data.map((event) => (
                         <TableRow key={event.id}>
                           <TableCell>{event.id}</TableCell>
                           <TableCell>{event.title}</TableCell>

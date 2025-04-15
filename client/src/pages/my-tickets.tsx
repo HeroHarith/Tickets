@@ -41,22 +41,7 @@ const MyTickets = () => {
   });
   
   // Get navigation tabs based on user role
-  const getNavTabs = () => {
-    const tabs = [
-      { id: "browse", label: "Browse Events", href: "/" },
-      { id: "tickets", label: "My Tickets", href: "/my-tickets" }
-    ];
-    
-    // Add manager-specific tabs if user has appropriate role
-    if (user && ['eventManager', 'admin'].includes(user.role)) {
-      tabs.push(
-        { id: "managed", label: "Managed Events", href: "/managed-events" },
-        { id: "sales", label: "Sales Reports", href: "/sales-reports" }
-      );
-    }
-    
-    return tabs;
-  };
+
   
   // Group tickets by order ID for display
   const groupTicketsByOrder = (tickets: ExpandedTicket[]) => {
@@ -254,10 +239,6 @@ const MyTickets = () => {
   if (ticketsQuery.isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <TabsComponent
-          tabs={getNavTabs()}
-          activeTab="tickets"
-        />
         
         <div className="my-8 space-y-4">
           {[1, 2, 3].map(i => (
@@ -282,10 +263,6 @@ const MyTickets = () => {
   if (ticketsQuery.error) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <TabsComponent
-          tabs={getNavTabs()}
-          activeTab="tickets"
-        />
         
         <div className="my-12 text-center">
           <AlertTriangle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
@@ -312,10 +289,6 @@ const MyTickets = () => {
   
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <TabsComponent
-        tabs={getNavTabs()}
-        activeTab="tickets"
-      />
       
       <div className="my-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-6">My Tickets</h1>

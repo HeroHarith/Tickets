@@ -85,3 +85,72 @@ export async function getSubscriptionPayments(subscriptionId: number): Promise<S
   const data = await response.json();
   return data.data;
 }
+
+/**
+ * ADMIN FUNCTIONS
+ */
+
+/**
+ * Create a new subscription plan (admin only)
+ */
+export async function createSubscriptionPlan(planData: {
+  name: string;
+  description: string;
+  type: string;
+  price: number;
+  billingPeriod: string;
+  features: string[] | Record<string, any>;
+  isActive?: boolean;
+}): Promise<SubscriptionPlan> {
+  const response = await apiRequest('POST', '/api/subscriptions/admin/plans', planData);
+  const data = await response.json();
+  return data.data;
+}
+
+/**
+ * Update an existing subscription plan (admin only)
+ */
+export async function updateSubscriptionPlan(
+  planId: number,
+  planData: Partial<{
+    name: string;
+    description: string;
+    type: string;
+    price: number;
+    billingPeriod: string;
+    features: string[] | Record<string, any>;
+    isActive: boolean;
+  }>
+): Promise<SubscriptionPlan> {
+  const response = await apiRequest('PUT', `/api/subscriptions/admin/plans/${planId}`, planData);
+  const data = await response.json();
+  return data.data;
+}
+
+/**
+ * Toggle a subscription plan's active status (admin only)
+ */
+export async function toggleSubscriptionPlanStatus(planId: number): Promise<SubscriptionPlan> {
+  const response = await apiRequest('PATCH', `/api/subscriptions/admin/plans/${planId}/toggle`);
+  const data = await response.json();
+  return data.data;
+}
+
+/**
+ * Delete a subscription plan (admin only)
+ * Will fail if there are active subscriptions using this plan
+ */
+export async function deleteSubscriptionPlan(planId: number): Promise<void> {
+  const response = await apiRequest('DELETE', `/api/subscriptions/admin/plans/${planId}`);
+  const data = await response.json();
+  return data.data;
+}
+
+/**
+ * Get all subscriptions with user details (admin only)
+ */
+export async function getAllSubscriptions(): Promise<any[]> {
+  const response = await apiRequest('GET', '/api/subscriptions/admin/all');
+  const data = await response.json();
+  return data.data;
+}

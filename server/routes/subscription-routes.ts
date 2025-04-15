@@ -324,4 +324,216 @@ router.get('/admin/all', requireRole(['admin']), async (req, res) => {
   }
 });
 
+// ADMIN ENDPOINTS FOR PLAN MANAGEMENT
+
+// Create a new subscription plan (admin only)
+router.post('/admin/plans', requireRole(['admin']), async (req, res) => {
+  try {
+    // Check if user is authenticated
+    if (!req.isAuthenticated || !req.isAuthenticated()) {
+      return res.status(401).json(errorResponse('Authentication required', 401));
+    }
+    
+    // Check if user is admin
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json(errorResponse('Admin access required', 403));
+    }
+    
+    // Validate input with zod
+    const planSchema = z.object({
+      name: z.string().min(3, 'Name must be at least 3 characters'),
+      description: z.string().min(10, 'Description must be at least 10 characters'),
+      type: z.enum(['eventManager', 'center'], {
+        errorMap: () => ({ message: 'Type must be eventManager or center' }),
+      }),
+      price: z.number().positive('Price must be positive'),
+      billingPeriod: z.enum(['monthly', 'yearly'], {
+        errorMap: () => ({ message: 'Billing period must be monthly or yearly' }),
+      }),
+      features: z.record(z.any()).or(z.array(z.any())),
+      isActive: z.boolean().optional()
+    });
+
+    // Parse the request body
+    try {
+      const validatedData = planSchema.parse(req.body);
+      const newPlan = await subscriptionService.createSubscriptionPlan(validatedData);
+      
+      return res.status(201).json(successResponse(
+        newPlan, 
+        201, 
+        'Subscription plan created successfully'
+      ));
+    } catch (validationError: any) {
+      if (validationError.errors) {
+        return res.status(400).json(errorResponse(
+          'Validation error', 
+          400, 
+          validationError.errors
+        ));
+      }
+      throw validationError;
+    }
+  } catch (error: any) {
+    console.error('Error creating subscription plan:', error);
+    return res.status(500).json(errorResponse(
+      error.message || 'Error creating subscription plan', 
+      500
+    ));
+  }
+});
+
+// Update a subscription plan (admin only)
+router.put('/admin/plans/:id', requireRole(['admin']), async (req, res) => {
+  try {
+    // Check if user is authenticated
+    if (!req.isAuthenticated || !req.isAuthenticated()) {
+      return res.status(401).json(errorResponse('Authentication required', 401));
+    }
+    
+    // Check if user is admin
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json(errorResponse('Admin access required', 403));
+    }
+    
+    const planId = parseInt(req.params.id);
+    if (isNaN(planId)) {
+      return res.status(400).json(errorResponse('Invalid plan ID', 400));
+    }
+    
+    // Validate input with zod
+    const planSchema = z.object({
+      name: z.string().min(3, 'Name must be at least 3 characters').optional(),
+      description: z.string().min(10, 'Description must be at least 10 characters').optional(),
+      type: z.enum(['eventManager', 'center'], {
+        errorMap: () => ({ message: 'Type must be eventManager or center' }),
+      }).optional(),
+      price: z.number().positive('Price must be positive').optional(),
+      billingPeriod: z.enum(['monthly', 'yearly'], {
+        errorMap: () => ({ message: 'Billing period must be monthly or yearly' }),
+      }).optional(),
+      features: z.record(z.any()).or(z.array(z.any())).optional(),
+      isActive: z.boolean().optional()
+    });
+
+    // Parse the request body
+    try {
+      const validatedData = planSchema.parse(req.body);
+      const updatedPlan = await subscriptionService.updateSubscriptionPlan(planId, validatedData);
+      
+      if (!updatedPlan) {
+        return res.status(404).json(errorResponse('Subscription plan not found', 404));
+      }
+      
+      return res.json(successResponse(
+        updatedPlan, 
+        200, 
+        'Subscription plan updated successfully'
+      ));
+    } catch (validationError: any) {
+      if (validationError.errors) {
+        return res.status(400).json(errorResponse(
+          'Validation error', 
+          400, 
+          validationError.errors
+        ));
+      }
+      throw validationError;
+    }
+  } catch (error: any) {
+    console.error('Error updating subscription plan:', error);
+    return res.status(500).json(errorResponse(
+      error.message || 'Error updating subscription plan', 
+      500
+    ));
+  }
+});
+
+// Toggle a subscription plan's active status (admin only)
+router.patch('/admin/plans/:id/toggle', requireRole(['admin']), async (req, res) => {
+  try {
+    // Check if user is authenticated
+    if (!req.isAuthenticated || !req.isAuthenticated()) {
+      return res.status(401).json(errorResponse('Authentication required', 401));
+    }
+    
+    // Check if user is admin
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json(errorResponse('Admin access required', 403));
+    }
+    
+    const planId = parseInt(req.params.id);
+    if (isNaN(planId)) {
+      return res.status(400).json(errorResponse('Invalid plan ID', 400));
+    }
+    
+    const updatedPlan = await subscriptionService.toggleSubscriptionPlanStatus(planId);
+    
+    if (!updatedPlan) {
+      return res.status(404).json(errorResponse('Subscription plan not found', 404));
+    }
+    
+    return res.json(successResponse(
+      updatedPlan, 
+      200, 
+      `Subscription plan ${updatedPlan.isActive ? 'activated' : 'deactivated'} successfully`
+    ));
+  } catch (error: any) {
+    console.error('Error toggling subscription plan status:', error);
+    return res.status(500).json(errorResponse(
+      error.message || 'Error toggling subscription plan status', 
+      500
+    ));
+  }
+});
+
+// Delete a subscription plan (admin only)
+router.delete('/admin/plans/:id', requireRole(['admin']), async (req, res) => {
+  try {
+    // Check if user is authenticated
+    if (!req.isAuthenticated || !req.isAuthenticated()) {
+      return res.status(401).json(errorResponse('Authentication required', 401));
+    }
+    
+    // Check if user is admin
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json(errorResponse('Admin access required', 403));
+    }
+    
+    const planId = parseInt(req.params.id);
+    if (isNaN(planId)) {
+      return res.status(400).json(errorResponse('Invalid plan ID', 400));
+    }
+    
+    try {
+      const success = await subscriptionService.deleteSubscriptionPlan(planId);
+      
+      if (!success) {
+        return res.status(404).json(errorResponse('Subscription plan not found', 404));
+      }
+      
+      return res.json(successResponse(
+        null, 
+        200, 
+        'Subscription plan deleted successfully'
+      ));
+    } catch (deleteError: any) {
+      // Check if error is about active subscriptions
+      if (deleteError.message.includes('active subscriptions')) {
+        return res.status(400).json(errorResponse(
+          deleteError.message, 
+          400
+        ));
+      }
+      throw deleteError;
+    }
+  } catch (error: any) {
+    console.error('Error deleting subscription plan:', error);
+    return res.status(500).json(errorResponse(
+      error.message || 'Error deleting subscription plan', 
+      500
+    ));
+  }
+});
+
 export default router;

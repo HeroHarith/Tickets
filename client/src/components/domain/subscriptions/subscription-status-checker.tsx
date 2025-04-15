@@ -1,8 +1,15 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
-import { ApiResponse } from "@/lib/queryClient";
 import { Subscription } from "@shared/schema";
+
+// Define ApiResponse type for our standardized API responses
+interface ApiResponse<T> {
+  code: number;
+  success: boolean;
+  data: T | null;
+  description?: string;
+}
 
 export function SubscriptionStatusChecker() {
   const [, setLocation] = useLocation();
@@ -18,20 +25,20 @@ export function SubscriptionStatusChecker() {
     if (sessionId && status && !isChecking) {
       checkSubscriptionStatus(sessionId, status);
     }
-  }, [window.location.search]);
+  }, [window.location.search, isChecking]);
   
   const checkSubscriptionStatus = async (sessionId: string, status: string) => {
     setIsChecking(true);
     
     try {
       const response = await fetch(`/api/subscriptions/status/${sessionId}`);
-      const data: ApiResponse<{ subscription: Subscription }> = await response.json();
+      const data: ApiResponse<{ subscription: Subscription & { plan?: { name: string } } }> = await response.json();
       
       if (response.ok && data.success) {
         // Show success toast and redirect to subscription page
         toast({
           title: "Subscription Successful!",
-          description: `Your subscription to ${data.data?.subscription.plan?.name} is now active.`,
+          description: `Your subscription${data.data?.subscription.plan?.name ? ` to ${data.data.subscription.plan.name}` : ''} is now active.`,
         });
         
         // Remove query params from URL without causing a reload

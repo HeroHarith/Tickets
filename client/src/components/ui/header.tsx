@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Ticket, MenuIcon, X, LogOut, Building2 } from "lucide-react";
+import { Ticket, MenuIcon, X, LogOut, Building2, CreditCard } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import {
   DropdownMenu,
@@ -69,6 +69,14 @@ const UserProfile = () => {
             My Tickets
           </Link>
         </DropdownMenuItem>
+        {['eventManager', 'center', 'admin'].includes(user.role) && (
+          <DropdownMenuItem asChild>
+            <Link href="/subscriptions" className="w-full cursor-pointer flex items-center">
+              <CreditCard className="h-4 w-4 mr-2" />
+              Subscriptions
+            </Link>
+          </DropdownMenuItem>
+        )}
         {['eventManager', 'admin'].includes(user.role) && (
           <>
             <DropdownMenuItem asChild>
@@ -211,6 +219,16 @@ const Header = () => {
                 >
                   My Tickets
                 </Link>
+                {['eventManager', 'center', 'admin'].includes(user.role) && (
+                  <Link 
+                    href="/subscriptions" 
+                    className={`${location === '/subscriptions' ? 'text-primary' : 'text-gray-700'} flex items-center px-3 py-2 rounded-md text-base font-medium`}
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Subscriptions
+                  </Link>
+                )}
               </>
             )}
             {showManagerOptions && (

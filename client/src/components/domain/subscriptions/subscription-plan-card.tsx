@@ -19,6 +19,11 @@ export function SubscriptionPlanCard({
 }: SubscriptionPlanCardProps) {
   const displayPrice = parseFloat(plan.price.toString()).toFixed(2);
   
+  // Extract features from the JSON field, ensure it's an array of strings
+  const features = Array.isArray(plan.features) 
+    ? plan.features as string[] 
+    : [];
+  
   return (
     <Card className={`w-full h-full flex flex-col ${isRecommended ? 'border-2 border-primary shadow-lg' : ''}`}>
       {isRecommended && (
@@ -37,7 +42,7 @@ export function SubscriptionPlanCard({
         </div>
         
         <ul className="space-y-2">
-          {plan.features.map((feature, index) => (
+          {features.map((feature: string, index: number) => (
             <li key={index} className="flex items-start">
               <Check className="h-5 w-5 text-primary mr-2 flex-shrink-0 mt-0.5" />
               <span>{feature}</span>

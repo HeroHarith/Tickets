@@ -24,9 +24,11 @@ import AuthPage from "@/pages/auth-page";
 import ProfilePage from "@/pages/profile";
 import PaymentStatus from "@/pages/payment-status";
 import PaymentConfirmation from "@/pages/payment-confirmation";
+import Subscriptions from "@/pages/subscriptions";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { PaymentStatusChecker } from "@/components/domain/payments";
+import { SubscriptionStatusChecker } from "@/components/domain/subscriptions";
 
 // Note: We've moved the authenticated layout into the ProtectedRoute component
 
@@ -52,6 +54,11 @@ function Router() {
         <ProtectedRoute 
           path="/profile" 
           component={ProfilePage} 
+        />
+        <ProtectedRoute 
+          path="/subscriptions" 
+          component={Subscriptions} 
+          requiredRoles={["eventManager", "center", "admin"]} 
         />
         <ProtectedRoute 
           path="/managed-events" 
@@ -125,6 +132,7 @@ function App() {
       <AuthProvider>
         <Router />
         <PaymentStatusChecker />
+        <SubscriptionStatusChecker />
         <Toaster />
       </AuthProvider>
     </QueryClientProvider>

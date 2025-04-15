@@ -1,11 +1,11 @@
-import { Subscription, SubscriptionPayment } from "@shared/schema";
+import { Subscription, SubscriptionPayment, SubscriptionPlan } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, DollarSign, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { cancelSubscription, getSubscriptionPayments } from "@/services/SubscriptionService";
+import { cancelSubscription, getSubscriptionPayments, getSubscriptionPlan } from "@/services/SubscriptionService";
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -18,9 +18,15 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
+import { useQuery } from "@tanstack/react-query";
+
+// Extend the Subscription type to include the plan details
+interface SubscriptionWithPlan extends Subscription {
+  plan?: SubscriptionPlan;
+}
 
 interface SubscriptionDetailsProps {
-  subscription: Subscription;
+  subscription: SubscriptionWithPlan;
   onCancelled: () => void;
 }
 
@@ -30,6 +36,16 @@ export function SubscriptionDetails({ subscription, onCancelled }: SubscriptionD
   const [showPayments, setShowPayments] = useState(false);
   const [isLoadingPayments, setIsLoadingPayments] = useState(false);
   const { toast } = useToast();
+  
+  // Fetch the plan details if not already included
+  const { data: planData } = useQuery({
+    queryKey: ['/api/subscriptions/plans', subscription.planId],
+    queryFn: () => subscription.plan ? Promise.resolve(subscription.plan) : getSubscriptionPlan(subscription.planId),
+    enabled: !subscription.plan,
+  });
+  
+  // Use the fetched plan data or the one provided in props
+  const plan = subscription.plan || planData;
   
   const handleCancelSubscription = async () => {
     setIsCancelling(true);
@@ -94,8 +110,8 @@ export function SubscriptionDetails({ subscription, onCancelled }: SubscriptionD
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
-          <h3 className="text-lg font-medium">{subscription.plan?.name || "Plan"}</h3>
-          <p className="text-muted-foreground">{subscription.plan?.description}</p>
+          <h3 className="text-lg font-medium">{plan?.name || "Subscription Plan"}</h3>
+          <p className="text-muted-foreground">{plan?.description}</p>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -135,7 +151,7 @@ export function SubscriptionDetails({ subscription, onCancelled }: SubscriptionD
                 {payments.map((payment) => (
                   <div key={payment.id} className="flex justify-between items-center p-2 border rounded">
                     <div>
-                      <p className="font-medium">${parseFloat(payment.amount).toFixed(2)}</p>
+                      <p className="font-medium">${parseFloat(payment.amount.toString()).toFixed(2)}</p>
                       <p className="text-xs text-muted-foreground">
                         {payment.paymentDate ? format(new Date(payment.paymentDate), "PPP") : "N/A"}
                       </p>

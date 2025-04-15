@@ -369,11 +369,13 @@ const EventDetails = () => {
               <MapPin className="h-5 w-5 mr-2 text-gray-400" />
               {location}
             </div>
-            <div className="flex items-center text-sm text-gray-600">
-              <span className="bg-accent text-white text-xs font-bold px-2 py-1 rounded">
-                {category.toUpperCase()}
-              </span>
-            </div>
+            {category && (
+              <div className="flex items-center text-sm text-gray-600">
+                <span className="bg-accent text-white text-xs font-bold px-2 py-1 rounded">
+                  {category.toUpperCase()}
+                </span>
+              </div>
+            )}
           </div>
         </div>
         

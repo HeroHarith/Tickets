@@ -23,6 +23,7 @@ import {
 } from "./email";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
+import { requireSubscription } from "./middleware/require-subscription";
 import { successResponse, errorResponse } from "./utils/api-response";
 import { sql } from "drizzle-orm";
 import thawaniService, { 

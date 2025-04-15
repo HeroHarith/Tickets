@@ -914,18 +914,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ensureAuthenticated(req);
       
       // Get all tickets for the user
-      const tickets = await optimizedStorage.getUserTickets(req.user.id);
+      const tickets = await storage.getUserTickets(req.user.id);
       
       // Get events and ticket types to add details
       const eventIds = [...new Set(tickets.map(t => t.eventId))];
       const ticketTypeIds = [...new Set(tickets.map(t => t.ticketTypeId))];
       
       const events = await Promise.all(
-        eventIds.map(id => optimizedStorage.getEvent(id))
+        eventIds.map(id => storage.getEvent(id))
       );
       
       const ticketTypes = await Promise.all(
-        ticketTypeIds.map(id => optimizedStorage.getTicketType(id))
+        ticketTypeIds.map(id => storage.getTicketType(id))
       );
       
       // Create maps for faster lookups
@@ -962,7 +962,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ticketId = parseInt(req.params.id);
       
       // Get the ticket
-      const ticket = await optimizedStorage.getTicket(ticketId);
+      const ticket = await storage.getTicket(ticketId);
       
       if (!ticket) {
         return res.status(404).json(errorResponse("Ticket not found", 404));
@@ -977,7 +977,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (ticket.qrCode) {
         return res.json(successResponse({ qrCode: ticket.qrCode }));
       } else {
-        const qrCode = await optimizedStorage.generateTicketQR(ticketId);
+        const qrCode = await storage.generateTicketQR(ticketId);
         return res.json(successResponse({ qrCode }));
       }
     } catch (error) {
@@ -995,7 +995,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { passType = 'standard', walletType = 'apple' } = req.body;
       
       // Get the ticket
-      const ticket = await optimizedStorage.getTicket(ticketId);
+      const ticket = await storage.getTicket(ticketId);
       
       if (!ticket) {
         return res.status(404).json(errorResponse("Ticket not found", 404));
@@ -1012,8 +1012,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get event and ticket type for pass creation
-      const event = await optimizedStorage.getEvent(ticket.eventId);
-      const ticketType = await optimizedStorage.getTicketType(ticket.ticketTypeId);
+      const event = await storage.getEvent(ticket.eventId);
+      const ticketType = await storage.getTicketType(ticket.ticketTypeId);
       
       if (!event || !ticketType) {
         return res.status(404).json(errorResponse("Event or ticket type not found", 404));

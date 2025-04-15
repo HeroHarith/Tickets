@@ -404,6 +404,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json(errorResponse("Error creating event", 500));
     }
   });
+  
+  // Get event sales data endpoint
+  app.get("/api/events/:id/sales", requireRole(["eventManager", "admin"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      const eventId = parseInt(req.params.id);
+      if (isNaN(eventId)) {
+        return res.status(400).json(errorResponse("Invalid event ID", 400));
+      }
+      
+      // Get the event to check ownership
+      const event = await storage.getEvent(eventId);
+      
+      if (!event) {
+        return res.status(404).json(errorResponse("Event not found", 404));
+      }
+      
+      // Check if the user is the organizer or admin
+      if (req.user.role !== "admin" && event.organizer !== req.user.id) {
+        return res.status(403).json(errorResponse("You don't have permission to view sales for this event", 403));
+      }
+      
+      // Get sales data
+      const salesData = await storage.getEventSales(eventId);
+      
+      // Return event information along with sales data
+      return res.json(successResponse({
+        event,
+        ...salesData
+      }, 200, "Event sales data retrieved successfully"));
+    } catch (error) {
+      console.error("Error retrieving event sales:", error);
+      return res.status(500).json(errorResponse("Error retrieving event sales", 500));
+    }
+  });
 
   // === Thawani Payment Integration ===
 

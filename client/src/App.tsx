@@ -64,32 +64,32 @@ function Router() {
         <ProtectedRoute 
           path="/create-event" 
           component={CreateEvent} 
-          requiredRoles={["eventManager", "admin"]} 
+          requiredRoles={["eventManager"]} 
         />
         <ProtectedRoute 
           path="/my-tickets" 
           component={MyTickets} 
-          requiredRoles={["customer", "eventManager", "admin"]}
+          requiredRoles={["customer", "eventManager"]}
         />
         <ProtectedRoute 
           path="/managed-events" 
           component={ManagedEvents} 
-          requiredRoles={["eventManager", "admin"]} 
+          requiredRoles={["eventManager"]} 
         />
         <ProtectedRoute 
           path="/sales-reports" 
           component={ManagedEvents} 
-          requiredRoles={["eventManager", "admin"]} 
+          requiredRoles={["eventManager"]} 
         />
         <ProtectedRoute 
           path="/sales-reports/:id" 
           component={SalesReports} 
-          requiredRoles={["eventManager", "admin"]} 
+          requiredRoles={["eventManager"]} 
         />
         <ProtectedRoute 
           path="/ticket-management/:id" 
           component={TicketManagement} 
-          requiredRoles={["eventManager", "admin"]} 
+          requiredRoles={["eventManager"]} 
         />
         
         {/* Common routes for all authenticated users */}

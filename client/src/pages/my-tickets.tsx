@@ -1,15 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Calendar, MapPin, Tag, AlertTriangle, Ticket as TicketIcon, Wallet } from "lucide-react";
+import { 
+  Calendar, MapPin, Tag, AlertTriangle, Ticket as TicketIcon, 
+  Wallet, QrCode, Check, Clock, BriefcaseBusiness, Building, UserCircle
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import TabsComponent from "@/components/ui/tabs-component";
 import { format } from "date-fns";
 import { Event, TicketType } from "@shared/schema";
-import type { Ticket } from "@shared/schema";
+import type { Ticket, BadgeInfo } from "@shared/schema";
 import { useState, useCallback } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { apiRequest } from "@/lib/queryClient";
 
 interface ExpandedTicket extends Ticket {
   event?: Event;
@@ -102,12 +107,51 @@ const MyTickets = () => {
     
     setAddToWalletLoading(true);
     
-    // Simulate adding to wallet (in a real app, this would integrate with the wallet API)
-    setTimeout(() => {
+    try {
+      if (selectedTicket.passId) {
+        // For digital passes, we'll create a wallet pass and update the status
+        const response = await apiRequest("POST", `/api/tickets/${selectedTicket.id}/wallet-pass`, {
+          passType: selectedTicket.passType || 'standard',
+          walletType: 'apple' // Default to Apple wallet, could be a user selection in a more advanced UI
+        });
+        
+        if (!response.ok) {
+          throw new Error("Failed to create wallet pass");
+        }
+        
+        const data = await response.json();
+        
+        // In a real app, we would redirect to the wallet app or download the pass file
+        // For simulation, we'll just update the status
+        
+        // Update the ticket in our local state
+        setSelectedTicket(prev => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            passStatus: 'added_to_wallet',
+            passUrl: data.passUrl || prev.passUrl
+          };
+        });
+        
+        setAddToWalletLoading(false);
+        
+        // Show success message
+        alert('Digital pass added to wallet successfully!');
+      } else {
+        // For regular tickets, we'll use a simpler approach
+        // Simulate adding to wallet (in a real app, this would integrate with the wallet API)
+        setTimeout(() => {
+          setAddToWalletLoading(false);
+          // In a real implementation, we would redirect to the wallet app or show a success message
+          alert('Ticket added to wallet successfully!');
+        }, 1500);
+      }
+    } catch (error) {
+      console.error('Error adding to wallet:', error);
       setAddToWalletLoading(false);
-      // In a real implementation, we would redirect to the wallet app or show a success message
-      alert('Ticket added to wallet successfully!');
-    }, 1500);
+      alert('Failed to add to wallet. Please try again.');
+    }
   }, [selectedTicket]);
 
   // Function to close ticket modal
@@ -123,6 +167,8 @@ const MyTickets = () => {
     const eventDate = new Date(ticket.event.startDate);
     const eventTime = format(eventDate, "HH:mm");
     const isPast = eventDate < new Date();
+    const isDigitalPass = !!ticket.passId;
+    const isConference = ticket.event.eventType === 'conference';
     
     return (
       <Card key={ticket.id} className="mb-4 hover:shadow-md transition-shadow">
@@ -144,15 +190,27 @@ const MyTickets = () => {
                   <h3 className="font-semibold text-lg mb-1">{ticket.event.title}</h3>
                   <div className="text-sm text-gray-500 mb-2">{format(eventDate, "dd MMM yyyy")} • {eventTime}</div>
                 </div>
-                {isPast ? (
-                  <div className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded">
-                    PAST
-                  </div>
-                ) : (
-                  <div className="px-2 py-1 bg-success/10 text-success text-xs font-medium rounded">
-                    UPCOMING
-                  </div>
-                )}
+                <div className="flex flex-col gap-1 items-end">
+                  {isPast ? (
+                    <Badge variant="outline" className="bg-gray-100 text-gray-700">PAST</Badge>
+                  ) : (
+                    <Badge variant="outline" className="bg-success/10 text-success">UPCOMING</Badge>
+                  )}
+                  
+                  {isDigitalPass && (
+                    <Badge variant="secondary" className="flex items-center gap-1">
+                      <QrCode className="h-3 w-3" />
+                      Digital Pass
+                    </Badge>
+                  )}
+                  
+                  {isConference && (
+                    <Badge variant="secondary" className="flex items-center gap-1">
+                      <Building className="h-3 w-3" />
+                      Conference
+                    </Badge>
+                  )}
+                </div>
               </div>
               
               <div className="md:flex md:justify-between md:items-end">
@@ -165,6 +223,12 @@ const MyTickets = () => {
                     <Tag className="h-4 w-4 mr-1 text-gray-500" />
                     <span>{ticket.ticketType.name} x {ticket.quantity}</span>
                   </div>
+                  {isDigitalPass && ticket.passStatus && (
+                    <div className="flex items-center text-sm mt-1">
+                      <Clock className="h-4 w-4 mr-1 text-gray-500" />
+                      <span>Status: {ticket.passStatus === 'added_to_wallet' ? 'In Wallet' : 'Available'}</span>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="mt-3 md:mt-0 md:ml-4">
@@ -174,7 +238,7 @@ const MyTickets = () => {
                       variant="default"
                       onClick={() => handleViewTicket(ticket)}
                     >
-                      View Ticket
+                      {isDigitalPass ? 'View Pass' : 'View Ticket'}
                     </Button>
                   )}
                 </div>
@@ -291,15 +355,23 @@ const MyTickets = () => {
           <DialogTitle className="sr-only">Event Ticket</DialogTitle>
           {selectedTicket && selectedTicket.event && (
             <div className="bg-gray-50 p-4 rounded-lg w-full max-w-sm mx-auto">
-              {/* Movie ticket style card */}
+              {/* Ticket or pass card */}
               <div className="bg-white rounded-lg overflow-hidden shadow-sm">
                 {/* Top section with event image */}
-                <div className="w-full h-32 bg-gray-200 overflow-hidden">
+                <div className="w-full h-32 bg-gray-200 overflow-hidden relative">
                   <img 
                     src={selectedTicket.event.imageUrl || "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"} 
                     alt={selectedTicket.event.title}
                     className="w-full h-full object-cover"
                   />
+                  
+                  {/* Digital Pass badge */}
+                  {selectedTicket.passId && (
+                    <div className="absolute top-2 right-2 bg-indigo-500 text-white px-2 py-1 rounded-md text-xs font-medium flex items-center gap-1">
+                      <QrCode className="h-3 w-3" />
+                      Digital Pass
+                    </div>
+                  )}
                 </div>
                 
                 {/* Event title and category tags */}
@@ -312,6 +384,11 @@ const MyTickets = () => {
                     )}
                     {selectedTicket.ticketType && (
                       <span className="px-2 py-1 bg-gray-100 text-xs rounded-full">{selectedTicket.ticketType.name}</span>
+                    )}
+                    {selectedTicket.passType && (
+                      <span className="px-2 py-1 bg-indigo-100 text-indigo-700 text-xs rounded-full">
+                        {selectedTicket.passType.charAt(0).toUpperCase() + selectedTicket.passType.slice(1)} Pass
+                      </span>
                     )}
                   </div>
                   
@@ -326,18 +403,76 @@ const MyTickets = () => {
                       <div className="text-sm font-medium">{formatTicketTime(new Date(selectedTicket.event.startDate))}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-gray-500 mb-1">Cinema</div>
+                      <div className="text-xs text-gray-500 mb-1">
+                        {selectedTicket.event.eventType === 'conference' ? 'Venue' : 'Location'}
+                      </div>
                       <div className="text-sm font-medium truncate">{selectedTicket.event.location}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-gray-500 mb-1">Seat</div>
+                      <div className="text-xs text-gray-500 mb-1">
+                        {selectedTicket.event.eventType === 'conference' ? 'Type' : 'Seat'}
+                      </div>
                       <div className="text-sm font-medium">
-                        {selectedTicket.ticketType?.name === 'General Admission' 
-                          ? 'B6, B7, C3, C4' 
-                          : `${selectedTicket.ticketType?.name} (×${selectedTicket.quantity})`}
+                        {selectedTicket.ticketType?.name} {selectedTicket.quantity > 1 && `(×${selectedTicket.quantity})`}
                       </div>
                     </div>
                   </div>
+                  
+                  {/* Digital Pass Badge Info */}
+                  {selectedTicket.passId && selectedTicket.badgeInfo && (
+                    <div className="border p-3 rounded-md bg-gray-50 mb-4">
+                      <h4 className="text-sm font-medium mb-2 flex items-center">
+                        <UserCircle className="h-4 w-4 mr-1" /> Badge Information
+                      </h4>
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        {(selectedTicket.badgeInfo as any).badgeType && (
+                          <div>
+                            <div className="text-xs text-gray-500">Badge Type</div>
+                            <div className="capitalize">{(selectedTicket.badgeInfo as any).badgeType}</div>
+                          </div>
+                        )}
+                        {(selectedTicket.badgeInfo as any).accessLevel && (
+                          <div>
+                            <div className="text-xs text-gray-500">Access Level</div>
+                            <div className="capitalize">{(selectedTicket.badgeInfo as any).accessLevel}</div>
+                          </div>
+                        )}
+                        {(selectedTicket.badgeInfo as any).companyName && (
+                          <div className="col-span-2">
+                            <div className="text-xs text-gray-500">Company</div>
+                            <div>{(selectedTicket.badgeInfo as any).companyName}</div>
+                          </div>
+                        )}
+                        {(selectedTicket.badgeInfo as any).jobTitle && (
+                          <div className="col-span-2">
+                            <div className="text-xs text-gray-500">Job Title</div>
+                            <div>{(selectedTicket.badgeInfo as any).jobTitle}</div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Pass Status */}
+                  {selectedTicket.passId && selectedTicket.passStatus && (
+                    <div className="flex items-center justify-between mb-4 p-2 border-l-4 border-indigo-400 bg-indigo-50 rounded-r-md">
+                      <div className="flex items-center">
+                        <Clock className="h-4 w-4 mr-2 text-indigo-500" />
+                        <span className="text-sm text-indigo-700">
+                          Status: <span className="font-medium capitalize">{selectedTicket.passStatus.replace('_', ' ')}</span>
+                        </span>
+                      </div>
+                      {selectedTicket.checkInStatus && (
+                        <Badge variant={selectedTicket.checkInStatus === 'checked_in' ? 'secondary' : 'outline'} className={`ml-2 capitalize ${selectedTicket.checkInStatus === 'checked_in' ? 'bg-green-100 text-green-800' : ''}`}>
+                          {selectedTicket.checkInStatus === 'checked_in' ? (
+                            <><Check className="h-3 w-3 mr-1" /> Checked In</>
+                          ) : (
+                            'Not Checked In'
+                          )}
+                        </Badge>
+                      )}
+                    </div>
+                  )}
                 </div>
                 
                 {/* Separator line */}
@@ -346,7 +481,9 @@ const MyTickets = () => {
                 {/* QR Code section */}
                 <div className="p-4">
                   <p className="text-xs text-center text-gray-500 mb-2">
-                    Scan the Barcode to Print Your Tickets
+                    {selectedTicket.passId 
+                      ? 'Scan this QR code to check in to the event' 
+                      : 'Scan the QR code to validate your ticket'}
                   </p>
                   
                   {qrCodeUrl ? (
@@ -354,15 +491,17 @@ const MyTickets = () => {
                       <img 
                         src={qrCodeUrl} 
                         alt="Ticket QR Code" 
-                        className="h-20"
+                        className="h-32 w-32"
                       />
                     </div>
                   ) : (
-                    <div className="h-20 bg-gray-200 animate-pulse rounded mx-auto"></div>
+                    <div className="h-32 w-32 bg-gray-200 animate-pulse rounded mx-auto"></div>
                   )}
                   
                   <p className="text-xs font-mono text-center mt-2">
-                    Booking Code: {selectedTicket.orderId.slice(-8).toUpperCase()}
+                    {selectedTicket.passId 
+                      ? `Pass ID: ${selectedTicket.passId}` 
+                      : `Booking Code: ${selectedTicket.orderId.slice(-8).toUpperCase()}`}
                   </p>
                 </div>
               </div>
@@ -370,20 +509,26 @@ const MyTickets = () => {
               <Button 
                 className="mt-4 w-full"
                 onClick={handleAddToWallet}
-                disabled={addToWalletLoading}
+                disabled={addToWalletLoading || (selectedTicket.passStatus === 'added_to_wallet')}
+                variant={selectedTicket.passStatus === 'added_to_wallet' ? 'outline' : 'default'}
               >
                 {addToWalletLoading ? (
                   <span className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                     Processing...
                   </span>
+                ) : selectedTicket.passStatus === 'added_to_wallet' ? (
+                  <span className="flex items-center justify-center text-success">
+                    <Check className="mr-2 h-4 w-4" />
+                    Added to Wallet
+                  </span>
                 ) : (
                   <span className="flex items-center justify-center">
                     <Wallet className="mr-2 h-4 w-4" />
-                    Add to Wallet
+                    {selectedTicket.passId ? 'Add to Apple Wallet' : 'Add to Wallet'}
                   </span>
                 )}
               </Button>

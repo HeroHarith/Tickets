@@ -131,19 +131,23 @@ const Header = () => {
           </div>
           
           <div className="hidden md:flex space-x-4">
-            <Link 
-              href="/" 
-              className={`${location === '/' ? 'text-primary' : 'text-gray-700'} hover:text-primary px-3 py-2 rounded-md text-sm font-medium`}
-            >
-              Browse Events
-            </Link>
-            {user && (
-              <Link 
-                href="/my-tickets" 
-                className={`${location === '/my-tickets' ? 'text-primary' : 'text-gray-700'} hover:text-primary px-3 py-2 rounded-md text-sm font-medium`}
-              >
-                My Tickets
-              </Link>
+            {user?.role !== 'center' && (
+              <>
+                <Link 
+                  href="/" 
+                  className={`${location === '/' ? 'text-primary' : 'text-gray-700'} hover:text-primary px-3 py-2 rounded-md text-sm font-medium`}
+                >
+                  Browse Events
+                </Link>
+                {user && (
+                  <Link 
+                    href="/my-tickets" 
+                    className={`${location === '/my-tickets' ? 'text-primary' : 'text-gray-700'} hover:text-primary px-3 py-2 rounded-md text-sm font-medium`}
+                  >
+                    My Tickets
+                  </Link>
+                )}
+              </>
             )}
             {showManagerOptions && (
               <>
@@ -196,13 +200,15 @@ const Header = () => {
         {/* Mobile menu */}
         {isMenuOpen && (
           <div className="md:hidden pt-2 pb-3 space-y-1">
-            <Link 
-              href="/" 
-              className={`${location === '/' ? 'text-primary' : 'text-gray-700'} block px-3 py-2 rounded-md text-base font-medium`}
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Browse Events
-            </Link>
+            {user?.role !== 'center' && (
+              <Link 
+                href="/" 
+                className={`${location === '/' ? 'text-primary' : 'text-gray-700'} block px-3 py-2 rounded-md text-base font-medium`}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Browse Events
+              </Link>
+            )}
             {user && (
               <>
                 <Link 
@@ -212,13 +218,15 @@ const Header = () => {
                 >
                   My Profile
                 </Link>
-                <Link 
-                  href="/my-tickets" 
-                  className={`${location === '/my-tickets' ? 'text-primary' : 'text-gray-700'} block px-3 py-2 rounded-md text-base font-medium`}
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  My Tickets
-                </Link>
+                {user.role !== 'center' && (
+                  <Link 
+                    href="/my-tickets" 
+                    className={`${location === '/my-tickets' ? 'text-primary' : 'text-gray-700'} block px-3 py-2 rounded-md text-base font-medium`}
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    My Tickets
+                  </Link>
+                )}
                 {['eventManager', 'center', 'admin'].includes(user.role) && (
                   <Link 
                     href="/subscriptions" 

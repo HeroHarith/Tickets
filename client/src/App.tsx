@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -25,12 +25,25 @@ import ProfilePage from "@/pages/profile";
 import PaymentStatus from "@/pages/payment-status";
 import PaymentConfirmation from "@/pages/payment-confirmation";
 import Subscriptions from "@/pages/subscriptions";
-import { AuthProvider } from "@/hooks/use-auth";
+import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { PaymentStatusChecker } from "@/components/domain/payments";
 import { SubscriptionStatusChecker } from "@/components/domain/subscriptions";
 
 // Note: We've moved the authenticated layout into the ProtectedRoute component
+
+// Home redirect component to handle center users
+function HomeRedirect() {
+  const { user } = useAuth();
+  
+  // If user is center, redirect to center dashboard
+  if (user?.role === "center") {
+    return <Redirect to="/center" />;
+  }
+  
+  // Otherwise, render the regular Home component
+  return <Home />;
+}
 
 function Router() {
   return (
@@ -40,7 +53,11 @@ function Router() {
         <Route path="/payment-success" component={PaymentStatus} />
         <Route path="/payment-cancel" component={PaymentStatus} />
         <ProtectedRoute path="/payment-confirmation/:sessionId" component={PaymentConfirmation} />
-        <ProtectedRoute path="/" component={Home} />
+        
+        {/* Use conditional home redirect component instead of conditional routes */}
+        <ProtectedRoute path="/" component={HomeRedirect} />
+        
+        {/* Event-related routes (protected by role in the components) */}
         <ProtectedRoute path="/events/:id" component={EventDetails} />
         <ProtectedRoute 
           path="/create-event" 
@@ -50,15 +67,7 @@ function Router() {
         <ProtectedRoute 
           path="/my-tickets" 
           component={MyTickets} 
-        />
-        <ProtectedRoute 
-          path="/profile" 
-          component={ProfilePage} 
-        />
-        <ProtectedRoute 
-          path="/subscriptions" 
-          component={Subscriptions} 
-          requiredRoles={["eventManager", "center", "admin"]} 
+          requiredRoles={["customer", "eventManager", "admin"]}
         />
         <ProtectedRoute 
           path="/managed-events" 
@@ -80,11 +89,23 @@ function Router() {
           component={TicketManagement} 
           requiredRoles={["eventManager", "admin"]} 
         />
+        
+        {/* Common routes for all authenticated users */}
+        <ProtectedRoute path="/profile" component={ProfilePage} />
+        <ProtectedRoute 
+          path="/subscriptions" 
+          component={Subscriptions} 
+          requiredRoles={["eventManager", "center", "admin"]} 
+        />
+        
+        {/* Admin routes */}
         <ProtectedRoute
           path="/admin"
           component={AdminDashboard}
           requiredRoles={["admin"]}
         />
+        
+        {/* Center routes */}
         <ProtectedRoute
           path="/center-old"
           component={CenterDashboard}

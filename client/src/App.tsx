@@ -12,7 +12,6 @@ import MyTickets from "@/pages/my-tickets";
 import ManagedEvents from "@/pages/managed-events";
 import SalesReports from "@/pages/sales-reports";
 import TicketManagement from "@/pages/ticket-management";
-import AdminDashboard from "@/pages/admin-dashboard";
 import CenterDashboard from "@/pages/center-dashboard";
 import CenterHomePage from "@/pages/center-home";
 import CenterBookingsPage from "@/pages/center-bookings";
@@ -42,12 +41,9 @@ function HomeRedirect() {
     return <Redirect to="/center" />;
   }
   
-  // If user is admin, redirect to admin dashboard
-  if (user?.role === "admin") {
-    return <Redirect to="/admin" />;
-  }
+  // Admin users will use a separate app
   
-  // Otherwise, render the regular Home component for customers and event managers
+  // Render the regular Home component for customers and event managers
   return <Home />;
 }
 
@@ -102,14 +98,7 @@ function Router() {
         <ProtectedRoute 
           path="/subscriptions" 
           component={Subscriptions} 
-          requiredRoles={["eventManager", "center", "admin"]} 
-        />
-        
-        {/* Admin routes */}
-        <ProtectedRoute
-          path="/admin"
-          component={AdminDashboard}
-          requiredRoles={["admin"]}
+          requiredRoles={["eventManager", "center"]} 
         />
         
         {/* Center routes */}

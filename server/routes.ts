@@ -30,7 +30,6 @@ import thawaniService, {
 } from "./thawani";
 // Import routes
 import subscriptionRoutes from './routes/subscription-routes';
-import adminRoutes from './routes/admin-routes';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
@@ -911,9 +910,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize subscription routes
   const subscriptionRouteModule = await import('./routes/subscription-routes');
   app.use('/api/subscriptions', subscriptionRouteModule.default);
-  
-  // Register admin routes
-  app.use('/api/admin', adminRoutes);
 
   const httpServer = createServer(app);
   return httpServer;

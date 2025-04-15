@@ -351,6 +351,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Get all events managed by a user with sales data
+  app.get("/api/events/managed-with-sales", requireRole(["eventManager", "admin"]), async (req: Request, res: Response) => {
+    try {
+      ensureAuthenticated(req);
+      
+      // Get all events managed by the user
+      const events = await storage.getEvents({ organizer: req.user.id });
+      
+      // For each event, get sales data and combine with event
+      const eventsWithSales = await Promise.all(events.map(async (event) => {
+        try {
+          const salesData = await storage.getEventSales(event.id);
+          return {
+            ...event,
+            totalSales: salesData.totalSales,
+            ticketsSold: salesData.ticketsSold
+          };
+        } catch (error) {
+          console.error(`Error getting sales data for event ${event.id}:`, error);
+          return {
+            ...event,
+            totalSales: 0,
+            ticketsSold: 0
+          };
+        }
+      }));
+      
+      return res.json(successResponse(eventsWithSales, 200, "Events with sales data retrieved successfully"));
+    } catch (error) {
+      console.error("Error retrieving managed events with sales:", error);
+      return res.status(500).json(errorResponse("Error retrieving managed events with sales", 500));
+    }
+  });
+  
   // Get single event endpoint
   app.get("/api/events/:id", async (req: Request, res: Response) => {
     try {

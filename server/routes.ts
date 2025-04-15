@@ -911,6 +911,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize subscription routes
   const subscriptionRouteModule = await import('./routes/subscription-routes');
   app.use('/api/subscriptions', subscriptionRouteModule.default);
+  
+  // Register admin routes
+  app.use('/api/admin', adminRoutes);
 
   const httpServer = createServer(app);
   return httpServer;

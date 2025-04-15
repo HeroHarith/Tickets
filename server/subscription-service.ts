@@ -72,6 +72,142 @@ export async function getSubscriptionPlan(id: number): Promise<SubscriptionPlan 
 }
 
 /**
+ * Create a new subscription plan
+ */
+export async function createSubscriptionPlan(data: {
+  name: string;
+  description: string;
+  type: string;
+  price: number;
+  billingPeriod: string;
+  features: object;
+  isActive?: boolean;
+}): Promise<SubscriptionPlan> {
+  // Validate input
+  if (!data.name || !data.description || !data.type || data.price === undefined || !data.billingPeriod) {
+    throw new Error('Missing required fields for subscription plan');
+  }
+  
+  // Convert string price to numeric if needed
+  const price = typeof data.price === 'string' ? parseFloat(data.price) : data.price;
+  
+  // Create the plan
+  const [plan] = await db.insert(subscriptionPlans)
+    .values({
+      name: data.name,
+      description: data.description,
+      type: data.type,
+      price: price.toString(), // Convert to string for numeric field
+      billingPeriod: data.billingPeriod,
+      features: data.features,
+      isActive: data.isActive ?? true,
+    })
+    .returning();
+  
+  return plan;
+}
+
+/**
+ * Update an existing subscription plan
+ */
+export async function updateSubscriptionPlan(
+  id: number,
+  data: Partial<{
+    name: string;
+    description: string;
+    type: string;
+    price: number;
+    billingPeriod: string;
+    features: object;
+    isActive: boolean;
+  }>
+): Promise<SubscriptionPlan | undefined> {
+  // Get the existing plan
+  const existingPlan = await getSubscriptionPlan(id);
+  if (!existingPlan) {
+    return undefined;
+  }
+  
+  // Convert string price to numeric if needed
+  let priceStr = undefined;
+  if (data.price !== undefined) {
+    const price = typeof data.price === 'string' ? parseFloat(data.price) : data.price;
+    priceStr = price.toString();
+  }
+  
+  // Update the plan
+  const [updatedPlan] = await db.update(subscriptionPlans)
+    .set({
+      name: data.name,
+      description: data.description,
+      type: data.type,
+      price: priceStr,
+      billingPeriod: data.billingPeriod,
+      features: data.features,
+      isActive: data.isActive,
+    })
+    .where(eq(subscriptionPlans.id, id))
+    .returning();
+  
+  return updatedPlan;
+}
+
+/**
+ * Toggle a subscription plan's active status
+ */
+export async function toggleSubscriptionPlanStatus(id: number): Promise<SubscriptionPlan | undefined> {
+  // Get the existing plan
+  const existingPlan = await getSubscriptionPlan(id);
+  if (!existingPlan) {
+    return undefined;
+  }
+  
+  // Toggle the status
+  const [updatedPlan] = await db.update(subscriptionPlans)
+    .set({
+      isActive: !existingPlan.isActive,
+    })
+    .where(eq(subscriptionPlans.id, id))
+    .returning();
+  
+  return updatedPlan;
+}
+
+/**
+ * Delete a subscription plan (soft delete by setting isActive to false)
+ */
+export async function deleteSubscriptionPlan(id: number): Promise<boolean> {
+  // Check if the plan exists
+  const existingPlan = await getSubscriptionPlan(id);
+  if (!existingPlan) {
+    return false;
+  }
+  
+  // Check if there are any active subscriptions using this plan
+  const [activeSubscription] = await db.select()
+    .from(subscriptions)
+    .where(
+      and(
+        eq(subscriptions.planId, id),
+        eq(subscriptions.status, 'active')
+      )
+    );
+  
+  if (activeSubscription) {
+    throw new Error('Cannot delete a plan with active subscriptions');
+  }
+  
+  // Soft delete by setting isActive to false
+  await db.update(subscriptionPlans)
+    .set({
+      isActive: false,
+    })
+    .where(eq(subscriptionPlans.id, id));
+  
+  return true;
+}
+
+/**
  * Get a user's active subscription
  */
 export async function getUserSubscription(userId: number): Promise<Subscription | undefined> {

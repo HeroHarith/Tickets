@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, ChevronLeft, CreditCard, User, Settings as SettingsIcon } from "lucide-react";
@@ -106,7 +105,7 @@ export default function SettingsPage() {
         </Card>
 
         <div className="col-span-1 md:col-span-3">
-          <TabsContent value="profile" className="mt-0" hidden={activeTab !== "profile"}>
+          {activeTab === "profile" && (
             <Card>
               <CardHeader>
                 <CardTitle>Profile Information</CardTitle>
@@ -139,9 +138,9 @@ export default function SettingsPage() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
 
-          <TabsContent value="subscription" className="mt-0" hidden={activeTab !== "subscription"}>
+          {activeTab === "subscription" && (
             <Card>
               <CardHeader>
                 <CardTitle>Subscription</CardTitle>
@@ -183,9 +182,9 @@ export default function SettingsPage() {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
 
-          <TabsContent value="preferences" className="mt-0" hidden={activeTab !== "preferences"}>
+          {activeTab === "preferences" && (
             <Card>
               <CardHeader>
                 <CardTitle>Preferences</CardTitle>
@@ -197,7 +196,7 @@ export default function SettingsPage() {
                 </p>
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
         </div>
       </div>
     </div>

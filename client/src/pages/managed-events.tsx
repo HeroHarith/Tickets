@@ -43,7 +43,7 @@ const ManagedEvents = () => {
   };
   
   // Fetch events created by the current user
-  const eventsQuery = useQuery<{ data: Event[] }>({
+  const eventsQuery = useQuery<{ data: Event[]; success: boolean; code: number; description?: string }>({
     queryKey: ["/api/events", { organizer: user?.id }],
     enabled: !!user,
     queryFn: async () => {
@@ -55,18 +55,18 @@ const ManagedEvents = () => {
   
   // Fetch ticket types for each event
   const eventsWithTicketTypesQuery = useQuery<Record<number, TicketType[]>>({
-    queryKey: ["/api/events/ticketTypes", eventsQuery.data?.data?.map(e => e.id)],
+    queryKey: ["/api/events/ticketTypes", eventsQuery.data?.data?.map((e: Event) => e.id)],
     enabled: !!eventsQuery.data?.data && eventsQuery.data.data.length > 0,
     queryFn: async () => {
-      const eventIds = eventsQuery.data!.data.map(e => e.id);
-      const promises = eventIds.map(id => 
+      const eventIds = eventsQuery.data!.data.map((e: Event) => e.id);
+      const promises = eventIds.map((id: number) => 
         fetch(`/api/events/${id}`)
           .then(res => res.json())
           .then(data => ({ id, ticketTypes: data.data?.ticketTypes || [] }))
       );
       
       const results = await Promise.all(promises);
-      return results.reduce((acc, { id, ticketTypes }) => {
+      return results.reduce((acc: Record<number, TicketType[]>, { id, ticketTypes }: { id: number, ticketTypes: TicketType[] }) => {
         acc[id] = ticketTypes;
         return acc;
       }, {} as Record<number, TicketType[]>);
@@ -176,7 +176,7 @@ const ManagedEvents = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {eventsQuery.data.data.map(event => (
+            {eventsQuery.data.data.map((event: Event) => (
               <Card key={event.id} className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
                 <div className="h-40 bg-gray-200 relative">
                   <img

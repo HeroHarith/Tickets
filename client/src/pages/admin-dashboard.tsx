@@ -45,7 +45,7 @@ import { User, Event, USER_ROLES } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { Loader2, UserPlus, Pencil, Trash2, Package, Users } from "lucide-react";
+import { Loader2, UserPlus, Pencil, Trash2, Package, Users, CreditCard } from "lucide-react";
 
 // Define types for the forms
 interface UserFormData {
@@ -88,6 +88,16 @@ const AdminDashboard = () => {
     queryFn: async () => {
       const res = await apiRequest("GET", "/api/admin/events");
       if (!res.ok) throw new Error("Failed to fetch events");
+      return res.json();
+    },
+  });
+  
+  // Fetch all subscriptions (for subscription management tab)
+  const subscriptionsQuery = useQuery({
+    queryKey: ["/api/subscriptions/admin/all"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/subscriptions/admin/all");
+      if (!res.ok) throw new Error("Failed to fetch subscriptions");
       return res.json();
     },
   });
@@ -270,7 +280,7 @@ const AdminDashboard = () => {
       <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
       
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             User Management
@@ -278,6 +288,10 @@ const AdminDashboard = () => {
           <TabsTrigger value="events" className="flex items-center gap-2">
             <Package className="h-4 w-4" />
             Event Management
+          </TabsTrigger>
+          <TabsTrigger value="subscriptions" className="flex items-center gap-2">
+            <CreditCard className="h-4 w-4" />
+            Subscription Management
           </TabsTrigger>
         </TabsList>
         
@@ -426,6 +440,86 @@ const AdminDashboard = () => {
                   </TableBody>
                 </Table>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        {/* Subscription Management Tab */}
+        <TabsContent value="subscriptions" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>All Subscriptions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {subscriptionsQuery.isLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : subscriptionsQuery.error ? (
+                <div className="text-center py-8">
+                  <p className="text-red-500 mb-2">Error loading subscriptions</p>
+                  <Button onClick={() => subscriptionsQuery.refetch()}>Try Again</Button>
+                </div>
+              ) : (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>ID</TableHead>
+                        <TableHead>User</TableHead>
+                        <TableHead>Plan</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Start Date</TableHead>
+                        <TableHead>End Date</TableHead>
+                        <TableHead>Price</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {!subscriptionsQuery.data?.data || subscriptionsQuery.data.data.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">
+                            No subscriptions found
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        subscriptionsQuery.data.data.map((item: any) => (
+                          <TableRow key={item.subscription.id}>
+                            <TableCell>{item.subscription.id}</TableCell>
+                            <TableCell>
+                              <div className="font-medium">{item.user.name}</div>
+                              <div className="text-sm text-muted-foreground">{item.user.email}</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="font-medium">{item.plan.name}</div>
+                              <div className="text-xs">{item.plan.type} / {item.plan.billingPeriod}</div>
+                            </TableCell>
+                            <TableCell>
+                              <span className={`px-2 py-1 rounded-full text-xs ${
+                                item.subscription.status === "active" 
+                                  ? "bg-green-100 text-green-800" 
+                                  : item.subscription.status === "pending"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-red-100 text-red-800"
+                              }`}>
+                                {item.subscription.status}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              {new Date(item.subscription.startDate).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>
+                              {new Date(item.subscription.endDate).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>
+                              ${parseFloat(item.plan.price).toFixed(2)}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

@@ -37,6 +37,30 @@ export async function getSubscriptionPlans(type?: string): Promise<SubscriptionP
 }
 
 /**
+ * Get all subscriptions with user and plan information
+ * For admin dashboard usage
+ */
+export async function getAllSubscriptions(): Promise<any[]> {
+  const subscriptionData = await db.select({
+    subscription: subscriptions,
+    user: {
+      id: users.id,
+      username: users.username,
+      name: users.name,
+      email: users.email,
+      role: users.role
+    },
+    plan: subscriptionPlans
+  })
+  .from(subscriptions)
+  .leftJoin(users, eq(subscriptions.userId, users.id))
+  .leftJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
+  .orderBy(desc(subscriptions.createdAt));
+  
+  return subscriptionData;
+}
+
+/**
  * Get a subscription plan by ID
  */
 export async function getSubscriptionPlan(id: number): Promise<SubscriptionPlan | undefined> {

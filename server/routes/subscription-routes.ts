@@ -294,4 +294,23 @@ router.get('/payments/:subscriptionId', requireLogin, async (req, res) => {
   }
 });
 
+// Get all subscriptions (admin only)
+router.get('/admin/all', requireRole(['admin']), async (req, res) => {
+  try {
+    const subscriptions = await subscriptionService.getAllSubscriptions();
+    
+    return res.json(successResponse(
+      subscriptions, 
+      200, 
+      'All subscriptions retrieved successfully'
+    ));
+  } catch (error: any) {
+    console.error('Error getting all subscriptions:', error);
+    return res.status(500).json(errorResponse(
+      error.message || 'Error retrieving subscriptions', 
+      500
+    ));
+  }
+});
+
 export default router;

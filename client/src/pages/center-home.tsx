@@ -92,6 +92,17 @@ export default function CenterHomePage() {
   // We don't need redirect here since ProtectedRoute handles role access
   // This was causing the maximum update depth error
 
+  // Make sure user is defined before rendering
+  if (!user) {
+    return (
+      <CenterLayout>
+        <div className="h-full flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </CenterLayout>
+    );
+  }
+
   return (
     <CenterLayout>
       <div className="p-6 max-w-7xl mx-auto">

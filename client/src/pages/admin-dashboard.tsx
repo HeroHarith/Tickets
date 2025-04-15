@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { Link, useLocation } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -232,22 +233,8 @@ const AdminDashboard = () => {
     deleteUserMutation.mutate(selectedUser.id);
   };
 
-  // Redirect if not admin
-  if (user?.role !== "admin") {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600 mb-2">Access Denied</h1>
-          <p className="text-gray-600 mb-4">
-            You need administrator privileges to access this page.
-          </p>
-          <Button onClick={() => window.location.href = "/"}>
-            Return to Home
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  // We don't need redirect here since ProtectedRoute handles role access
+  // This can cause infinite loops or maximum update depth exceeded errors
 
   // Loading state
   if (usersQuery.isLoading || eventsQuery.isLoading) {
@@ -413,22 +400,24 @@ const AdminDashboard = () => {
                           <TableCell>{event.organizer}</TableCell>
                           <TableCell>
                             <div className="flex space-x-2">
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => window.location.href = `/ticket-management/${event.id}`}
-                                className="h-8 px-2"
-                              >
-                                Manage Tickets
-                              </Button>
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={() => window.location.href = `/sales-reports/${event.id}`}
-                                className="h-8 px-2"
-                              >
-                                Sales Report
-                              </Button>
+                              <Link href={`/ticket-management/${event.id}`}>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  className="h-8 px-2"
+                                >
+                                  Manage Tickets
+                                </Button>
+                              </Link>
+                              <Link href={`/sales-reports/${event.id}`}>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  className="h-8 px-2"
+                                >
+                                  Sales Report
+                                </Button>
+                              </Link>
                             </div>
                           </TableCell>
                         </TableRow>

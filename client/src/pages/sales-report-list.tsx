@@ -7,6 +7,7 @@ import TabsComponent from "@/components/ui/tabs-component";
 import { format } from "date-fns";
 import { Event } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
+import { SubscriptionStatus } from "@/components/subscription-status";
 
 interface EventWithSales extends Event {
   totalSales: number;

@@ -145,11 +145,25 @@ export type InsertTicket = z.infer<typeof insertTicketSchema>;
 
 // Extended schemas for validation
 export const createEventSchema = insertEventSchema.extend({
-  startDate: z.coerce.date(),
-  endDate: z.coerce.date().optional().nullable(),
+  startDate: z.preprocess(
+    (val) => val instanceof Date ? val : new Date(val as string),
+    z.date({
+      required_error: "Start date is required",
+      invalid_type_error: "Start date must be a valid date"
+    })
+  ),
+  endDate: z.preprocess(
+    (val) => val === null || val === undefined ? null : (val instanceof Date ? val : new Date(val as string)),
+    z.date({
+      invalid_type_error: "End date must be a valid date"
+    }).nullable().optional()
+  ),
   ticketTypes: z.array(
     insertTicketTypeSchema.omit({ eventId: true })
   ).min(1, "At least one ticket type is required"),
+  // Optional fields for speakers and workshops
+  speakers: z.array(z.any()).optional().default([]),
+  workshops: z.array(z.any()).optional().default([]),
 });
 
 export type CreateEventInput = z.infer<typeof createEventSchema>;

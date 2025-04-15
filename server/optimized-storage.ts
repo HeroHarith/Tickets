@@ -776,13 +776,22 @@ export class OptimizedStorage implements IStorage {
   }
   
   async createEvent(eventData: CreateEventInput): Promise<Event> {
-    const { ticketTypes: ticketTypesData, ...eventDetails } = eventData;
+    const { ticketTypes: ticketTypesData, speakers: speakersData, workshops: workshopsData, ...eventDetails } = eventData;
+    
+    // Ensure dates are proper Date objects
+    const processedEventDetails = {
+      ...eventDetails,
+      startDate: eventDetails.startDate instanceof Date ? eventDetails.startDate : new Date(eventDetails.startDate),
+      endDate: eventDetails.endDate ? 
+        (eventDetails.endDate instanceof Date ? eventDetails.endDate : new Date(eventDetails.endDate)) 
+        : null
+    };
     
     // Start a transaction
     const newEvent = await db.transaction(async (tx) => {
       // Insert event
       const [event] = await tx.insert(events)
-        .values(eventDetails)
+        .values(processedEventDetails)
         .returning();
       
       // Insert ticket types
@@ -793,6 +802,45 @@ export class OptimizedStorage implements IStorage {
             eventId: event.id,
             availableQuantity: ticketType.quantity
           });
+      }
+      
+      // Insert speakers if provided
+      if (speakersData && Array.isArray(speakersData) && speakersData.length > 0) {
+        for (const speaker of speakersData) {
+          // Convert presentation time to proper Date if needed
+          const presentationTime = speaker.presentationTime instanceof Date ? 
+            speaker.presentationTime : 
+            new Date(speaker.presentationTime);
+            
+          await tx.insert(speakers)
+            .values({
+              ...speaker,
+              eventId: event.id,
+              presentationTime
+            });
+        }
+      }
+      
+      // Insert workshops if provided
+      if (workshopsData && Array.isArray(workshopsData) && workshopsData.length > 0) {
+        for (const workshop of workshopsData) {
+          // Convert times to proper Date objects if needed
+          const startTime = workshop.startTime instanceof Date ? 
+            workshop.startTime : 
+            new Date(workshop.startTime);
+            
+          const endTime = workshop.endTime instanceof Date ? 
+            workshop.endTime : 
+            new Date(workshop.endTime);
+            
+          await tx.insert(workshops)
+            .values({
+              ...workshop,
+              eventId: event.id,
+              startTime,
+              endTime
+            });
+        }
       }
       
       return event;

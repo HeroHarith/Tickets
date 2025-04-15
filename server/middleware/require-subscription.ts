@@ -52,7 +52,21 @@ export function requireSubscription(options: {
         const subscription = userSubscription[0];
         
         // Check if metadata has planType
-        const planType = subscription.metadata?.planType as string | undefined;
+        // Handle the case where metadata is stored as JSON string or as an object
+        let planType: string | undefined;
+        
+        if (subscription.metadata) {
+          if (typeof subscription.metadata === 'string') {
+            try {
+              const parsedMetadata = JSON.parse(subscription.metadata);
+              planType = parsedMetadata.planType;
+            } catch (e) {
+              console.error('Error parsing subscription metadata:', e);
+            }
+          } else if (typeof subscription.metadata === 'object') {
+            planType = (subscription.metadata as any).planType;
+          }
+        }
         
         if (!planType || !options.planTypes.includes(planType)) {
           return res.status(403).json(errorResponse(

@@ -353,7 +353,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Get all events managed by a user with sales data
-  app.get("/api/events/managed-with-sales", requireRole(["eventManager", "admin"]), async (req: Request, res: Response) => {
+  app.get("/api/events/managed-with-sales", 
+    requireRole(["eventManager", "admin"]), 
+    requireSubscription({ roles: ["eventManager"], planTypes: ["eventManager", "premium"] }),
+    async (req: Request, res: Response) => {
     try {
       ensureAuthenticated(req);
       
@@ -412,7 +415,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Create event endpoint
-  app.post("/api/events", requireRole(["eventManager", "admin"]), async (req: Request, res: Response) => {
+  app.post("/api/events", 
+    requireRole(["eventManager", "admin"]), 
+    requireSubscription({ roles: ["eventManager"], planTypes: ["eventManager", "premium"] }), 
+    async (req: Request, res: Response) => {
     try {
       ensureAuthenticated(req);
       
@@ -441,7 +447,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Get event sales data endpoint
-  app.get("/api/events/:id/sales", requireRole(["eventManager", "admin"]), async (req: Request, res: Response) => {
+  app.get("/api/events/:id/sales", 
+    requireRole(["eventManager", "admin"]), 
+    requireSubscription({ roles: ["eventManager"], planTypes: ["eventManager", "premium"] }), 
+    async (req: Request, res: Response) => {
     try {
       ensureAuthenticated(req);
       

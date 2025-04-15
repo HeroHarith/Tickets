@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { CenterLayout } from "@/components/ui/center-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SubscriptionStatus } from "@/components/subscription-status";
 import { 
   Dialog, 
   DialogContent, 
@@ -374,7 +375,10 @@ export default function CenterBookingsPage() {
   return (
     <CenterLayout>
       <div className="p-6 max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        {/* Add subscription status component at the top */}
+        <SubscriptionStatus />
+        
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 mt-6">
           <div>
             <h1 className="text-3xl font-bold">Booking Management</h1>
             <p className="text-muted-foreground">
@@ -683,11 +687,15 @@ export default function CenterBookingsPage() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {venues.map(venue => (
-                            <SelectItem key={venue.id} value={venue.id.toString()}>
-                              {venue.name}
-                            </SelectItem>
-                          ))}
+                          {Array.isArray(venues) && venues.length > 0 ? (
+                            venues.map(venue => (
+                              <SelectItem key={venue.id} value={venue.id.toString()}>
+                                {venue.name}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="no-venues" disabled>No venues available</SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                       <FormMessage />

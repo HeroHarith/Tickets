@@ -35,7 +35,7 @@ const SalesReportList = () => {
   };
   
   // Fetch user's events with sales data
-  const eventsQuery = useQuery<EventWithSales[]>({
+  const eventsQuery = useQuery<{data: EventWithSales[]}>({
     queryKey: [`/api/events/managed-with-sales`],
     enabled: !!user && ['eventManager', 'admin'].includes(user.role),
   });
@@ -92,7 +92,7 @@ const SalesReportList = () => {
   }
   
   // If no events are found
-  if (!eventsQuery.data || eventsQuery.data.length === 0) {
+  if (!eventsQuery.data?.data || !Array.isArray(eventsQuery.data.data) || eventsQuery.data.data.length === 0) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <TabsComponent
@@ -113,8 +113,8 @@ const SalesReportList = () => {
     );
   }
   
-  // Use actual data from API if available, otherwise use dummy data for development
-  const events = eventsQuery.data;
+  // Extract data from the API response
+  const events = eventsQuery.data?.data ? Array.isArray(eventsQuery.data.data) ? eventsQuery.data.data : [] : [];
   
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

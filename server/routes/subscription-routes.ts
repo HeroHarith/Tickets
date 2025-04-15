@@ -297,6 +297,17 @@ router.get('/payments/:subscriptionId', requireLogin, async (req, res) => {
 // Get all subscriptions (admin only)
 router.get('/admin/all', requireRole(['admin']), async (req, res) => {
   try {
+    // Check if user is authenticated
+    if (!req.isAuthenticated || !req.isAuthenticated()) {
+      return res.status(401).json(errorResponse('Authentication required', 401));
+    }
+    
+    // Check if user is admin
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json(errorResponse('Admin access required', 403));
+    }
+    
+    console.log('Fetching all subscriptions for admin:', req.user?.username);
     const subscriptions = await subscriptionService.getAllSubscriptions();
     
     return res.json(successResponse(

@@ -96,10 +96,19 @@ const AdminDashboard = () => {
   const subscriptionsQuery = useQuery({
     queryKey: ["/api/subscriptions/admin/all"],
     queryFn: async () => {
-      const res = await apiRequest("GET", "/api/subscriptions/admin/all");
-      if (!res.ok) throw new Error("Failed to fetch subscriptions");
-      return res.json();
+      try {
+        const res = await apiRequest("GET", "/api/subscriptions/admin/all");
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.description || "Failed to fetch subscriptions");
+        }
+        return res.json();
+      } catch (error: any) {
+        console.error("Subscription fetch error:", error);
+        throw error;
+      }
     },
+    retry: 1,
   });
 
   // Create user mutation

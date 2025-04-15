@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Event, TicketType } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { EventCard, EventSearch } from "@/components/domain/events";
-import { Tabs } from "@/components/common/navigation";
 
 const Home = () => {
   const { user } = useAuth();
@@ -23,23 +22,7 @@ const Home = () => {
   
   const [sortBy, setSortBy] = useState("date");
   
-  // Get navigation tabs based on user role
-  const getNavTabs = () => {
-    const tabs = [
-      { id: "browse", label: "Browse Events", href: "/" },
-      { id: "tickets", label: "My Tickets", href: "/my-tickets" }
-    ];
-    
-    // Add manager-specific tabs if user has appropriate role
-    if (user && ['eventManager', 'admin'].includes(user.role)) {
-      tabs.push(
-        { id: "managed", label: "Managed Events", href: "/managed-events" },
-        { id: "sales", label: "Sales Reports", href: "/sales-reports" }
-      );
-    }
-    
-    return tabs;
-  };
+
   
   // Interface for API response
   interface ApiResponse<T> {
@@ -176,11 +159,6 @@ const Home = () => {
   
   return (
     <div>
-      <Tabs
-        tabs={getNavTabs()}
-        activeTab="browse"
-      />
-      
       <EventSearch onSearch={handleSearch} />
       
       {/* Featured Events Section */}

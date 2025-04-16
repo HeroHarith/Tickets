@@ -452,15 +452,11 @@ const EventDetails = () => {
     );
   }
   
-  if (!eventQuery.data) return null;
-  
-  const { title, description, location, startDate, endDate, category, imageUrl, ticketTypes } = eventQuery.data;
-  
-  // Check if this is a multi-day event
+  // Check if this is a multi-day event - moved above the conditional returns
   useEffect(() => {
-    if (startDate && endDate) {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
+    if (eventQuery.data && eventQuery.data.startDate && eventQuery.data.endDate && eventQuery.data.ticketTypes) {
+      const start = new Date(eventQuery.data.startDate);
+      const end = new Date(eventQuery.data.endDate);
       
       // If the start and end dates are different, it's a multi-day event
       if (start.toDateString() !== end.toDateString()) {
@@ -476,13 +472,17 @@ const EventDetails = () => {
         
         // Initialize date range for the event
         const initialSelectedDates: Record<number, Date | null> = {};
-        ticketTypes.forEach(ticketType => {
+        eventQuery.data.ticketTypes.forEach(ticketType => {
           initialSelectedDates[ticketType.id] = null;
         });
         setSelectedDates(initialSelectedDates);
       }
     }
-  }, [startDate, endDate, ticketTypes]);
+  }, [eventQuery.data]);
+  
+  if (!eventQuery.data) return null;
+  
+  const { title, description, location, startDate, endDate, category, imageUrl, ticketTypes } = eventQuery.data;
   
   // Format dates
   const formatEventDate = () => {

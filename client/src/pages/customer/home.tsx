@@ -271,7 +271,7 @@ const Home = () => {
         ) : eventsQuery.data && eventsQuery.data.length > 0 ? (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {sortEvents(eventsQuery.data).slice(0, 8).map(event => (
+              {filterAndSortEvents(eventsQuery.data).slice(0, 8).map(event => (
                 <EventCard 
                   key={event.id} 
                   event={event} 
@@ -280,7 +280,7 @@ const Home = () => {
               ))}
             </div>
             
-            {eventsQuery.data.length > 8 && (
+            {filterAndSortEvents(eventsQuery.data).length > 8 && (
               <div className="flex justify-center mt-8">
                 <Button 
                   variant="outline"

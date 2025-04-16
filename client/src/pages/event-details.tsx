@@ -22,10 +22,18 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import PaymentService, { CustomerDetails } from "@/services/PaymentService";
 
+type GiftRecipient = {
+  name?: string;
+  email: string;
+  message?: string;
+}
+
 type TicketSelection = {
   ticketTypeId: number;
   quantity: number;
   attendeeDetails?: AttendeeDetails[];
+  isGift?: boolean;
+  giftRecipients?: GiftRecipient[];
 };
 
 // Form schema for customer details
@@ -46,6 +54,7 @@ const EventDetails = () => {
   const [showCheckout, setShowCheckout] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [showGiftOptions, setShowGiftOptions] = useState<Record<number, boolean>>({});
   
   // Initialize form with default values
   const form = useForm<z.infer<typeof customerDetailsSchema>>({
@@ -139,6 +148,55 @@ const EventDetails = () => {
   const getTicketQuantity = (ticketTypeId: number) => {
     const selection = ticketSelections.find(ts => ts.ticketTypeId === ticketTypeId);
     return selection ? selection.quantity : 0;
+  };
+  
+  // Check if a ticket is marked as a gift
+  const isGiftTicket = (ticketTypeId: number) => {
+    const selection = ticketSelections.find(ts => ts.ticketTypeId === ticketTypeId);
+    return selection?.isGift || false;
+  };
+  
+  // Toggle gift status for a ticket type
+  const toggleGiftTicket = (ticketTypeId: number, isGift: boolean) => {
+    setTicketSelections(current => 
+      current.map(ts => 
+        ts.ticketTypeId === ticketTypeId 
+          ? { ...ts, isGift, giftRecipients: isGift ? ts.giftRecipients || [] : undefined } 
+          : ts
+      )
+    );
+    
+    // Show gift options if this is a gift
+    if (isGift) {
+      setShowGiftOptions(prev => ({ ...prev, [ticketTypeId]: true }));
+    } else {
+      setShowGiftOptions(prev => ({ ...prev, [ticketTypeId]: false }));
+    }
+  };
+  
+  // Add a gift recipient for a ticket type
+  const addGiftRecipient = (ticketTypeId: number, recipient: GiftRecipient) => {
+    setTicketSelections(current => 
+      current.map(ts => {
+        if (ts.ticketTypeId !== ticketTypeId) return ts;
+        
+        const recipients = [...(ts.giftRecipients || []), recipient];
+        return { ...ts, giftRecipients: recipients };
+      })
+    );
+  };
+  
+  // Remove a gift recipient
+  const removeGiftRecipient = (ticketTypeId: number, index: number) => {
+    setTicketSelections(current => 
+      current.map(ts => {
+        if (ts.ticketTypeId !== ticketTypeId || !ts.giftRecipients) return ts;
+        
+        const recipients = [...ts.giftRecipients];
+        recipients.splice(index, 1);
+        return { ...ts, giftRecipients: recipients };
+      })
+    );
   };
   
   const calculateTotal = () => {
@@ -437,29 +495,127 @@ const EventDetails = () => {
               {ticketTypes && ticketTypes.map(ticketType => (
                 <div 
                   key={ticketType.id} 
-                  className="flex items-center justify-between bg-gray-50 p-3 rounded-md"
+                  className="bg-gray-50 p-3 rounded-md"
                 >
-                  <div>
-                    <span className="font-medium">{ticketType.name}</span>
-                    <span className="text-gray-500 ml-2">(${Number(ticketType.price).toFixed(2)} each)</span>
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <span className="font-medium">{ticketType.name}</span>
+                      <span className="text-gray-500 ml-2">(${Number(ticketType.price).toFixed(2)} each)</span>
+                    </div>
+                    <div className="flex items-center">
+                      <button 
+                        className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center"
+                        onClick={() => handleQuantityChange(ticketType.id, -1)}
+                        disabled={getTicketQuantity(ticketType.id) === 0}
+                      >
+                        <span className="text-lg">-</span>
+                      </button>
+                      <span className="mx-4 w-6 text-center">{getTicketQuantity(ticketType.id)}</span>
+                      <button 
+                        className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center"
+                        onClick={() => handleQuantityChange(ticketType.id, 1)}
+                        disabled={ticketType.availableQuantity === 0 || getTicketQuantity(ticketType.id) >= ticketType.availableQuantity}
+                      >
+                        <span className="text-lg">+</span>
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center">
-                    <button 
-                      className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center"
-                      onClick={() => handleQuantityChange(ticketType.id, -1)}
-                      disabled={getTicketQuantity(ticketType.id) === 0}
-                    >
-                      <span className="text-lg">-</span>
-                    </button>
-                    <span className="mx-4 w-6 text-center">{getTicketQuantity(ticketType.id)}</span>
-                    <button 
-                      className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center"
-                      onClick={() => handleQuantityChange(ticketType.id, 1)}
-                      disabled={ticketType.availableQuantity === 0 || getTicketQuantity(ticketType.id) >= ticketType.availableQuantity}
-                    >
-                      <span className="text-lg">+</span>
-                    </button>
-                  </div>
+                  
+                  {getTicketQuantity(ticketType.id) > 0 && (
+                    <div className="mt-2">
+                      <div className="flex items-center">
+                        <Checkbox 
+                          id={`gift-${ticketType.id}`}
+                          checked={isGiftTicket(ticketType.id)}
+                          onCheckedChange={(checked) => toggleGiftTicket(ticketType.id, !!checked)}
+                          className="mr-2"
+                        />
+                        <Label htmlFor={`gift-${ticketType.id}`} className="text-sm cursor-pointer">
+                          Send as a gift
+                        </Label>
+                      </div>
+                      
+                      {isGiftTicket(ticketType.id) && showGiftOptions[ticketType.id] && (
+                        <div className="mt-3 border border-dashed border-gray-300 p-3 rounded-md">
+                          <h4 className="text-sm font-medium mb-2">Gift Recipients</h4>
+                          
+                          {/* List existing recipients */}
+                          {ticketSelections.find(ts => ts.ticketTypeId === ticketType.id)?.giftRecipients?.map((recipient, index) => (
+                            <div key={index} className="flex justify-between items-center bg-white p-2 rounded mb-2">
+                              <div>
+                                <div className="text-sm font-medium">{recipient.name || 'No Name'}</div>
+                                <div className="text-xs text-gray-500">{recipient.email}</div>
+                              </div>
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                className="h-6 w-6 p-0 rounded-full"
+                                onClick={() => removeGiftRecipient(ticketType.id, index)}
+                              >
+                                <span className="sr-only">Remove</span>
+                                <span className="text-gray-400">×</span>
+                              </Button>
+                            </div>
+                          ))}
+                          
+                          {/* Add new recipient form */}
+                          <div className="space-y-2 mt-3">
+                            <div className="grid grid-cols-2 gap-2">
+                              <Input 
+                                placeholder="Recipient Name" 
+                                id={`name-${ticketType.id}`}
+                                className="text-sm h-8"
+                              />
+                              <Input 
+                                placeholder="Email" 
+                                type="email" 
+                                id={`email-${ticketType.id}`}
+                                className="text-sm h-8"
+                                required
+                              />
+                            </div>
+                            <Input 
+                              placeholder="Gift Message (optional)" 
+                              id={`message-${ticketType.id}`}
+                              className="text-sm h-8"
+                            />
+                            <Button
+                              size="sm"
+                              className="w-full mt-2 h-8"
+                              onClick={() => {
+                                const nameInput = document.getElementById(`name-${ticketType.id}`) as HTMLInputElement;
+                                const emailInput = document.getElementById(`email-${ticketType.id}`) as HTMLInputElement;
+                                const messageInput = document.getElementById(`message-${ticketType.id}`) as HTMLInputElement;
+                                
+                                if (emailInput && emailInput.value) {
+                                  addGiftRecipient(ticketType.id, {
+                                    name: nameInput?.value || undefined,
+                                    email: emailInput.value,
+                                    message: messageInput?.value || undefined
+                                  });
+                                  
+                                  // Reset form
+                                  if (nameInput) nameInput.value = '';
+                                  emailInput.value = '';
+                                  if (messageInput) messageInput.value = '';
+                                }
+                              }}
+                            >
+                              Add Recipient
+                            </Button>
+                          </div>
+                          
+                          {/* Validation warning */}
+                          {getTicketQuantity(ticketType.id) > 0 && 
+                           ticketSelections.find(ts => ts.ticketTypeId === ticketType.id)?.giftRecipients?.length !== getTicketQuantity(ticketType.id) && (
+                            <div className="mt-3 text-xs text-amber-600">
+                              <p>Please add {getTicketQuantity(ticketType.id)} recipient(s) for your gift tickets.</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

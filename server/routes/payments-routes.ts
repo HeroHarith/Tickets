@@ -3,7 +3,7 @@ import { optimizedStorage as storage } from '../optimized-storage';
 import { requireRole } from '../auth';
 import { successResponse, errorResponse } from '../utils/api-response';
 import { z } from 'zod';
-import { createPaymentSession, getSession, getSessionStatus, CustomerDetails, ProductDetails } from '../thawani';
+import { createPaymentSession, getSessionDetails as getSession, checkPaymentStatus as getSessionStatus, CustomerDetails, ProductDetails } from '../thawani';
 import { db } from '../db';
 import { tickets } from '@shared/schema';
 import { eq } from 'drizzle-orm';
@@ -44,14 +44,15 @@ router.post('/tickets', requireRole(["customer", "admin"]), async (req: Request,
     
     // Set up customer details
     const customerDetails: CustomerDetails = {
-      name: validatedData.customerDetails.name,
+      firstName: validatedData.customerDetails.name.split(' ')[0] || validatedData.customerDetails.name,
+      lastName: validatedData.customerDetails.name.split(' ').slice(1).join(' ') || '-',
       email: validatedData.customerDetails.email,
-      phone: validatedData.customerDetails.phone
+      phone: validatedData.customerDetails.phone || '0000000000'
     };
     
     // Create session with metadata
     const metadata = {
-      userId: req.user.id.toString(),
+      userId: req.user?.id.toString() || '0',
       eventId: validatedData.eventId.toString(),
       items: JSON.stringify(validatedData.items),
       purchaseType: 'ticket',
@@ -110,14 +111,15 @@ router.post('/rentals', requireRole(["customer", "admin"]), async (req: Request,
     
     // Set up customer details
     const customerDetails: CustomerDetails = {
-      name: validatedData.customerDetails.name,
+      firstName: validatedData.customerDetails.name.split(' ')[0] || validatedData.customerDetails.name,
+      lastName: validatedData.customerDetails.name.split(' ').slice(1).join(' ') || '-',
       email: validatedData.customerDetails.email,
-      phone: validatedData.customerDetails.phone
+      phone: validatedData.customerDetails.phone || '0000000000'
     };
     
     // Create session with metadata
     const metadata = {
-      userId: req.user.id.toString(),
+      userId: req.user?.id.toString() || '0',
       rentalId: rental.id.toString(),
       purchaseType: 'rental'
     };
@@ -143,7 +145,7 @@ router.post('/rentals', requireRole(["customer", "admin"]), async (req: Request,
 router.get('/status/:sessionId', async (req: Request, res: Response) => {
   try {
     const sessionId = req.params.sessionId;
-    const status = await thawaniService.getSessionStatus(sessionId);
+    const status = await getSessionStatus(sessionId);
     return res.json(successResponse(status, 200, 'Payment status retrieved'));
   } catch (error: any) {
     console.error('Error checking payment status:', error);
@@ -168,7 +170,7 @@ router.post('/webhook', async (req: Request, res: Response) => {
     
     // Process the webhook
     const { session_id } = data;
-    const session = await thawaniService.getSession(session_id);
+    const session = await getSession(session_id);
     
     if (!session || !session.metadata) {
       return res.status(400).json(errorResponse('Invalid session data', 400));

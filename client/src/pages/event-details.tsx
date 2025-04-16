@@ -34,6 +34,7 @@ type TicketSelection = {
   attendeeDetails?: AttendeeDetails[];
   isGift?: boolean;
   giftRecipients?: GiftRecipient[];
+  eventDate?: Date; // For multi-day events
 };
 
 // Form schema for customer details
@@ -55,6 +56,9 @@ const EventDetails = () => {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [showGiftOptions, setShowGiftOptions] = useState<Record<number, boolean>>({});
+  // Multi-day event states
+  const [isMultiDayEvent, setIsMultiDayEvent] = useState(false);
+  const [selectedDates, setSelectedDates] = useState<Record<number, Date | null>>({});
   
   // Initialize form with default values
   const form = useForm<z.infer<typeof customerDetailsSchema>>({
@@ -416,6 +420,34 @@ const EventDetails = () => {
   if (!eventQuery.data) return null;
   
   const { title, description, location, startDate, endDate, category, imageUrl, ticketTypes } = eventQuery.data;
+  
+  // Check if this is a multi-day event
+  useEffect(() => {
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      
+      // If the start and end dates are different, it's a multi-day event
+      if (start.toDateString() !== end.toDateString()) {
+        setIsMultiDayEvent(true);
+        
+        // Generate dates between start and end date for selection
+        const dates: Date[] = [];
+        const currentDate = new Date(start);
+        while (currentDate <= end) {
+          dates.push(new Date(currentDate));
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+        
+        // Initialize date range for the event
+        const initialSelectedDates: Record<number, Date | null> = {};
+        ticketTypes.forEach(ticketType => {
+          initialSelectedDates[ticketType.id] = null;
+        });
+        setSelectedDates(initialSelectedDates);
+      }
+    }
+  }, [startDate, endDate, ticketTypes]);
   
   // Format dates
   const formatEventDate = () => {

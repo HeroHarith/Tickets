@@ -188,7 +188,7 @@ router.get('/:id/sales',
       }
       
       // Check if user has access to the event
-      if (req.user.role === 'eventManager' && event.managerId !== req.user.id) {
+      if (req.user.role === 'eventManager' && event.organizer !== req.user.id) {
         return res.status(403).json(errorResponse('Access denied', 403));
       }
       

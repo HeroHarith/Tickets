@@ -3,7 +3,7 @@ import { optimizedStorage as storage } from '../optimized-storage';
 import { requireRole } from '../auth';
 import { successResponse, errorResponse } from '../utils/api-response';
 import { z } from 'zod';
-import thawaniService, { CustomerDetails, PaymentItem } from '../thawani';
+import { createPaymentSession, getSession, getSessionStatus, CustomerDetails, ProductDetails } from '../thawani';
 import { db } from '../db';
 import { tickets } from '@shared/schema';
 import { eq } from 'drizzle-orm';
@@ -36,10 +36,10 @@ router.post('/tickets', requireRole(["customer", "admin"]), async (req: Request,
     const validatedData = paymentSchema.parse(req.body);
     
     // Format items for Thawani
-    const paymentItems: PaymentItem[] = validatedData.items.map(item => ({
+    const paymentItems: ProductDetails[] = validatedData.items.map(item => ({
       name: `Ticket Type #${item.ticketTypeId}`,
       quantity: item.quantity,
-      unit_amount: item.subtotal / item.quantity,
+      unitAmount: Math.round(item.subtotal / item.quantity),
     }));
     
     // Set up customer details
@@ -59,7 +59,7 @@ router.post('/tickets', requireRole(["customer", "admin"]), async (req: Request,
     };
     
     // Create payment session
-    const session = await thawaniService.createSession(paymentItems, customerDetails, metadata);
+    const session = await createPaymentSession(paymentItems, customerDetails, metadata);
     
     return res.json(successResponse(session, 200, 'Payment session created'));
   } catch (error: any) {
@@ -102,10 +102,10 @@ router.post('/rentals', requireRole(["customer", "admin"]), async (req: Request,
     }
     
     // Format items for Thawani
-    const paymentItems: PaymentItem[] = [{
+    const paymentItems: ProductDetails[] = [{
       name: `Venue Rental: ${rental.venueName || `Venue #${rental.venueId}`}`,
       quantity: 1,
-      unit_amount: Math.round(parseFloat(rental.totalPrice) * 1000), // Convert to baisa (smallest unit)
+      unitAmount: Math.round(parseFloat(rental.totalPrice) * 1000), // Convert to baisa (smallest unit)
     }];
     
     // Set up customer details
@@ -123,7 +123,7 @@ router.post('/rentals', requireRole(["customer", "admin"]), async (req: Request,
     };
     
     // Create payment session
-    const session = await thawaniService.createSession(paymentItems, customerDetails, metadata);
+    const session = await createPaymentSession(paymentItems, customerDetails, metadata);
     
     return res.json(successResponse(session, 200, 'Rental payment session created'));
   } catch (error: any) {

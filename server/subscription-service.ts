@@ -375,28 +375,31 @@ export async function canCreateMoreEvents(userId: number): Promise<{
   }
   
   // If max events is 0, it means unlimited
-  if (plan.maxEventsAllowed === 0) {
+  // Safely get maxEventsAllowed with nullish coalescing
+  const planMaxEvents = plan.maxEventsAllowed ?? 0;
+  if (planMaxEvents === 0) {
     return { 
       canCreate: true, 
       currentCount: subscription.eventsCreated,
-      maxAllowed: 0 // Unlimited
+      maxAllowed: 'unlimited' as const
     };
   }
   
   // Check if the user has reached their event limit
-  if (subscription.eventsCreated >= plan.maxEventsAllowed) {
+  // Using the planMaxEvents variable we already defined
+  if (subscription.eventsCreated >= planMaxEvents && planMaxEvents !== 0) {
     return { 
       canCreate: false, 
       reason: 'Maximum number of events reached for current subscription',
       currentCount: subscription.eventsCreated,
-      maxAllowed: plan.maxEventsAllowed
+      maxAllowed: planMaxEvents
     };
   }
   
   return { 
     canCreate: true,
     currentCount: subscription.eventsCreated,
-    maxAllowed: plan.maxEventsAllowed
+    maxAllowed: planMaxEvents === 0 ? 'unlimited' as const : planMaxEvents
   };
 }
 

@@ -5,6 +5,21 @@ import { eq, and, gt } from 'drizzle-orm';
 import { errorResponse } from '../utils/api-response';
 import * as subscriptionService from '../subscription-service';
 
+// Extend Express Request type to include eventLimitCheck property
+declare global {
+  namespace Express {
+    interface Request {
+      eventLimitCheck?: {
+        canCreate: boolean;
+        currentCount: number;
+        maxAllowed: number | 'unlimited';
+        reason?: string;
+        subscription?: any;
+      };
+    }
+  }
+}
+
 /**
  * Middleware to check if a user has an active subscription
  * Can be configured to check for specific roles or plan types
@@ -77,6 +92,28 @@ export function requireSubscription(options: {
             403
           ));
         }
+      }
+      
+      // If event limit check is enabled (for event creation routes)
+      if (options.checkEventLimit && req.method === 'POST') {
+        // Check if user can create more events
+        const eventLimitCheck = await subscriptionService.canCreateMoreEvents(user.id);
+        
+        if (!eventLimitCheck.canCreate) {
+          return res.status(403).json(errorResponse(
+            eventLimitCheck.reason || 'You have reached your event creation limit',
+            403,
+            {
+              currentCount: eventLimitCheck.currentCount,
+              maxAllowed: eventLimitCheck.maxAllowed,
+              upgradeSuggested: true
+            }
+          ));
+        }
+        
+        // Store the event limit check result in the request for later use
+        // This allows the route handler to increment the count after successful creation
+        req.eventLimitCheck = eventLimitCheck;
       }
       
       // All checks passed, proceed

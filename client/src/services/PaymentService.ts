@@ -30,10 +30,42 @@ export const PaymentService = {
     customer: CustomerDetails
   ): Promise<PaymentSession | null> {
     try {
+      // Fetch ticket types to get prices
+      const eventsRes = await fetch(`/api/events/${eventId}`);
+      if (!eventsRes.ok) {
+        throw new Error('Failed to fetch event details');
+      }
+      const eventData = await eventsRes.json();
+      const ticketTypes = eventData.data.ticketTypes || [];
+      
+      // Format items for the API
+      const items = Object.entries(quantities).map(([ticketTypeId, quantity]) => {
+        const ticketType = ticketTypes.find((tt: any) => tt.id === parseInt(ticketTypeId));
+        if (!ticketType) {
+          throw new Error(`Ticket type ${ticketTypeId} not found`);
+        }
+        
+        // Convert price to smallest unit (assuming cents/baisa) and calculate subtotal
+        const priceInSmallestUnit = Math.round(parseFloat(ticketType.price) * 100);
+        return {
+          ticketTypeId: parseInt(ticketTypeId),
+          quantity,
+          subtotal: priceInSmallestUnit * quantity
+        };
+      });
+      
+      // Format customer details
+      const customerDetails = {
+        name: `${customer.firstName} ${customer.lastName}`,
+        email: customer.email,
+        phone: customer.phone
+      };
+      
+      // Make API request with the correct format
       const res = await apiRequest('POST', '/api/payments/tickets', {
         eventId,
-        quantities,
-        customer
+        items,
+        customerDetails
       });
       
       const data = await res.json();
@@ -60,17 +92,21 @@ export const PaymentService = {
    * @returns Payment session data or null if there was an error
    */
   async createRentalPayment(
-    venueId: number,
-    startTime: Date,
-    endTime: Date,
+    rentalId: number,
     customer: CustomerDetails
   ): Promise<PaymentSession | null> {
     try {
+      // Format customer details for the API
+      const customerDetails = {
+        name: `${customer.firstName} ${customer.lastName}`,
+        email: customer.email,
+        phone: customer.phone
+      };
+      
+      // Make API request with the correct format
       const res = await apiRequest('POST', '/api/payments/rentals', {
-        venueId,
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
-        customer
+        rentalId,
+        customerDetails
       });
       
       const data = await res.json();

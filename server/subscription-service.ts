@@ -341,6 +341,104 @@ export async function hasUserActiveSubscriptionByType(userId: number, type: stri
 }
 
 /**
+ * Check if user can create more events under their current subscription
+ */
+export async function canCreateMoreEvents(userId: number): Promise<{ 
+  canCreate: boolean; 
+  reason?: string; 
+  currentCount?: number; 
+  maxAllowed?: number; 
+}> {
+  const subscription = await getUserSubscription(userId);
+  
+  if (!subscription) {
+    return { 
+      canCreate: false, 
+      reason: 'No active subscription found' 
+    };
+  }
+  
+  if (subscription.status !== 'active') {
+    return { 
+      canCreate: false, 
+      reason: 'Subscription is not active' 
+    };
+  }
+  
+  const plan = await getSubscriptionPlan(subscription.planId);
+  
+  if (!plan) {
+    return { 
+      canCreate: false, 
+      reason: 'Subscription plan not found' 
+    };
+  }
+  
+  // If max events is 0, it means unlimited
+  if (plan.maxEventsAllowed === 0) {
+    return { 
+      canCreate: true, 
+      currentCount: subscription.eventsCreated,
+      maxAllowed: 0 // Unlimited
+    };
+  }
+  
+  // Check if the user has reached their event limit
+  if (subscription.eventsCreated >= plan.maxEventsAllowed) {
+    return { 
+      canCreate: false, 
+      reason: 'Maximum number of events reached for current subscription',
+      currentCount: subscription.eventsCreated,
+      maxAllowed: plan.maxEventsAllowed
+    };
+  }
+  
+  return { 
+    canCreate: true,
+    currentCount: subscription.eventsCreated,
+    maxAllowed: plan.maxEventsAllowed
+  };
+}
+
+/**
+ * Increment the event count for a user's subscription
+ */
+export async function incrementEventCount(userId: number): Promise<{
+  success: boolean;
+  subscription?: Subscription;
+  error?: string;
+}> {
+  const subscription = await getUserSubscription(userId);
+  
+  if (!subscription) {
+    return { 
+      success: false, 
+      error: 'No active subscription found' 
+    };
+  }
+  
+  // Increment the event count
+  const [updatedSubscription] = await db.update(subscriptions)
+    .set({ 
+      eventsCreated: subscription.eventsCreated + 1
+    })
+    .where(eq(subscriptions.id, subscription.id))
+    .returning();
+  
+  if (!updatedSubscription) {
+    return { 
+      success: false, 
+      error: 'Failed to update subscription' 
+    };
+  }
+  
+  return { 
+    success: true, 
+    subscription: updatedSubscription 
+  };
+}
+
+/**
  * Check if a subscription payment session is valid
  */
 export async function isSubscriptionPaymentSessionValid(paymentSessionId: string): Promise<boolean> {
@@ -475,6 +573,129 @@ export async function createSubscriptionPaymentSession(
   }
   
   return { subscription, paymentInfo };
+}
+
+/**
+ * Update subscription sales statistics when tickets are sold
+ * This tracks the total tickets sold, sales amount, and calculates service fees
+ */
+export async function updateSubscriptionSalesStats(
+  userId: number,
+  ticketsCount: number,
+  salesAmount: number
+): Promise<{ success: boolean; error?: string; serviceFee?: number }> {
+  const subscription = await getUserSubscription(userId);
+  
+  if (!subscription) {
+    return { 
+      success: false, 
+      error: 'No active subscription found' 
+    };
+  }
+  
+  // Get the subscription plan to determine service fee percentage
+  const plan = await getSubscriptionPlan(subscription.planId);
+  
+  if (!plan) {
+    return { 
+      success: false, 
+      error: 'Subscription plan not found' 
+    };
+  }
+  
+  // Calculate service fee
+  const serviceFeePercentage = plan.serviceFeePercentage ? parseFloat(plan.serviceFeePercentage.toString()) : 0;
+  const serviceFee = (salesAmount * serviceFeePercentage) / 100;
+  
+  // Update the subscription stats
+  const [updatedSubscription] = await db.update(subscriptions)
+    .set({ 
+      totalTicketsSold: subscription.totalTicketsSold + ticketsCount,
+      totalSalesAmount: (parseFloat(subscription.totalSalesAmount.toString()) + salesAmount).toString(),
+      totalServiceFees: (parseFloat(subscription.totalServiceFees.toString()) + serviceFee).toString()
+    })
+    .where(eq(subscriptions.id, subscription.id))
+    .returning();
+  
+  if (!updatedSubscription) {
+    return { 
+      success: false, 
+      error: 'Failed to update subscription sales statistics' 
+    };
+  }
+  
+  return { 
+    success: true,
+    serviceFee
+  };
+}
+
+/**
+ * Get subscription usage statistics for a user
+ */
+export async function getSubscriptionUsageStats(userId: number): Promise<{
+  subscription?: Subscription;
+  plan?: SubscriptionPlan;
+  stats?: {
+    eventsCreated: number;
+    maxEventsAllowed: number | 'unlimited';
+    eventUsagePercentage: number;
+    ticketsSold: number;
+    totalSalesAmount: number;
+    totalServiceFees: number;
+    serviceFeePercentage: number;
+    daysRemaining: number;
+    isActive: boolean;
+  };
+  error?: string;
+}> {
+  const subscription = await getUserSubscription(userId);
+  
+  if (!subscription) {
+    return { 
+      error: 'No active subscription found' 
+    };
+  }
+  
+  const plan = await getSubscriptionPlan(subscription.planId);
+  
+  if (!plan) {
+    return { 
+      subscription,
+      error: 'Subscription plan not found' 
+    };
+  }
+  
+  // Calculate days remaining in subscription
+  const now = new Date();
+  const endDate = new Date(subscription.endDate);
+  const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 3600 * 24));
+  
+  // Calculate event usage percentage
+  let eventUsagePercentage = 0;
+  const maxEvents = plan.maxEventsAllowed || 0;
+  if (maxEvents > 0) {
+    eventUsagePercentage = (subscription.eventsCreated / maxEvents) * 100;
+  }
+  
+  // Prepare the statistics
+  const stats = {
+    eventsCreated: subscription.eventsCreated,
+    maxEventsAllowed: maxEvents === 0 ? 'unlimited' as const : maxEvents,
+    eventUsagePercentage,
+    ticketsSold: subscription.totalTicketsSold,
+    totalSalesAmount: parseFloat(subscription.totalSalesAmount.toString()),
+    totalServiceFees: parseFloat(subscription.totalServiceFees.toString()),
+    serviceFeePercentage: plan.serviceFeePercentage ? parseFloat(plan.serviceFeePercentage.toString()) : 0,
+    daysRemaining,
+    isActive: subscription.status === 'active' && daysRemaining > 0
+  };
+  
+  return {
+    subscription,
+    plan,
+    stats
+  };
 }
 
 /**

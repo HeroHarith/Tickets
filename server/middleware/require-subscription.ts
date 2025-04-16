@@ -1,16 +1,19 @@
 import { Request, Response, NextFunction } from 'express';
 import { db } from '../db';
-import { subscriptions, users } from '@shared/schema';
+import { subscriptions, users, subscriptionPlans } from '@shared/schema';
 import { eq, and, gt } from 'drizzle-orm';
 import { errorResponse } from '../utils/api-response';
+import * as subscriptionService from '../subscription-service';
 
 /**
  * Middleware to check if a user has an active subscription
- * Can be configured to only check for specific roles or plan types
+ * Can be configured to check for specific roles or plan types
+ * Can also check for event limits for event creation routes
  */
 export function requireSubscription(options: {
   roles?: string[];
   planTypes?: string[];
+  checkEventLimit?: boolean;
 }) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {

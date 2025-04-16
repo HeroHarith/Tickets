@@ -190,9 +190,9 @@ const Home = () => {
           <div className="text-center py-8">
             <p className="text-red-500">Failed to load featured events</p>
           </div>
-        ) : featuredEventsQuery.data && featuredEventsQuery.data.length > 0 ? (
+        ) : featuredEventsQuery.data && filterAndSortEvents(featuredEventsQuery.data).length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {featuredEventsQuery.data.slice(0, 3).map(event => (
+            {filterAndSortEvents(featuredEventsQuery.data).slice(0, 3).map(event => (
               <EventCard 
                 key={event.id} 
                 event={event} 

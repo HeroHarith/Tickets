@@ -216,7 +216,7 @@ const Home = () => {
           </div>
         ) : featuredEventsQuery.data && featuredEventsQuery.data.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {featuredEventsQuery.data.slice(0, 3).map(event => (
+            {filterAndSortEvents(featuredEventsQuery.data).slice(0, 3).map(event => (
               <EventCard 
                 key={event.id} 
                 event={event} 

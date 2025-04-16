@@ -96,7 +96,8 @@ const EventDetails = () => {
     queryFn: async () => {
       const res = await fetch(`/api/events/${eventId}`);
       if (!res.ok) throw new Error("Failed to fetch event details");
-      return res.json();
+      const response = await res.json();
+      return response.data; // Extract the data property from the API response
     }
   });
   

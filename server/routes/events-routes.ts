@@ -84,7 +84,7 @@ router.get('/managed-with-sales', requireRole(["eventManager", "admin"]), async 
 
 /**
  * @route GET /api/events/:id
- * @desc Get event by ID
+ * @desc Get event by ID with ticket types
  * @access public
  */
 router.get('/:id', async (req: Request, res: Response) => {
@@ -96,7 +96,15 @@ router.get('/:id', async (req: Request, res: Response) => {
       return res.status(404).json(errorResponse('Event not found', 404));
     }
     
-    return res.json(successResponse(event, 200, 'Event retrieved successfully'));
+    // Get ticket types for this event
+    const ticketTypes = await storage.getTicketTypes(id);
+    
+    // Return event with ticket types
+    return res.json(successResponse(
+      { ...event, ticketTypes },
+      200, 
+      'Event retrieved successfully'
+    ));
   } catch (error: any) {
     console.error('Error fetching event:', error);
     return res.status(500).json(errorResponse(error.message, 500));

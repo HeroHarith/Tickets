@@ -230,6 +230,20 @@ const EventDetails = () => {
       return;
     }
     
+    // Validate gift ticket recipients before proceeding
+    const hasInvalidGiftTickets = ticketSelections
+      .filter(ts => ts.isGift)
+      .some(ts => !ts.giftRecipients || ts.giftRecipients.length !== ts.quantity);
+      
+    if (hasInvalidGiftTickets) {
+      toast({
+        title: "Gift Ticket Information Required",
+        description: "Please add recipient information for all gift tickets before checkout.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setShowCheckout(true);
   };
   
@@ -291,16 +305,47 @@ const EventDetails = () => {
         variant: "default",
       });
       
+      // Validate gift tickets
+      const hasInvalidGiftTickets = ticketSelections
+        .filter(ts => ts.isGift)
+        .some(ts => !ts.giftRecipients || ts.giftRecipients.length !== ts.quantity);
+        
+      if (hasInvalidGiftTickets) {
+        setPaymentError('Please ensure all gift tickets have recipient information');
+        setIsProcessingPayment(false);
+        toast({
+          title: "Validation Error",
+          description: "Please add recipient information for all gift tickets before checkout.",
+          variant: "destructive",
+        });
+        setShowCheckout(false);
+        return;
+      }
+      
       // Store the purchase data in local storage to be used after payment completes
       localStorage.setItem('pendingPurchase', JSON.stringify({
         eventId,
         customerDetails,
         ticketSelections: ticketSelections
           .filter(ts => ts.quantity > 0)
-          .map(ts => ({
-            ...ts,
-            attendeeDetails: ts.attendeeDetails || Array(ts.quantity).fill(customerDetails)
-          })),
+          .map(ts => {
+            // If it's a gift ticket, use the gift recipients
+            if (ts.isGift && ts.giftRecipients) {
+              return {
+                ...ts,
+                // Keep the gift recipient data for gift tickets
+                giftRecipients: ts.giftRecipients,
+                // Still need attendeeDetails with buyer info for the system
+                attendeeDetails: Array(ts.quantity).fill(customerDetails)
+              };
+            }
+            
+            // Regular tickets just use the customer details
+            return {
+              ...ts,
+              attendeeDetails: ts.attendeeDetails || Array(ts.quantity).fill(customerDetails)
+            };
+          }),
         sessionId: paymentSession.session_id
       }));
       

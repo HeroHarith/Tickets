@@ -140,6 +140,38 @@ router.post('/',
 });
 
 /**
+ * @route GET /api/events/:id/tickets
+ * @desc Get all tickets for an event
+ * @access eventManager, admin
+ */
+router.get('/:id/tickets', 
+  requireRole(["eventManager", "admin"]), 
+  async (req: Request, res: Response) => {
+    try {
+      const eventId = parseInt(req.params.id);
+      
+      // Get event
+      const event = await storage.getEvent(eventId);
+      if (!event) {
+        return res.status(404).json(errorResponse('Event not found', 404));
+      }
+      
+      // Check if user has access to the event (only if they're an event manager)
+      if (req.user.role === 'eventManager' && event.managerId !== req.user.id) {
+        return res.status(403).json(errorResponse('Access denied', 403));
+      }
+      
+      // Get all tickets for this event
+      const tickets = await storage.getEventTickets(eventId);
+      
+      return res.json(successResponse(tickets, 200, 'Event tickets retrieved successfully'));
+    } catch (error: any) {
+      console.error('Error fetching event tickets:', error);
+      return res.status(500).json(errorResponse(error.message, 500));
+    }
+});
+
+/**
  * @route GET /api/events/:id/sales
  * @desc Get sales data for an event
  * @access eventManager, admin

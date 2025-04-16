@@ -487,18 +487,13 @@ const EventDetails = () => {
   // Format dates
   const formatEventDate = () => {
     // Make sure startDate is valid before creating a Date object
-    if (!startDate || isNaN(Date.parse(startDate))) {
+    if (!startDate) {
       return "Date not specified";
     }
     
     const start = new Date(startDate);
     
     if (!endDate) {
-      return format(start, "MMMM d, yyyy");
-    }
-    
-    // Make sure endDate is valid before creating a Date object
-    if (isNaN(Date.parse(endDate))) {
       return format(start, "MMMM d, yyyy");
     }
     

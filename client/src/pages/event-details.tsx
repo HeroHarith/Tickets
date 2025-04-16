@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
-import { useState } from "react";
-import { Calendar, MapPin, CreditCard, Mail, User, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Calendar, MapPin, CreditCard, Mail, User, Loader2, CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { queryClient } from "@/lib/queryClient";
@@ -21,6 +21,8 @@ import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card"
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import PaymentService, { CustomerDetails } from "@/services/PaymentService";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 
 type GiftRecipient = {
   name?: string;
@@ -204,6 +206,24 @@ const EventDetails = () => {
     );
   };
   
+  // Handle date selection for multi-day events
+  const handleDateSelection = (ticketTypeId: number, date: Date | undefined) => {
+    // Update selected date for this ticket type
+    setSelectedDates(prev => ({
+      ...prev,
+      [ticketTypeId]: date || null
+    }));
+    
+    // Update the ticket selection with the selected date
+    setTicketSelections(current => 
+      current.map(ts => 
+        ts.ticketTypeId === ticketTypeId 
+          ? { ...ts, eventDate: date } 
+          : ts
+      )
+    );
+  };
+  
   const calculateTotal = () => {
     if (!eventQuery.data?.ticketTypes) return 0;
     
@@ -247,6 +267,19 @@ const EventDetails = () => {
         variant: "destructive",
       });
       return;
+    }
+    
+    // For multi-day events, validate that dates are selected
+    if (isMultiDayEvent) {
+      const missingDates = ticketSelections.some(ts => !ts.eventDate);
+      if (missingDates) {
+        toast({
+          title: "Date Selection Required",
+          description: "Please select a date for each ticket type before proceeding to checkout.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
     
     setShowCheckout(true);
@@ -348,6 +381,8 @@ const EventDetails = () => {
             // Regular tickets just use the customer details
             return {
               ...ts,
+              // Keep the eventDate for multi-day events
+              eventDate: ts.eventDate,
               attendeeDetails: ts.attendeeDetails || Array(ts.quantity).fill(customerDetails)
             };
           }),
@@ -601,6 +636,55 @@ const EventDetails = () => {
                   
                   {getTicketQuantity(ticketType.id) > 0 && (
                     <div className="mt-2">
+                      {/* For multi-day events, show date picker */}
+                      {isMultiDayEvent && (
+                        <div className="mb-3">
+                          <div className="flex items-center mb-1">
+                            <CalendarIcon className="h-4 w-4 mr-1 text-gray-500" />
+                            <Label className="text-sm font-medium">Select Date</Label>
+                          </div>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className={`w-full justify-start text-left font-normal ${
+                                  !selectedDates[ticketType.id] ? "text-gray-400" : ""
+                                }`}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {selectedDates[ticketType.id] ? (
+                                  format(selectedDates[ticketType.id]!, "PPP")
+                                ) : (
+                                  <span>Select a date</span>
+                                )}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <CalendarComponent
+                                mode="single"
+                                selected={selectedDates[ticketType.id] || undefined}
+                                onSelect={(date) => handleDateSelection(ticketType.id, date)}
+                                disabled={(date) => {
+                                  // Disable dates outside the event date range
+                                  if (startDate && endDate) {
+                                    const start = new Date(startDate);
+                                    const end = new Date(endDate);
+                                    return date < start || date > end;
+                                  }
+                                  return false;
+                                }}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          {getTicketQuantity(ticketType.id) > 0 && !selectedDates[ticketType.id] && (
+                            <div className="mt-1 text-xs text-amber-600">
+                              Please select a date for this ticket.
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
                       <div className="flex items-center">
                         <Checkbox 
                           id={`gift-${ticketType.id}`}
@@ -706,9 +790,16 @@ const EventDetails = () => {
                   const ticketType = ticketTypes?.find(tt => tt.id === selection.ticketTypeId);
                   if (!ticketType) return null;
                   return (
-                    <div key={ticketType.id} className="flex justify-between mb-2">
-                      <span>{ticketType.name} x{selection.quantity}</span>
-                      <span>${(Number(ticketType.price) * selection.quantity).toFixed(2)}</span>
+                    <div key={ticketType.id} className="mb-2">
+                      <div className="flex justify-between">
+                        <span>{ticketType.name} x{selection.quantity}</span>
+                        <span>${(Number(ticketType.price) * selection.quantity).toFixed(2)}</span>
+                      </div>
+                      {isMultiDayEvent && selection.eventDate && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          Date: {format(selection.eventDate, "MMMM d, yyyy")}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -870,9 +961,16 @@ const EventDetails = () => {
                         const ticketType = ticketTypes?.find(tt => tt.id === selection.ticketTypeId);
                         if (!ticketType) return null;
                         return (
-                          <div key={ticketType.id} className="flex justify-between mb-2">
-                            <span>{ticketType.name} x{selection.quantity}</span>
-                            <span>${(Number(ticketType.price) * selection.quantity).toFixed(2)}</span>
+                          <div key={ticketType.id} className="mb-2">
+                            <div className="flex justify-between">
+                              <span>{ticketType.name} x{selection.quantity}</span>
+                              <span>${(Number(ticketType.price) * selection.quantity).toFixed(2)}</span>
+                            </div>
+                            {isMultiDayEvent && selection.eventDate && (
+                              <div className="text-xs text-gray-500 mt-1">
+                                Date: {format(selection.eventDate, "MMMM d, yyyy")}
+                              </div>
+                            )}
                           </div>
                         );
                       })}

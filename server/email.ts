@@ -53,6 +53,14 @@ interface TicketDetails {
 }
 
 /**
+ * Interface for gift ticket email data
+ */
+interface GiftTicketDetails extends TicketDetails {
+  senderName: string;
+  giftMessage?: string;
+}
+
+/**
  * Interface for verification email data
  */
 interface VerificationEmailDetails {
@@ -440,6 +448,151 @@ export async function sendTicketConfirmationEmail(details: TicketDetails): Promi
     return true;
   } catch (error) {
     console.error('Failed to send ticket confirmation email:', error);
+    console.error('Error details:', JSON.stringify(error, null, 2));
+    console.error('Email configuration:', {
+      from: emailContent.from,
+      to: emailContent.to,
+      subject: emailContent.subject,
+      emailProvider: process.env.GMAIL_EMAIL ? 'Gmail' : 'Not configured',
+      hasCredentials: !!process.env.GMAIL_APP_PASSWORD
+    });
+    return false;
+  }
+}
+
+/**
+ * Send a gift ticket email to a recipient
+ */
+export async function sendGiftTicketEmail(details: GiftTicketDetails): Promise<boolean> {
+  if (!transporter) {
+    console.error('Email transporter not initialized. Check email credentials.');
+    return false;
+  }
+  
+  const { ticket, event, ticketType, attendeeEmail, attendeeName, qrCodeDataUrl, senderName, giftMessage } = details;
+  
+  // Format date for display
+  const eventDate = new Date(event.startDate);
+  const formattedDate = eventDate.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+  
+  const formattedTime = eventDate.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  // Generate a ticket number for display purposes
+  const ticketNumber = `T-${ticket.id}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+  
+  // Generate wallet pass URLs
+  const appleWalletUrl = generateAppleWalletPassUrl({
+    event,
+    ticket,
+    ticketType,
+    attendeeName,
+    qrCodeDataUrl
+  });
+  
+  const googlePayUrl = generateGooglePayPassUrl({
+    event,
+    ticket,
+    ticketType,
+    attendeeName,
+    qrCodeDataUrl
+  });
+  
+  // Email content with both HTML and plain text versions
+  const emailContent = {
+    from: `"Event Ticketing" <${process.env.GMAIL_EMAIL}>`,
+    to: attendeeEmail,
+    subject: `You've Been Gifted a Ticket for ${event.title}`,
+    text: `
+      Hello ${attendeeName},
+      
+      You've received a ticket for ${event.title} as a gift from ${senderName}!
+      
+      ${giftMessage ? `Message from ${senderName}: "${giftMessage}"` : ''}
+      
+      EVENT: ${event.title}
+      DATE: ${formattedDate}
+      TIME: ${formattedTime}
+      LOCATION: ${event.location}
+      TICKET TYPE: ${ticketType.name}
+      TICKET #: ${ticketNumber}
+      
+      Please show the QR code when you arrive at the event.
+      
+      You can add this ticket to your mobile wallet:
+      - Apple Wallet: ${appleWalletUrl}
+      - Google Pay: ${googlePayUrl}
+      
+      We look forward to seeing you!
+    `,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e1e1e1; border-radius: 8px;">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <h1 style="color: #6366F1; margin-bottom: 5px;">You've Been Gifted a Ticket!</h1>
+          <p style="color: #4b5563; font-size: 16px;">Hello ${attendeeName}!</p>
+        </div>
+        
+        <div style="background-color: #f9f9f9; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+          <p>You've received a ticket for <strong>${event.title}</strong> as a gift from <strong>${senderName}</strong>!</p>
+          
+          ${giftMessage ? `
+          <div style="background-color: #f0f4ff; border-radius: 8px; padding: 15px; margin: 15px 0; border-left: 4px solid #6366F1;">
+            <p style="margin: 0; font-style: italic;">Message from ${senderName}:</p>
+            <p style="margin: 10px 0 0 0;">"${giftMessage}"</p>
+          </div>
+          ` : ''}
+          
+          <h2 style="color: #111827; margin-top: 20px;">${event.title}</h2>
+          <p style="margin: 8px 0;"><strong>Date:</strong> ${formattedDate}</p>
+          <p style="margin: 8px 0;"><strong>Time:</strong> ${formattedTime}</p>
+          <p style="margin: 8px 0;"><strong>Location:</strong> ${event.location}</p>
+          <p style="margin: 8px 0;"><strong>Ticket Type:</strong> ${ticketType.name}</p>
+          <p style="margin: 8px 0;"><strong>Ticket #:</strong> ${ticketNumber}</p>
+        </div>
+        
+        <div style="text-align: center; margin-bottom: 20px;">
+          <p style="margin-bottom: 10px; font-weight: bold;">Your Ticket QR Code</p>
+          <img src="${qrCodeDataUrl}" alt="Ticket QR Code" style="max-width: 200px; border: 1px solid #e1e1e1; padding: 10px; border-radius: 4px;"/>
+          <p style="font-size: 14px; color: #6b7280; margin-top: 10px;">Please show this QR code when you arrive at the event</p>
+        </div>
+        
+        <div style="text-align: center; margin-bottom: 20px;">
+          <p style="margin-bottom: 10px; font-weight: bold;">Add to Your Mobile Wallet</p>
+          <div>
+            <a href="${appleWalletUrl}" style="display: inline-block; margin: 10px; text-decoration: none;">
+              <img src="https://developer.apple.com/wallet/add-to-apple-wallet-guidelines/images/add-to-apple-wallet-badge.svg" alt="Add to Apple Wallet" style="height: 44px;">
+            </a>
+          </div>
+          <div>
+            <a href="${googlePayUrl}" style="display: inline-block; margin: 10px; text-decoration: none;">
+              <img src="https://developers.google.com/static/pay/api/images/brand-guidelines/google-pay-mark.svg" alt="Add to Google Pay" style="height: 36px; background-color: #000; padding: 8px; border-radius: 4px;">
+            </a>
+          </div>
+        </div>
+        
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e1e1e1; text-align: center; color: #6b7280; font-size: 14px;">
+          <p>If you have any questions, please contact us at ${process.env.GMAIL_EMAIL}</p>
+        </div>
+      </div>
+    `,
+  };
+
+  try {
+    console.log(`Attempting to send gift ticket email to ${attendeeEmail}`);
+    const info = await transporter.sendMail(emailContent);
+    console.log(`Gift ticket email sent to ${attendeeEmail}`);
+    console.log('Email response:', info.response);
+    console.log('Message ID:', info.messageId);
+    return true;
+  } catch (error) {
+    console.error('Failed to send gift ticket email:', error);
     console.error('Error details:', JSON.stringify(error, null, 2));
     console.error('Email configuration:', {
       from: emailContent.from,

@@ -923,7 +923,14 @@ export class OptimizedStorage implements IStorage {
       const isConferenceOrExhibition = event.eventType === 'conference';
       
       for (const selection of ticketSelections) {
-        const { ticketTypeId, quantity, attendeeDetails = [], badgeInfo = [] } = selection;
+        const { 
+          ticketTypeId, 
+          quantity, 
+          attendeeDetails = [], 
+          badgeInfo = [],
+          isGift = false,
+          giftRecipients = []
+        } = selection;
         
         // Get ticket type
         const [ticketType] = await tx.select()
@@ -1009,8 +1016,53 @@ export class OptimizedStorage implements IStorage {
           // Update our local ticket object with QR code
           ticket.qrCode = qrCodeDataURL;
           
-          // Send email confirmation with the ticket details
-          if (customerDetails && customerDetails.email) {
+          // Check if this is a gift ticket
+          if (isGift && giftRecipients.length > 0) {
+            // Send gift email to each recipient
+            for (const recipient of giftRecipients) {
+              try {
+                const emailSent = await sendGiftTicketEmail({
+                  ticket,
+                  event,
+                  ticketType,
+                  attendeeEmail: recipient.email,
+                  attendeeName: recipient.name || recipient.email.split('@')[0],
+                  qrCodeDataUrl: qrCodeDataURL,
+                  senderName: customerDetails.fullName,
+                  giftMessage: recipient.message
+                });
+                
+                if (emailSent) {
+                  // Update the ticket with email sent status
+                  await tx.update(tickets)
+                    .set({ emailSent: true })
+                    .where(eq(tickets.id, ticket.id));
+                  
+                  ticket.emailSent = true;
+                }
+              } catch (emailError) {
+                console.error('Error sending gift ticket email:', emailError);
+                // Continue even if email sending fails
+              }
+            }
+            
+            // Also send a confirmation to the purchaser
+            try {
+              await sendTicketConfirmationEmail({
+                ticket,
+                event,
+                ticketType,
+                attendeeEmail: customerDetails.email,
+                attendeeName: customerDetails.fullName,
+                qrCodeDataUrl: qrCodeDataURL
+              });
+            } catch (emailError) {
+              console.error('Error sending purchaser confirmation email:', emailError);
+              // Continue even if email sending fails
+            }
+          }
+          // Send regular email confirmation if not a gift ticket
+          else if (customerDetails && customerDetails.email) {
             try {
               const emailSent = await sendTicketConfirmationEmail({
                 ticket,

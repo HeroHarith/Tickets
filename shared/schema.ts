@@ -49,6 +49,7 @@ export const events = pgTable("events", {
   organizer: integer("organizer_id").notNull(), // References users.id
   createdAt: timestamp("created_at").defaultNow().notNull(),
   featured: boolean("featured").default(false).notNull(),
+  isMultiDay: boolean("is_multi_day").default(false), // Flag for multi-day events
 });
 
 // Ticket Type model
@@ -166,6 +167,8 @@ export const createEventSchema = insertEventSchema.extend({
   // Optional fields for speakers and workshops
   speakers: z.array(z.any()).optional().default([]),
   workshops: z.array(z.any()).optional().default([]),
+  // Flag for multi-day events, automatically determined based on start and end dates
+  isMultiDay: z.boolean().optional().default(false),
 });
 
 export type CreateEventInput = z.infer<typeof createEventSchema>;

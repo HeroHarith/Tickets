@@ -179,6 +179,15 @@ export const purchaseTicketSchema = z.object({
       badgeInfo: z.array(badgeInfoSchema)
         .optional()
         .default([]),
+      // Support for gifting tickets to recipients
+      isGift: z.boolean().optional().default(false),
+      giftRecipients: z.array(
+        z.object({
+          email: z.string().email("Valid recipient email is required"),
+          name: z.string().optional(),
+          message: z.string().optional(),
+        })
+      ).optional().default([]),
     })
   ).min(1, "At least one ticket must be selected"),
   eventId: z.number(),

@@ -80,6 +80,8 @@ export const tickets = pgTable("tickets", {
   attendeeDetails: jsonb("attendee_details"), // Store customer details for each ticket
   emailSent: boolean("email_sent").default(false).notNull(), // Track if confirmation email was sent
   paymentSessionId: text("payment_session_id"), // Thawani payment session ID
+  // Multi-day event support
+  eventDate: timestamp("event_date"), // Specific date for multi-day events
   // Digital pass features
   passId: text("pass_id"), // Unique identifier for digital pass
   passUrl: text("pass_url"), // URL to download the digital pass
@@ -173,6 +175,13 @@ export const purchaseTicketSchema = z.object({
     z.object({
       ticketTypeId: z.number(),
       quantity: z.number().min(1),
+      // For multi-day events, specify the date for this ticket
+      eventDate: z.preprocess(
+        (val) => val === null || val === undefined ? null : (val instanceof Date ? val : new Date(val as string)),
+        z.date({
+          invalid_type_error: "Event date must be a valid date"
+        }).nullable().optional()
+      ),
       attendeeDetails: z.array(attendeeDetailsSchema)
         .optional()
         .default([]),
@@ -193,6 +202,8 @@ export const purchaseTicketSchema = z.object({
   eventId: z.number(),
   isDigitalPass: z.boolean().optional().default(false),
   passType: z.enum(['standard', 'apple-wallet', 'google-wallet']).optional(),
+  // Indicates if this is a multi-day event booking
+  isMultiDay: z.boolean().optional().default(false),
   // Primary attendee/purchaser details
   customerDetails: attendeeDetailsSchema
 });

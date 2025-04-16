@@ -46,7 +46,23 @@ export const PaymentService = {
         }
         
         // Convert price to smallest unit (assuming cents/baisa) and calculate subtotal
-        const priceInSmallestUnit = Math.round(parseFloat(ticketType.price) * 100);
+        // For free tickets (price = 0), use a minimum price of 1 baisa
+        let priceInSmallestUnit = Math.round(parseFloat(ticketType.price) * 100);
+        if (priceInSmallestUnit === 0) {
+          // Handle free tickets - some payment gateways don't accept zero payments
+          // Check if all ticket types selected are free
+          const allTicketsAreFree = Object.entries(quantities).every(([id, qty]) => {
+            const tt = ticketTypes.find((t: any) => t.id === parseInt(id));
+            return tt && parseFloat(tt.price) === 0;
+          });
+          
+          if (allTicketsAreFree) {
+            // If all tickets are free, set at least one ticket to have minimal price
+            // to satisfy payment gateway requirements
+            priceInSmallestUnit = 1; // 1 baisa = 0.001 OMR
+          }
+        }
+        
         return {
           ticketTypeId: parseInt(ticketTypeId),
           quantity,

@@ -36,11 +36,17 @@ router.post('/tickets', requireRole(["customer", "admin"]), async (req: Request,
     const validatedData = paymentSchema.parse(req.body);
     
     // Format items for Thawani
-    const paymentItems: ProductDetails[] = validatedData.items.map(item => ({
-      name: `Ticket Type #${item.ticketTypeId}`,
-      quantity: item.quantity,
-      unitAmount: Math.round(item.subtotal / item.quantity),
-    }));
+    const paymentItems: ProductDetails[] = validatedData.items.map(item => {
+      // Handle zero price tickets - Thawani might not accept 0 as a valid price
+      // So we set a minimum price of 1 baisa (0.001 OMR) for free tickets
+      const unitAmount = Math.max(1, Math.round(item.subtotal / item.quantity));
+      
+      return {
+        name: `Ticket Type #${item.ticketTypeId}`,
+        quantity: item.quantity,
+        unitAmount
+      };
+    });
     
     // Set up customer details
     const customerDetails: CustomerDetails = {

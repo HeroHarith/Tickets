@@ -573,6 +573,8 @@ export const subscriptionPlans = pgTable("subscription_plans", {
   type: text("type").notNull(), // eventManager or center
   price: numeric("price", { precision: 10, scale: 2 }).notNull(),
   billingPeriod: text("billing_period").notNull(), // monthly or yearly
+  maxEventsAllowed: integer("max_events_allowed").default(0), // Maximum number of events allowed (0 = unlimited)
+  serviceFeePercentage: numeric("service_fee_percentage", { precision: 5, scale: 2 }).default("0"), // Service fee percentage
   features: jsonb("features"), // Array of features included in the plan
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -586,6 +588,10 @@ export const subscriptions = pgTable("subscriptions", {
   startDate: timestamp("start_date").defaultNow().notNull(),
   endDate: timestamp("end_date").notNull(),
   status: text("status").default("active").notNull(), // active, cancelled, expired
+  eventsCreated: integer("events_created").default(0).notNull(), // Number of events created under this subscription
+  totalTicketsSold: integer("total_tickets_sold").default(0).notNull(), // Total number of tickets sold under this subscription
+  totalSalesAmount: numeric("total_sales_amount", { precision: 10, scale: 2 }).default("0").notNull(), // Total sales amount
+  totalServiceFees: numeric("total_service_fees", { precision: 10, scale: 2 }).default("0").notNull(), // Total service fees collected
   paymentSessionId: text("payment_session_id"), // Thawani payment session ID
   renewalSessionId: text("renewal_session_id"), // For tracking renewal payments
   metadata: jsonb("metadata"), // Additional subscription data

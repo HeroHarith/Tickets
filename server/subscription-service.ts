@@ -80,6 +80,8 @@ export async function createSubscriptionPlan(data: {
   type: string;
   price: number;
   billingPeriod: string;
+  maxEventsAllowed?: number;
+  serviceFeePercentage?: number;
   features: object;
   isActive?: boolean;
 }): Promise<SubscriptionPlan> {
@@ -91,6 +93,11 @@ export async function createSubscriptionPlan(data: {
   // Convert string price to numeric if needed
   const price = typeof data.price === 'string' ? parseFloat(data.price) : data.price;
   
+  // Convert string serviceFeePercentage to numeric if needed
+  const serviceFeePercentage = data.serviceFeePercentage !== undefined 
+    ? (typeof data.serviceFeePercentage === 'string' ? parseFloat(data.serviceFeePercentage) : data.serviceFeePercentage)
+    : 0;
+  
   // Create the plan
   const [plan] = await db.insert(subscriptionPlans)
     .values({
@@ -99,6 +106,8 @@ export async function createSubscriptionPlan(data: {
       type: data.type,
       price: price.toString(), // Convert to string for numeric field
       billingPeriod: data.billingPeriod,
+      maxEventsAllowed: data.maxEventsAllowed || 0, // 0 means unlimited
+      serviceFeePercentage: serviceFeePercentage.toString(), // Convert to string for numeric field
       features: data.features,
       isActive: data.isActive ?? true,
     })
@@ -118,6 +127,8 @@ export async function updateSubscriptionPlan(
     type: string;
     price: number;
     billingPeriod: string;
+    maxEventsAllowed: number;
+    serviceFeePercentage: number;
     features: object;
     isActive: boolean;
   }>
@@ -135,6 +146,15 @@ export async function updateSubscriptionPlan(
     priceStr = price.toString();
   }
   
+  // Convert string serviceFeePercentage to numeric if needed
+  let serviceFeePercentageStr = undefined;
+  if (data.serviceFeePercentage !== undefined) {
+    const serviceFeePercentage = typeof data.serviceFeePercentage === 'string' 
+      ? parseFloat(data.serviceFeePercentage) 
+      : data.serviceFeePercentage;
+    serviceFeePercentageStr = serviceFeePercentage.toString();
+  }
+  
   // Update the plan
   const [updatedPlan] = await db.update(subscriptionPlans)
     .set({
@@ -143,6 +163,8 @@ export async function updateSubscriptionPlan(
       type: data.type,
       price: priceStr,
       billingPeriod: data.billingPeriod,
+      maxEventsAllowed: data.maxEventsAllowed,
+      serviceFeePercentage: serviceFeePercentageStr,
       features: data.features,
       isActive: data.isActive,
     })

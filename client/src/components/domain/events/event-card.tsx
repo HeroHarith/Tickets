@@ -14,6 +14,9 @@ interface EventCardProps {
 }
 
 export function EventCard({ event, ticketTypes, featured = false, className = "" }: EventCardProps) {
+  // Check if event is past
+  const isPastEvent = new Date(event.startDate) < new Date();
+  
   const lowestPrice = ticketTypes && ticketTypes.length > 0
     ? Math.min(...ticketTypes.map(t => Number(t.price)))
     : null;
@@ -50,11 +53,16 @@ export function EventCard({ event, ticketTypes, featured = false, className = ""
         <img 
           src={event.imageUrl || "https://placehold.co/800x400/e2e8f0/64748b?text=Event+Image"} 
           alt={event.title} 
-          className="w-full h-48 object-cover"
+          className={`w-full h-48 object-cover ${isPastEvent ? 'opacity-60 grayscale' : ''}`}
         />
         {featured && (
           <div className="absolute top-2 right-2 bg-primary text-white text-xs font-bold px-3 py-1 rounded-full">
             Featured
+          </div>
+        )}
+        {isPastEvent && (
+          <div className="absolute top-2 left-2 bg-gray-700 text-white text-xs font-bold px-3 py-1 rounded-full">
+            Past Event
           </div>
         )}
         <div className="absolute -bottom-4 right-4">
@@ -89,11 +97,11 @@ export function EventCard({ event, ticketTypes, featured = false, className = ""
           
           <Link href={`/events/${event.id}`}>
             <Button 
-              variant="default" 
-              className="text-sm"
+              variant={isPastEvent ? "outline" : "default"} 
+              className={`text-sm ${isPastEvent ? 'text-gray-500' : ''}`}
               size="sm"
             >
-              View Event
+              {isPastEvent ? 'Past Event Details' : 'View Event'}
             </Button>
           </Link>
         </div>

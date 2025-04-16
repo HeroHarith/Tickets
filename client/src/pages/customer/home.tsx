@@ -111,13 +111,20 @@ const Home = () => {
     }
   });
   
-  // Sort events
-  const sortEvents = (events: Event[]) => {
+  // Filter out past events
+  const filterAndSortEvents = (events: Event[]) => {
     if (!events) return [];
     
-    return [...events].sort((a, b) => {
+    // First filter out past events
+    const now = new Date();
+    const upcomingEvents = events.filter(event => {
+      return new Date(event.startDate) > now;
+    });
+    
+    // Then sort the remaining upcoming events
+    return [...upcomingEvents].sort((a, b) => {
       if (sortBy === "date") {
-        return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
+        return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
       } else if (sortBy === "price-low") {
         // Sort by lowest ticket price if we have ticket types
         if (ticketTypesQueries.data) {
@@ -151,7 +158,7 @@ const Home = () => {
       }
       
       // Default to date sort
-      return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
+      return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
     });
   };
   

@@ -118,7 +118,6 @@ router.get('/:id', async (req: Request, res: Response) => {
  */
 router.post('/', 
   requireRole(["eventManager", "admin"]), 
-  requireSubscription(["eventManager"]), 
   async (req: Request, res: Response) => {
     try {
       // Validate input
@@ -178,7 +177,6 @@ router.get('/:id/tickets',
  */
 router.get('/:id/sales', 
   requireRole(["eventManager", "admin"]), 
-  requireSubscription(["eventManager"]), 
   async (req: Request, res: Response) => {
     try {
       const eventId = parseInt(req.params.id);

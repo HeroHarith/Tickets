@@ -402,6 +402,34 @@ const EventDetails = () => {
     }
   };
   
+  // Check if this is a multi-day event - moved above the conditional returns
+  useEffect(() => {
+    if (eventQuery.data && eventQuery.data.startDate && eventQuery.data.endDate && eventQuery.data.ticketTypes) {
+      const start = new Date(eventQuery.data.startDate);
+      const end = new Date(eventQuery.data.endDate);
+      
+      // If the start and end dates are different, it's a multi-day event
+      if (start.toDateString() !== end.toDateString()) {
+        setIsMultiDayEvent(true);
+        
+        // Generate dates between start and end date for selection
+        const dates: Date[] = [];
+        const currentDate = new Date(start);
+        while (currentDate <= end) {
+          dates.push(new Date(currentDate));
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+        
+        // Initialize date range for the event
+        const initialSelectedDates: Record<number, Date | null> = {};
+        eventQuery.data.ticketTypes.forEach(ticketType => {
+          initialSelectedDates[ticketType.id] = null;
+        });
+        setSelectedDates(initialSelectedDates);
+      }
+    }
+  }, [eventQuery.data]);
+  
   if (eventQuery.isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -451,34 +479,6 @@ const EventDetails = () => {
       </div>
     );
   }
-  
-  // Check if this is a multi-day event - moved above the conditional returns
-  useEffect(() => {
-    if (eventQuery.data && eventQuery.data.startDate && eventQuery.data.endDate && eventQuery.data.ticketTypes) {
-      const start = new Date(eventQuery.data.startDate);
-      const end = new Date(eventQuery.data.endDate);
-      
-      // If the start and end dates are different, it's a multi-day event
-      if (start.toDateString() !== end.toDateString()) {
-        setIsMultiDayEvent(true);
-        
-        // Generate dates between start and end date for selection
-        const dates: Date[] = [];
-        const currentDate = new Date(start);
-        while (currentDate <= end) {
-          dates.push(new Date(currentDate));
-          currentDate.setDate(currentDate.getDate() + 1);
-        }
-        
-        // Initialize date range for the event
-        const initialSelectedDates: Record<number, Date | null> = {};
-        eventQuery.data.ticketTypes.forEach(ticketType => {
-          initialSelectedDates[ticketType.id] = null;
-        });
-        setSelectedDates(initialSelectedDates);
-      }
-    }
-  }, [eventQuery.data]);
   
   if (!eventQuery.data) return null;
   

@@ -48,7 +48,8 @@ export default function CenterHomePage() {
   const rentals = rentalsResponse?.data || [];
 
   useEffect(() => {
-    if (venues && rentals) {
+    // Only update when venues and rentals have loaded and changed
+    if (!venuesLoading && !rentalsLoading && venues && rentals) {
       // Calculate summary data
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -62,13 +63,17 @@ export default function CenterHomePage() {
       );
       
       const todayRentals = rentals.filter(
-        (rental) => new Date(rental.startTime).getDate() === today.getDate() &&
-        new Date(rental.startTime).getMonth() === today.getMonth() &&
-        new Date(rental.startTime).getFullYear() === today.getFullYear()
+        (rental) => {
+          const rentalDate = new Date(rental.startTime);
+          return rentalDate.getDate() === today.getDate() &&
+            rentalDate.getMonth() === today.getMonth() &&
+            rentalDate.getFullYear() === today.getFullYear();
+        }
       );
       
-      const todayRevenue = todayRentals.reduce((acc, rental) => acc + Number(rental.totalPrice), 0);
+      const todayRevenue = todayRentals.reduce((acc, rental) => acc + Number(rental.totalPrice || 0), 0);
       
+      // Use a functional update to prevent potential dependency issues
       setSummaryData({
         totalVenues: venues.length,
         activeRentals: activeRentals.length,
@@ -76,7 +81,7 @@ export default function CenterHomePage() {
         todayRevenue: todayRevenue.toFixed(2)
       });
     }
-  }, [venues, rentals]);
+  }, [venues, rentals, venuesLoading, rentalsLoading]);
 
   // Loading state
   if (authLoading || venuesLoading || rentalsLoading) {

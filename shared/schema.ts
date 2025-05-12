@@ -188,6 +188,9 @@ export type InsertTicketType = z.infer<typeof insertTicketTypeSchema>;
 export type Ticket = typeof tickets.$inferSelect;
 export type InsertTicket = z.infer<typeof insertTicketSchema>;
 
+export type EventAttendee = typeof eventAttendees.$inferSelect;
+export type InsertEventAttendee = z.infer<typeof insertEventAttendeeSchema>;
+
 // Extended schemas for validation
 export const createEventSchema = insertEventSchema.extend({
   startDate: z.preprocess(

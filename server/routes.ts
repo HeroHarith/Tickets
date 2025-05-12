@@ -10,6 +10,7 @@ import cashiersRoutes from "./routes/cashiers-routes";
 import paymentsRoutes from "./routes/payments-routes";
 import authRoutes from "./routes/auth-routes";
 import subscriptionRoutes from "./routes/subscription-routes";
+import { eventAttendeesRoutes } from "./routes/event-attendees-routes";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication

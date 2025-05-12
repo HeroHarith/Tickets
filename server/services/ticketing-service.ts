@@ -7,10 +7,13 @@ import {
   ticketTypes,
   tickets,
   users,
+  eventAttendees,
   type Event,
   type TicketType,
   type Ticket,
-  type User
+  type User,
+  type EventAttendee,
+  type InsertEventAttendee
 } from '@shared/schema';
 import { 
   type EventSearchParams,
@@ -448,6 +451,127 @@ export class TicketingService {
       .where(eq(tickets.id, ticketId));
     
     this.invalidateCache('ticket', ticketId);
+    
+    return true;
+  }
+
+  /**
+   * Get event attendees
+   */
+  async getEventAttendees(eventId: number): Promise<EventAttendee[]> {
+    const cacheKey = this.getCacheKey('attendees', eventId);
+    const cached = this.cache.get<EventAttendee[]>(cacheKey);
+    
+    if (cached) {
+      return cached;
+    }
+    
+    const attendees = await db
+      .select()
+      .from(eventAttendees)
+      .where(eq(eventAttendees.eventId, eventId))
+      .orderBy(asc(eventAttendees.fullName));
+    
+    this.cache.set(cacheKey, attendees);
+    
+    return attendees;
+  }
+  
+  /**
+   * Get attendee by ID
+   */
+  async getAttendee(id: number): Promise<EventAttendee | undefined> {
+    const cacheKey = this.getCacheKey('attendee', id);
+    const cached = this.cache.get<EventAttendee>(cacheKey);
+    
+    if (cached) {
+      return cached;
+    }
+    
+    const [attendee] = await db
+      .select()
+      .from(eventAttendees)
+      .where(eq(eventAttendees.id, id));
+    
+    if (attendee) {
+      this.cache.set(cacheKey, attendee);
+    }
+    
+    return attendee;
+  }
+  
+  /**
+   * Add attendees to a private event
+   */
+  async addEventAttendees(
+    eventId: number,
+    attendeeList: InsertEventAttendee[]
+  ): Promise<EventAttendee[]> {
+    // Check if event exists and is private
+    const event = await this.getEvent(eventId);
+    
+    if (!event) {
+      throw new Error('Event not found');
+    }
+    
+    if (event.eventType !== 'private' && !event.isPrivate) {
+      throw new Error('Event is not a private event');
+    }
+    
+    // Insert all attendees
+    const attendees = await db
+      .insert(eventAttendees)
+      .values(attendeeList.map(a => ({ ...a, eventId })))
+      .returning();
+    
+    // Generate QR codes for each attendee
+    for (const attendee of attendees) {
+      const qrData = JSON.stringify({
+        attendeeId: attendee.id,
+        eventId: attendee.eventId,
+        name: attendee.fullName,
+        email: attendee.email
+      });
+      
+      const qrCode = await QRCode.toDataURL(qrData);
+      
+      await db
+        .update(eventAttendees)
+        .set({ qrCode })
+        .where(eq(eventAttendees.id, attendee.id));
+        
+      // Update the attendee in our response with the QR code
+      attendee.qrCode = qrCode;
+    }
+    
+    // Invalidate cache
+    this.invalidateCache('attendees', eventId);
+    
+    return attendees;
+  }
+  
+  /**
+   * Check in an attendee
+   */
+  async checkInAttendee(attendeeId: number): Promise<boolean> {
+    const attendee = await this.getAttendee(attendeeId);
+    
+    if (!attendee) {
+      throw new Error('Attendee not found');
+    }
+    
+    if (attendee.isCheckedIn) {
+      throw new Error('Attendee has already been checked in');
+    }
+    
+    // Mark attendee as checked in
+    await db
+      .update(eventAttendees)
+      .set({ isCheckedIn: true })
+      .where(eq(eventAttendees.id, attendeeId));
+    
+    this.invalidateCache('attendee', attendeeId);
+    this.invalidateCache('attendees', attendee.eventId);
     
     return true;
   }

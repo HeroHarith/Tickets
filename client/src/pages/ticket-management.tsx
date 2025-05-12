@@ -65,7 +65,7 @@ const TicketManagement = () => {
   });
   
   // Fetch tickets for the event
-  const ticketsQuery = useQuery<AttendeeTicket[]>({
+  const ticketsQuery = useQuery<{data: AttendeeTicket[], success: boolean, code: number}>({
     queryKey: [`/api/events/${eventId}/tickets`],
     enabled: eventId > 0,
     queryFn: async () => {
@@ -114,24 +114,26 @@ const TicketManagement = () => {
   };
   
   // Filter tickets based on search query
-  const filteredTickets = ticketsQuery.data ? ticketsQuery.data.filter(ticket => {
-    const searchString = searchQuery.toLowerCase();
-    
-    // Search through attendee details - with additional safety checks
-    const attendeeMatch = Array.isArray(ticket.attendeeDetails) && ticket.attendeeDetails.some(attendee => 
-      attendee && 
-      ((attendee.name && attendee.name.toLowerCase().includes(searchString)) || 
-       (attendee.email && attendee.email.toLowerCase().includes(searchString)))
-    );
-    
-    // Search through ticket type name
-    const ticketTypeMatch = ticket.ticketType?.name?.toLowerCase().includes(searchString);
-    
-    // Search through ticket ID
-    const ticketIdMatch = ticket.id.toString().includes(searchString);
-    
-    return attendeeMatch || ticketTypeMatch || ticketIdMatch;
-  }) : [];
+  const filteredTickets = ticketsQuery.data && Array.isArray(ticketsQuery.data.data) 
+    ? ticketsQuery.data.data.filter(ticket => {
+        const searchString = searchQuery.toLowerCase();
+        
+        // Search through attendee details - with additional safety checks
+        const attendeeMatch = Array.isArray(ticket.attendeeDetails) && ticket.attendeeDetails.some(attendee => 
+          attendee && 
+          ((attendee.name && attendee.name.toLowerCase().includes(searchString)) || 
+           (attendee.email && attendee.email.toLowerCase().includes(searchString)))
+        );
+        
+        // Search through ticket type name
+        const ticketTypeMatch = ticket.ticketType?.name?.toLowerCase().includes(searchString);
+        
+        // Search through ticket ID
+        const ticketIdMatch = ticket.id.toString().includes(searchString);
+        
+        return attendeeMatch || ticketTypeMatch || ticketIdMatch;
+      }) 
+    : [];
   
   if (!match || eventId <= 0) {
     return (
@@ -243,7 +245,7 @@ const TicketManagement = () => {
           </div>
           <div className="flex items-center">
             <Users className="h-4 w-4 mr-1" />
-            {ticketsQuery.data?.length || 0} Attendees
+            {ticketsQuery.data?.data?.length || 0} Attendees
           </div>
         </div>
       </div>
@@ -275,7 +277,7 @@ const TicketManagement = () => {
               <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-1">No Tickets Found</h3>
               <p className="text-gray-500">
-                {ticketsQuery.data?.length === 0 
+                {!ticketsQuery.data?.data?.length 
                   ? "No one has purchased tickets for this event yet." 
                   : "No tickets match your search criteria."}
               </p>
@@ -321,7 +323,7 @@ const TicketManagement = () => {
                         {ticket.ticketType?.name || "Unknown"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {format(new Date(ticket.purchaseDate), "MMM d, yyyy")}
+                        {ticket.purchaseDate ? format(new Date(ticket.purchaseDate), "MMM d, yyyy") : "N/A"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <Button

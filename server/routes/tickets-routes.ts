@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { optimizedStorage as storage } from '../optimized-storage';
+import { ticketingService } from '../services/ticketing-service';
 import { requireRole } from '../auth';
 import { successResponse, errorResponse } from '../utils/api-response';
 import { z } from 'zod';
@@ -20,7 +20,7 @@ router.get('/payment/:sessionId', requireRole(["customer", "admin"]), async (req
       return res.status(400).json(errorResponse('Session ID is required', 400));
     }
     
-    const tickets = await storage.getTicketsByPaymentSession(sessionId);
+    const tickets = await ticketingService.getTicketsByPaymentSession(sessionId);
     return res.json(successResponse(tickets, 200, 'Tickets retrieved successfully'));
   } catch (error: any) {
     console.error('Error fetching tickets by payment session:', error);
@@ -47,7 +47,7 @@ router.post('/purchase', requireRole(["customer", "admin"]), async (req: Request
     }
     
     // Purchase tickets
-    const tickets = await storage.purchaseTickets(purchaseInput, req.user.id);
+    const tickets = await ticketingService.purchaseTickets(purchaseInput, req.user?.id || 0);
     return res.status(201).json(successResponse(tickets, 201, 'Tickets purchased successfully'));
   } catch (error: any) {
     console.error('Error purchasing tickets:', error);
@@ -62,7 +62,7 @@ router.post('/purchase', requireRole(["customer", "admin"]), async (req: Request
  */
 router.get('/user', requireRole(["customer", "eventManager", "admin"]), async (req: Request, res: Response) => {
   try {
-    const tickets = await storage.getUserTickets(req.user.id);
+    const tickets = await ticketingService.getUserTickets(req.user?.id || 0);
     return res.json(successResponse(tickets, 200, 'User tickets retrieved successfully'));
   } catch (error: any) {
     console.error('Error fetching user tickets:', error);
@@ -82,7 +82,7 @@ router.get('/:id/qr', requireRole(["customer", "eventManager", "admin"]), async 
       return res.status(400).json(errorResponse('Invalid ticket ID', 400));
     }
     
-    const qrCodeDataUrl = await storage.generateTicketQR(ticketId);
+    const qrCodeDataUrl = await ticketingService.generateTicketQR(ticketId);
     return res.json(successResponse({ qrCodeDataUrl }, 200, 'Ticket QR code generated successfully'));
   } catch (error: any) {
     console.error('Error generating ticket QR code:', error);

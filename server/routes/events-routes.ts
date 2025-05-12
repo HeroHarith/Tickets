@@ -23,7 +23,7 @@ router.get('/', async (req: Request, res: Response) => {
       endDate: req.query.endDate ? new Date(req.query.endDate as string) : undefined,
       featured: req.query.featured === 'true' ? true : undefined,
       status: req.query.status as string | undefined,
-      managerId: req.query.managerId ? parseInt(req.query.managerId as string) : undefined,
+      organizer: req.query.managerId ? parseInt(req.query.managerId as string) : undefined,
     };
     
     try {

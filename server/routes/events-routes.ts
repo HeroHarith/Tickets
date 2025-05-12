@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { optimizedStorage as storage } from '../optimized-storage';
+import { ticketingService } from '../services/ticketing-service';
 import { requireRole } from '../auth';
 import { successResponse, errorResponse } from '../utils/api-response';
 import { createEventSchema, eventSearchSchema } from '@shared/schema';
@@ -36,7 +36,7 @@ router.get('/', async (req: Request, res: Response) => {
     }
     
     // Get events
-    const events = await storage.getEvents(searchParams);
+    const events = await ticketingService.getEvents(searchParams);
     return res.json(successResponse(events, 200, 'Events retrieved successfully'));
   } catch (error: any) {
     console.error('Error fetching events:', error);

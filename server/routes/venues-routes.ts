@@ -47,10 +47,10 @@ router.post('/', requireRole(["center", "admin"]), async (req: Request, res: Res
 
     const validatedData = venueSchema.parse(req.body);
     
-    // Add center ID
+    // Add ownerId (formerly centerId)
     const venue = {
       ...validatedData,
-      centerId: req.user.id,
+      ownerId: req.user?.id || 0
     };
 
     // Create venue
@@ -114,14 +114,14 @@ router.get('/sales-report', requireRole(["center", "admin"]), async (req: Reques
 router.get('/:id', requireRole(["center", "admin", "customer"]), async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
-    const venue = await storage.getVenue(id);
+    const venue = await venueService.getVenue(id);
     
     if (!venue) {
       return res.status(404).json(errorResponse('Venue not found', 404));
     }
     
     // Check if user has access to the venue
-    if (req.user.role === 'center' && venue.centerId !== req.user.id) {
+    if (req.user?.role === 'center' && venue.ownerId !== req.user.id) {
       return res.status(403).json(errorResponse('You do not have access to this venue', 403));
     }
     
@@ -140,14 +140,14 @@ router.get('/:id', requireRole(["center", "admin", "customer"]), async (req: Req
 router.patch('/:id', requireRole(["center", "admin"]), async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
-    const venue = await storage.getVenue(id);
+    const venue = await venueService.getVenue(id);
     
     if (!venue) {
       return res.status(404).json(errorResponse('Venue not found', 404));
     }
     
     // Check if user has access to update the venue
-    if (req.user.role === 'center' && venue.centerId !== req.user.id) {
+    if (req.user?.role === 'center' && venue.ownerId !== req.user.id) {
       return res.status(403).json(errorResponse('You do not have permission to update this venue', 403));
     }
     
@@ -169,7 +169,7 @@ router.patch('/:id', requireRole(["center", "admin"]), async (req: Request, res:
     const validatedData = updateSchema.parse(req.body);
     
     // Update venue
-    const updatedVenue = await storage.updateVenue(id, validatedData);
+    const updatedVenue = await venueService.updateVenue(id, validatedData);
     return res.json(successResponse(updatedVenue, 200, 'Venue updated successfully'));
   } catch (error: any) {
     console.error('Error updating venue:', error);
@@ -188,19 +188,19 @@ router.patch('/:id', requireRole(["center", "admin"]), async (req: Request, res:
 router.delete('/:id', requireRole(["center", "admin"]), async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
-    const venue = await storage.getVenue(id);
+    const venue = await venueService.getVenue(id);
     
     if (!venue) {
       return res.status(404).json(errorResponse('Venue not found', 404));
     }
     
     // Check if user has access to delete the venue
-    if (req.user.role === 'center' && venue.centerId !== req.user.id) {
+    if (req.user?.role === 'center' && venue.ownerId !== req.user.id) {
       return res.status(403).json(errorResponse('You do not have permission to delete this venue', 403));
     }
     
     // Delete venue
-    await storage.deleteVenue(id);
+    await venueService.deleteVenue(id);
     return res.json(successResponse(null, 200, 'Venue deleted successfully'));
   } catch (error: any) {
     console.error('Error deleting venue:', error);

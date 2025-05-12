@@ -1,9 +1,9 @@
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { ticketingService } from '../services/ticketing-service';
-import { requireAuthentication } from '../middleware/require-auth';
+import { requireLogin } from '../middleware/auth-middleware';
 import { requireRole } from '../auth';
-import { apiResponse } from '../utils/api-response';
+import { successResponse, errorResponse } from '../utils/api-response';
 import { 
   eventAttendeeSchema, 
   insertEventAttendeeSchema
@@ -15,8 +15,8 @@ const router = Router();
  * Get attendees for a private event
  */
 router.get('/:eventId/attendees', 
-  requireAuthentication,
-  async (req, res) => {
+  requireLogin,
+  async (req: Request, res: Response) => {
     try {
       const eventId = parseInt(req.params.eventId, 10);
       
@@ -24,19 +24,21 @@ router.get('/:eventId/attendees',
       const event = await ticketingService.getEvent(eventId);
       
       if (!event) {
-        return apiResponse(res, 404, false, null, 'Event not found');
+        return res.status(404).json(errorResponse('Event not found', 404));
       }
       
+      const user = req.user as any;
+      
       // Only event organizer or admin can see attendees
-      if (event.organizer !== req.user.id && req.user.role !== 'admin') {
-        return apiResponse(res, 403, false, null, 'Not authorized to view attendees');
+      if (event.organizer !== user.id && user.role !== 'admin') {
+        return res.status(403).json(errorResponse('Not authorized to view attendees', 403));
       }
       
       const attendees = await ticketingService.getEventAttendees(eventId);
       
-      return apiResponse(res, 200, true, attendees);
+      return res.json(successResponse(attendees, 200, 'Attendees retrieved successfully'));
     } catch (error: any) {
-      return apiResponse(res, 500, false, null, `Error fetching attendees: ${error.message}`);
+      return res.status(500).json(errorResponse(`Error fetching attendees: ${error.message}`, 500));
     }
   }
 );

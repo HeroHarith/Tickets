@@ -64,11 +64,14 @@ const UserProfile = () => {
             My Profile
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/my-tickets" className="w-full cursor-pointer">
-            My Tickets
-          </Link>
-        </DropdownMenuItem>
+        {/* Only show My Tickets for customer, eventManager, and admin roles - not for center role */}
+        {user.role !== 'center' && (
+          <DropdownMenuItem asChild>
+            <Link href="/my-tickets" className="w-full cursor-pointer">
+              My Tickets
+            </Link>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem asChild>
           <Link href="/settings" className="w-full cursor-pointer flex items-center">
             <CreditCard className="h-4 w-4 mr-2" />

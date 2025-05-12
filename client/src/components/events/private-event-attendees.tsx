@@ -113,6 +113,31 @@ export function PrivateEventAttendees({ eventId }: PrivateEventAttendeesProps) {
       });
     }
   });
+  
+  // Delete attendee mutation
+  const deleteAttendeeMutation = useMutation({
+    mutationFn: async (attendeeId: number) => {
+      const response = await apiRequest('DELETE', `/api/events/attendees/${attendeeId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Attendee removed",
+        description: "Attendee has been removed from the event",
+        variant: "default",
+      });
+      
+      // Refresh attendees list
+      queryClient.invalidateQueries({ queryKey: ['/api/events', eventId, 'attendees'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to remove attendee",
+        description: error.message || "There was an error removing the attendee",
+        variant: "destructive",
+      });
+    }
+  });
 
   const validateManualEntry = (): boolean => {
     try {
@@ -175,6 +200,12 @@ export function PrivateEventAttendees({ eventId }: PrivateEventAttendeesProps) {
 
   const handleCheckIn = (attendeeId: number) => {
     checkInMutation.mutate(attendeeId);
+  };
+
+  const handleDeleteAttendee = (attendeeId: number) => {
+    if (confirm("Are you sure you want to remove this attendee?")) {
+      deleteAttendeeMutation.mutate(attendeeId);
+    }
   };
 
   return (
@@ -365,8 +396,14 @@ Jane Smith, jane@example.com, +9876543210"
                             variant="outline"
                             size="sm"
                             className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => handleDeleteAttendee(attendee.id)}
+                            disabled={deleteAttendeeMutation.isPending}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            {deleteAttendeeMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
                           </Button>
                         </div>
                       </TableCell>

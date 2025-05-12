@@ -134,4 +134,44 @@ router.post('/attendees/:attendeeId/check-in',
   }
 );
 
+/**
+ * Delete an attendee
+ */
+router.delete('/attendees/:attendeeId', 
+  requireLogin,
+  requireRole(['eventManager', 'admin']),
+  async (req: Request, res: Response) => {
+    try {
+      const attendeeId = parseInt(req.params.attendeeId, 10);
+      
+      // Get attendee to verify permissions
+      const attendee = await ticketingService.getAttendee(attendeeId);
+      
+      if (!attendee) {
+        return res.status(404).json(errorResponse('Attendee not found', 404));
+      }
+      
+      // Get event to verify permissions
+      const event = await ticketingService.getEvent(attendee.eventId);
+      
+      if (!event) {
+        return res.status(404).json(errorResponse('Event not found', 404));
+      }
+      
+      const user = req.user as any;
+      
+      // Only event organizer or admin can delete attendees
+      if (event.organizer !== user.id && user.role !== 'admin') {
+        return res.status(403).json(errorResponse('Not authorized to delete attendees', 403));
+      }
+      
+      const result = await ticketingService.deleteAttendee(attendeeId);
+      
+      return res.json(successResponse({ success: result }, 200, 'Attendee deleted successfully'));
+    } catch (error: any) {
+      return res.status(500).json(errorResponse(`Error deleting attendee: ${error.message}`, 500));
+    }
+  }
+);
+
 export const eventAttendeesRoutes = router;

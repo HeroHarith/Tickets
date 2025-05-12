@@ -1045,6 +1045,14 @@ const EventDetails = () => {
           )}
         </div>
       </div>
+
+      {/* Private Event Attendees Management Section */}
+      {(eventType === 'private' || isPrivate) && user && (user.id === organizer || user.role === 'admin') && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-white rounded-lg shadow-sm mt-8">
+          <h2 className="text-2xl font-bold font-poppins text-gray-900 mb-6">Manage Event Attendees</h2>
+          <PrivateEventAttendees eventId={eventId} />
+        </div>
+      )}
     </div>
   );
 };

@@ -4,9 +4,12 @@ import { ticketingService } from '../services/ticketing-service';
 import { requireLogin } from '../middleware/auth-middleware';
 import { requireRole } from '../auth';
 import { successResponse, errorResponse } from '../utils/api-response';
+import QRCode from 'qrcode';
 import { 
   eventAttendeeSchema, 
-  insertEventAttendeeSchema
+  insertEventAttendeeSchema,
+  EventAttendee,
+  InsertEventAttendee
 } from '@shared/schema';
 
 const router = Router();
@@ -95,9 +98,9 @@ router.post('/:eventId/attendees',
  * Check in an attendee
  */
 router.post('/attendees/:attendeeId/check-in', 
-  requireAuthentication,
+  requireLogin,
   requireRole(['eventManager', 'admin']),
-  async (req, res) => {
+  async (req: Request, res: Response) => {
     try {
       const attendeeId = parseInt(req.params.attendeeId, 10);
       
@@ -105,26 +108,28 @@ router.post('/attendees/:attendeeId/check-in',
       const attendee = await ticketingService.getAttendee(attendeeId);
       
       if (!attendee) {
-        return apiResponse(res, 404, false, null, 'Attendee not found');
+        return res.status(404).json(errorResponse('Attendee not found', 404));
       }
       
       // Get event to verify permissions
       const event = await ticketingService.getEvent(attendee.eventId);
       
       if (!event) {
-        return apiResponse(res, 404, false, null, 'Event not found');
+        return res.status(404).json(errorResponse('Event not found', 404));
       }
       
+      const user = req.user as any;
+      
       // Only event organizer or admin can check in attendees
-      if (event.organizer !== req.user.id && req.user.role !== 'admin') {
-        return apiResponse(res, 403, false, null, 'Not authorized to check in attendees');
+      if (event.organizer !== user.id && user.role !== 'admin') {
+        return res.status(403).json(errorResponse('Not authorized to check in attendees', 403));
       }
       
       const result = await ticketingService.checkInAttendee(attendeeId);
       
-      return apiResponse(res, 200, true, { success: result });
+      return res.json(successResponse({ success: result }, 200, 'Attendee checked in successfully'));
     } catch (error: any) {
-      return apiResponse(res, 500, false, null, `Error checking in attendee: ${error.message}`);
+      return res.status(500).json(errorResponse(`Error checking in attendee: ${error.message}`, 500));
     }
   }
 );

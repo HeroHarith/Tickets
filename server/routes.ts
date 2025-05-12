@@ -28,6 +28,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Direct payment routes (these used to be at the root level)
   app.use("/payment", paymentsRoutes);
   
+  // Event attendees routes
+  app.use("/api/events", eventAttendeesRoutes);
+  
   // Create and return the HTTP server
   const httpServer = createServer(app);
   return httpServer;

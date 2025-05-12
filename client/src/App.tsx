@@ -14,7 +14,7 @@ import SalesReports from "@/pages/sales-reports";
 import SalesReportList from "@/pages/sales-report-list";
 import TicketManagement from "@/pages/ticket-management";
 import CenterDashboard from "@/pages/center-dashboard";
-import CenterHomePage from "@/pages/center-home";
+import CenterHomePage from "@/pages/center-home-new"; // Using our fixed version
 import CenterBookingsPage from "@/pages/center-bookings";
 import CenterVenuesPage from "@/pages/center-venues";
 import CenterSchedulePage from "@/pages/center-schedule";

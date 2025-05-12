@@ -96,7 +96,32 @@ export class VenueService {
    * Create a new venue
    */
   async createVenue(venue: InsertVenue): Promise<Venue> {
-    const [newVenue] = await db.insert(venues).values(venue).returning();
+    // Ensure we have both hourlyRate and dailyRate (required by schema)
+    const venueData = {
+      ...venue,
+      // If dailyRate is not provided, calculate it as 8x hourlyRate
+      dailyRate: venue.dailyRate || (venue.hourlyRate ? String(parseFloat(venue.hourlyRate) * 8) : "0.00"),
+      // Convert amenities/images to jsonb if they exist
+      facilities: venue.amenities ? JSON.stringify(venue.amenities) : undefined,
+      images: venue.images ? JSON.stringify(venue.images) : undefined
+    };
+    
+    // Extract only the properties we need to insert
+    const insertData = {
+      name: venueData.name,
+      location: venueData.location,
+      description: venueData.description,
+      capacity: venueData.capacity,
+      hourlyRate: venueData.hourlyRate,
+      dailyRate: venueData.dailyRate,
+      facilities: venueData.facilities,
+      availabilityHours: venueData.availabilityHours,
+      ownerId: venueData.ownerId,
+      images: venueData.images,
+      isActive: venueData.isActive ?? true
+    };
+    
+    const [newVenue] = await db.insert(venues).values(insertData).returning();
     this.invalidateTypeCache('venues');
     return newVenue;
   }

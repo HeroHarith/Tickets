@@ -483,7 +483,19 @@ const EventDetails = () => {
   
   if (!eventQuery.data) return null;
   
-  const { title, description, location, startDate, endDate, category, imageUrl, ticketTypes } = eventQuery.data;
+  const { 
+    title, 
+    description, 
+    location, 
+    startDate, 
+    endDate, 
+    category, 
+    imageUrl, 
+    ticketTypes,
+    eventType,
+    isPrivate,
+    organizer 
+  } = eventQuery.data;
   
   // Format dates
   const formatEventDate = () => {
@@ -561,6 +573,16 @@ const EventDetails = () => {
           <p className="text-gray-700 mb-6">
             {description}
           </p>
+          
+          {/* Display Private Event Badge if applicable */}
+          {(eventType === 'private' || isPrivate) && (
+            <div className="mb-4">
+              <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-1 rounded flex items-center w-fit">
+                <UsersRound className="h-3.5 w-3.5 mr-1" />
+                Private Event
+              </span>
+            </div>
+          )}
           
           <div className="border-t border-b border-gray-200 py-4 mb-6">
             <h2 className="text-lg font-semibold font-poppins mb-3">Available Tickets</h2>

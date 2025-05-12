@@ -12,7 +12,12 @@ import {
   type Ticket,
   type User
 } from '@shared/schema';
-import { type EventSearchParams, type CreateEventInput, type PurchaseTicketInput } from '@shared/schema';
+import { 
+  type EventSearchParams,
+  type CreateEventInput, 
+  type PurchaseTicketInput, 
+  eventSearchSchema 
+} from '@shared/schema';
 
 /**
  * Ticketing Service - Handles all event and ticket related database operations
@@ -85,12 +90,12 @@ export class TicketingService {
         conditions.push(eq(events.category, options.category));
       }
       
-      if (options.startDate) {
-        conditions.push(sql`${events.startDate} >= ${options.startDate}`);
+      if (options.minDate) {
+        conditions.push(sql`${events.startDate} >= ${options.minDate}`);
       }
       
-      if (options.endDate) {
-        conditions.push(sql`${events.endDate} <= ${options.endDate}`);
+      if (options.maxDate) {
+        conditions.push(sql`${events.endDate} <= ${options.maxDate}`);
       }
       
       if (options.featured !== undefined) {

@@ -18,7 +18,7 @@ router.get('/', async (req: Request, res: Response) => {
     // Extract search parameters and map to ticketing-service expected format
     const searchParams = {
       sortBy: (req.query.sortBy as "date-asc" | "date-desc" | "price-asc" | "price-desc") || "date-asc",
-      search: req.query.keyword as string | undefined,
+      search: req.query.search as string | undefined,
       location: req.query.location as string | undefined,
       category: req.query.category as string | undefined,
       featured: req.query.featured === 'true' ? true : undefined,

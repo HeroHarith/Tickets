@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { useState, useEffect } from "react";
-import { Calendar, MapPin, CreditCard, Mail, User, Loader2, CalendarIcon } from "lucide-react";
+import { Calendar, MapPin, CreditCard, Mail, User, Loader2, CalendarIcon, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { queryClient } from "@/lib/queryClient";
@@ -23,6 +23,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import PaymentService, { CustomerDetails } from "@/services/PaymentService";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { PrivateEventAttendees } from "@/components/events/private-event-attendees";
 
 type GiftRecipient = {
   name?: string;

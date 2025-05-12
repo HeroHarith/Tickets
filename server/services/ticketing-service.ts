@@ -575,6 +575,31 @@ export class TicketingService {
     
     return true;
   }
+
+  /**
+   * Delete an attendee from a private event
+   */
+  async deleteAttendee(attendeeId: number): Promise<boolean> {
+    const attendee = await this.getAttendee(attendeeId);
+    
+    if (!attendee) {
+      throw new Error('Attendee not found');
+    }
+    
+    // Get the eventId before deleting for cache invalidation
+    const eventId = attendee.eventId;
+    
+    // Delete the attendee
+    await db
+      .delete(eventAttendees)
+      .where(eq(eventAttendees.id, attendeeId));
+    
+    // Invalidate relevant caches
+    this.invalidateCache('attendee', attendeeId);
+    this.invalidateCache('attendees', eventId);
+    
+    return true;
+  }
 }
 
 // Create and export singleton instance

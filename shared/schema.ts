@@ -30,7 +30,7 @@ export const users = pgTable("users", {
 });
 
 // Event Types
-export const EVENT_TYPES = ["general", "conference", "seated"] as const;
+export const EVENT_TYPES = ["general", "conference", "seated", "private"] as const;
 export const eventTypeSchema = z.enum(EVENT_TYPES);
 export type EventType = z.infer<typeof eventTypeSchema>;
 
@@ -44,12 +44,13 @@ export const events = pgTable("events", {
   endDate: timestamp("end_date"),
   category: text("category").notNull(),
   imageUrl: text("image_url"),
-  eventType: text("event_type").default("general").notNull(), // Type of event: general, conference, seated
+  eventType: text("event_type").default("general").notNull(), // Type of event: general, conference, seated, private
   seatingMap: jsonb("seating_map"), // For seated events, store a seating chart configuration
   organizer: integer("organizer_id").notNull(), // References users.id
   createdAt: timestamp("created_at").defaultNow().notNull(),
   featured: boolean("featured").default(false).notNull(),
   isMultiDay: boolean("is_multi_day").default(false), // Flag for multi-day events
+  isPrivate: boolean("is_private").default(false), // Flag for private events with attendee list
 });
 
 // Ticket Type model
@@ -100,6 +101,38 @@ export const attendeeDetailsSchema = z.object({
   specialRequirements: z.string().optional(),
 });
 
+// Event attendees model for private events
+export const eventAttendees = pgTable("event_attendees", {
+  id: serial("id").primaryKey(),
+  eventId: integer("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  fullName: text("full_name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  ticketId: integer("ticket_id").references(() => tickets.id),
+  qrCode: text("qr_code"),
+  isCheckedIn: boolean("is_checked_in").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Event attendees schema
+export const eventAttendeeSchema = z.object({
+  fullName: z.string().min(1, "Full name is required"),
+  email: z.string().email("Valid email is required"),
+  phone: z.string().optional(),
+});
+
+export const eventAttendeesRelations = relations(eventAttendees, ({ one }) => ({
+  event: one(events, {
+    fields: [eventAttendees.eventId],
+    references: [events.id],
+  }),
+  ticket: one(tickets, {
+    fields: [eventAttendees.ticketId],
+    references: [tickets.id],
+  }),
+}));
+
 export type AttendeeDetails = z.infer<typeof attendeeDetailsSchema>;
 
 // Badge information schema for conference/exhibition passes
@@ -122,6 +155,15 @@ export const insertUserSchema = createInsertSchema(users).omit({
 export const insertEventSchema = createInsertSchema(events).omit({
   id: true,
   createdAt: true,
+});
+
+export const insertEventAttendeeSchema = createInsertSchema(eventAttendees).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  qrCode: true,
+  isCheckedIn: true,
+  ticketId: true,
 });
 
 export const insertTicketTypeSchema = createInsertSchema(ticketTypes).omit({

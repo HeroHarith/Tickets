@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { optimizedStorage as storage } from '../optimized-storage';
+import { venueService } from '../services/venue-service';
 import { requireRole } from '../auth';
 import { successResponse, errorResponse } from '../utils/api-response';
 import { z } from 'zod';
@@ -15,7 +15,7 @@ router.get('/', requireRole(["center", "admin"]), async (req: Request, res: Resp
   try {
     // Get venues for the center user
     const centerId = req.user?.role === 'center' ? req.user.id : undefined;
-    const venues = await storage.getVenues(centerId);
+    const venues = await venueService.getVenues(centerId);
     return res.json(successResponse(venues, 200, 'Venues retrieved successfully'));
   } catch (error: any) {
     console.error('Error fetching venues:', error);
@@ -54,7 +54,7 @@ router.post('/', requireRole(["center", "admin"]), async (req: Request, res: Res
     };
 
     // Create venue
-    const newVenue = await storage.createVenue(venue);
+    const newVenue = await venueService.createVenue(venue);
     return res.status(201).json(successResponse(newVenue, 201, 'Venue created successfully'));
   } catch (error: any) {
     console.error('Error creating venue:', error);
@@ -91,9 +91,10 @@ router.get('/sales-report', requireRole(["center", "admin"]), async (req: Reques
     }
     
     // Get report
-    const report = await storage.getVenueSalesReport(
-      req.user.id,
-      venueId,
+    // If a specific venue ID is specified, use it, otherwise get for all venues owned by the center
+    const venueIds = venueId ? [venueId] : undefined;
+    const report = await venueService.getVenueSalesReport(
+      venueIds,
       startDate,
       endDate
     );

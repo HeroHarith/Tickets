@@ -47,9 +47,9 @@ router.get('/:eventId/attendees',
  * Add attendees to a private event
  */
 router.post('/:eventId/attendees', 
-  requireAuthentication,
+  requireLogin,
   requireRole(['eventManager', 'admin']),
-  async (req, res) => {
+  async (req: Request, res: Response) => {
     try {
       const eventId = parseInt(req.params.eventId, 10);
       
@@ -58,19 +58,21 @@ router.post('/:eventId/attendees',
       const parseResult = attendeesSchema.safeParse(req.body);
       
       if (!parseResult.success) {
-        return apiResponse(res, 400, false, null, `Invalid attendee data: ${parseResult.error.message}`);
+        return res.status(400).json(errorResponse(`Invalid attendee data: ${parseResult.error.message}`, 400));
       }
       
       // Verify event exists and user has permission
       const event = await ticketingService.getEvent(eventId);
       
       if (!event) {
-        return apiResponse(res, 404, false, null, 'Event not found');
+        return res.status(404).json(errorResponse('Event not found', 404));
       }
       
+      const user = req.user as any;
+      
       // Only event organizer or admin can add attendees
-      if (event.organizer !== req.user.id && req.user.role !== 'admin') {
-        return apiResponse(res, 403, false, null, 'Not authorized to add attendees');
+      if (event.organizer !== user.id && user.role !== 'admin') {
+        return res.status(403).json(errorResponse('Not authorized to add attendees', 403));
       }
       
       const attendeeData = parseResult.data.map(attendee => ({
@@ -82,9 +84,9 @@ router.post('/:eventId/attendees',
       
       const newAttendees = await ticketingService.addEventAttendees(eventId, attendeeData);
       
-      return apiResponse(res, 201, true, newAttendees);
+      return res.status(201).json(successResponse(newAttendees, 201, 'Attendees added successfully'));
     } catch (error: any) {
-      return apiResponse(res, 500, false, null, `Error adding attendees: ${error.message}`);
+      return res.status(500).json(errorResponse(`Error adding attendees: ${error.message}`, 500));
     }
   }
 );

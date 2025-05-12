@@ -20,7 +20,7 @@ router.get('/', async (req: Request, res: Response) => {
       sortBy: (req.query.sortBy as "date-asc" | "date-desc" | "price-asc" | "price-desc") || "date-asc",
       search: req.query.search as string | undefined,
       location: req.query.location as string | undefined,
-      category: req.query.category as string | undefined,
+      category: req.query.category as "Music" | "Sports" | "Arts" | "Business" | "Food" | "Wellness" | "Tech" | "Comedy" | undefined,
       featured: req.query.featured === 'true' ? true : undefined,
       status: req.query.status as string | undefined,
       organizer: req.query.managerId ? parseInt(req.query.managerId as string) : undefined,
@@ -56,9 +56,14 @@ router.get('/', async (req: Request, res: Response) => {
 router.get('/managed-with-sales', requireRole(["eventManager", "admin"]), async (req: Request, res: Response) => {
   try {
     // Get events from the database
-    const events = await ticketingService.getEvents({ 
+    const events = await ticketingService.getEvents({
       sortBy: "date-asc",
-      organizer: req.user?.id 
+      organizer: req.user?.id,
+      // Ensure all required parameters are present
+      search: undefined,
+      location: undefined,
+      category: undefined,
+      featured: undefined
     });
     
     // Aggregate events with sales data to send to the frontend

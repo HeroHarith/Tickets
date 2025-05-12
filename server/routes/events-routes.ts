@@ -52,12 +52,12 @@ router.get('/', async (req: Request, res: Response) => {
 router.get('/managed-with-sales', requireRole(["eventManager", "admin"]), async (req: Request, res: Response) => {
   try {
     // Get events from the database
-    const events = await storage.getEvents({ managerId: req.user.id });
+    const events = await ticketingService.getEvents({ organizer: req.user?.id });
     
     // Aggregate events with sales data to send to the frontend
     const eventsWithSales = await Promise.all(events.map(async (event) => {
       try {
-        const salesData = await storage.getEventSales(event.id);
+        const salesData = await ticketingService.getEventSales(event.id);
         return {
           ...event,
           salesData
@@ -90,14 +90,14 @@ router.get('/managed-with-sales', requireRole(["eventManager", "admin"]), async 
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
-    const event = await storage.getEvent(id);
+    const event = await ticketingService.getEvent(id);
     
     if (!event) {
       return res.status(404).json(errorResponse('Event not found', 404));
     }
     
     // Get ticket types for this event
-    const ticketTypes = await storage.getTicketTypes(id);
+    const ticketTypes = await ticketingService.getTicketTypes(id);
     
     // Return event with ticket types
     return res.json(successResponse(
@@ -123,11 +123,11 @@ router.post('/',
       // Validate input
       const eventData = createEventSchema.parse({
         ...req.body,
-        managerId: req.user.id
+        organizer: req.user?.id
       });
       
       // Create event
-      const newEvent = await storage.createEvent(eventData);
+      const newEvent = await ticketingService.createEvent(eventData);
       return res.status(201).json(successResponse(newEvent, 201, 'Event created successfully'));
     } catch (error: any) {
       console.error('Error creating event:', error);
@@ -150,18 +150,18 @@ router.get('/:id/tickets',
       const eventId = parseInt(req.params.id);
       
       // Get event
-      const event = await storage.getEvent(eventId);
+      const event = await ticketingService.getEvent(eventId);
       if (!event) {
         return res.status(404).json(errorResponse('Event not found', 404));
       }
       
       // Check if user has access to the event (only if they're an event manager)
-      if (req.user.role === 'eventManager' && event.managerId !== req.user.id) {
+      if (req.user?.role === 'eventManager' && event.organizer !== req.user?.id) {
         return res.status(403).json(errorResponse('Access denied', 403));
       }
       
       // Get all tickets for this event
-      const tickets = await storage.getEventTickets(eventId);
+      const tickets = await ticketingService.getEventTickets(eventId);
       
       return res.json(successResponse(tickets, 200, 'Event tickets retrieved successfully'));
     } catch (error: any) {
@@ -182,18 +182,18 @@ router.get('/:id/sales',
       const eventId = parseInt(req.params.id);
       
       // Get event
-      const event = await storage.getEvent(eventId);
+      const event = await ticketingService.getEvent(eventId);
       if (!event) {
         return res.status(404).json(errorResponse('Event not found', 404));
       }
       
       // Check if user has access to the event
-      if (req.user.role === 'eventManager' && event.organizer !== req.user.id) {
+      if (req.user?.role === 'eventManager' && event.organizer !== req.user?.id) {
         return res.status(403).json(errorResponse('Access denied', 403));
       }
       
       // Get sales data
-      const salesData = await storage.getEventSales(eventId);
+      const salesData = await ticketingService.getEventSales(eventId);
       
       return res.json(successResponse({
         event,

@@ -75,9 +75,9 @@ export class TicketingService {
     if (options) {
       const conditions: SQL[] = [];
       
-      if (options.keyword) {
+      if (options.search) {
         conditions.push(
-          sql`(${events.title} ILIKE ${`%${options.keyword}%`} OR ${events.description} ILIKE ${`%${options.keyword}%`})`
+          sql`(${events.title} ILIKE ${`%${options.search}%`} OR ${events.description} ILIKE ${`%${options.search}%`})`
         );
       }
       

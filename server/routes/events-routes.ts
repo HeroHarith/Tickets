@@ -15,15 +15,19 @@ const router = Router();
  */
 router.get('/', async (req: Request, res: Response) => {
   try {
-    // Extract search parameters
+    // Extract search parameters and map to ticketing-service expected format
     const searchParams = {
-      keyword: req.query.keyword as string | undefined,
+      sortBy: (req.query.sortBy as "date-asc" | "date-desc" | "price-asc" | "price-desc") || "date-asc",
+      search: req.query.keyword as string | undefined,
+      location: req.query.location as string | undefined,
       category: req.query.category as string | undefined,
-      startDate: req.query.startDate ? new Date(req.query.startDate as string) : undefined,
-      endDate: req.query.endDate ? new Date(req.query.endDate as string) : undefined,
       featured: req.query.featured === 'true' ? true : undefined,
       status: req.query.status as string | undefined,
       organizer: req.query.managerId ? parseInt(req.query.managerId as string) : undefined,
+      minPrice: req.query.minPrice ? req.query.minPrice as string : undefined,
+      maxPrice: req.query.maxPrice ? req.query.maxPrice as string : undefined,
+      minDate: req.query.startDate ? req.query.startDate as string : undefined,
+      maxDate: req.query.endDate ? req.query.endDate as string : undefined,
     };
     
     try {
@@ -52,7 +56,10 @@ router.get('/', async (req: Request, res: Response) => {
 router.get('/managed-with-sales', requireRole(["eventManager", "admin"]), async (req: Request, res: Response) => {
   try {
     // Get events from the database
-    const events = await ticketingService.getEvents({ organizer: req.user?.id });
+    const events = await ticketingService.getEvents({ 
+      sortBy: "date-asc",
+      organizer: req.user?.id 
+    });
     
     // Aggregate events with sales data to send to the frontend
     const eventsWithSales = await Promise.all(events.map(async (event) => {

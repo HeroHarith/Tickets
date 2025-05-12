@@ -108,13 +108,13 @@ router.post('/:id/wallet-pass', requireRole(["customer", "admin"]), async (req: 
     }
     
     // Get ticket details
-    const ticket = await storage.getTicket(ticketId);
+    const ticket = await ticketingService.getTicket(ticketId);
     if (!ticket) {
       return res.status(404).json(errorResponse('Ticket not found', 404));
     }
     
     // Check if user owns the ticket
-    if (ticket.userId !== req.user.id) {
+    if (ticket.userId !== req.user?.id) {
       return res.status(403).json(errorResponse('Access denied', 403));
     }
     

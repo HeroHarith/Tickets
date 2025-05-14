@@ -11,6 +11,7 @@ import paymentsRoutes from "./routes/payments-routes";
 import authRoutes from "./routes/auth-routes";
 import subscriptionRoutes from "./routes/subscription-routes";
 import { eventAttendeesRoutes } from "./routes/event-attendees-routes";
+import { externalApiRoutes } from "./routes/api-external-routes";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication
@@ -30,6 +31,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Event attendees routes
   app.use("/api/events", eventAttendeesRoutes);
+  
+  // External API routes with API key authentication
+  app.use("/api/external", externalApiRoutes);
   
   // Create and return the HTTP server
   const httpServer = createServer(app);

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Ticket, MenuIcon, X, LogOut, Building2, CreditCard } from "lucide-react";
+import { Ticket, MenuIcon, X, LogOut, Building2, CreditCard, Code } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import {
   DropdownMenu,
@@ -162,6 +162,15 @@ const Header = () => {
                 >
                   Sales Reports
                 </Link>
+                {user.role === 'eventManager' && (
+                  <Link 
+                    href="/api-documentation"
+                    className={`${location === '/api-documentation' ? 'text-primary' : 'text-gray-700'} hover:text-primary px-3 py-2 rounded-md text-sm font-medium flex items-center`}
+                  >
+                    <Code className="h-4 w-4 mr-1" />
+                    API Docs
+                  </Link>
+                )}
                 {user.role === 'admin' && (
                   <Link 
                     href="/admin"

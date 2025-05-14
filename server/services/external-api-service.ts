@@ -135,42 +135,69 @@ export class ExternalApiService {
     if (!event) {
       throw new Error('Event not found');
     }
-
+    
+    // External API supports simplified ticket purchase
+    // We'll process the first ticket selection
+    if (!purchase.ticketSelections || purchase.ticketSelections.length === 0) {
+      throw new Error('No ticket selections provided');
+    }
+    
+    const selection = purchase.ticketSelections[0];
+    const ticketTypeId = selection.ticketTypeId;
+    
     // Get ticket type
-    const ticketType = await this.getTicketType(purchase.ticketTypeId);
+    const ticketType = await this.getTicketType(ticketTypeId);
     if (!ticketType) {
       throw new Error('Ticket type not found');
     }
 
     // Check if quantity is valid
-    if (purchase.quantity <= 0) {
+    const quantity = selection.quantity;
+    if (quantity <= 0) {
       throw new Error('Quantity must be greater than 0');
     }
-
+    
+    // Generate a random order ID (would be transaction ID in real system)
+    const orderId = `ext-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    
+    // Calculate total price
+    const pricePerTicket = parseFloat(ticketType.price);
+    const totalPrice = (pricePerTicket * quantity).toFixed(2);
+    
+    // Extract attendee details
+    let attendeeDetails = null;
+    
+    if (selection.attendeeDetails && selection.attendeeDetails.length > 0) {
+      attendeeDetails = selection.attendeeDetails[0];
+    }
+    
     // Create tickets
     const newTickets = [];
-    for (let i = 0; i < purchase.quantity; i++) {
+    for (let i = 0; i < quantity; i++) {
       const [ticket] = await db.insert(tickets)
         .values({
           eventId: purchase.eventId,
-          ticketTypeId: purchase.ticketTypeId,
+          ticketTypeId: ticketTypeId,
           userId: userId,
-          purchasedAt: new Date(),
-          status: 'active',
-          eventDate: purchase.eventDate,
-          attendeeEmail: purchase.attendeeEmail,
-          attendeeName: purchase.attendeeName,
-          paymentSessionId: purchase.paymentSessionId || null,
+          purchaseDate: new Date(),
+          quantity: 1, // Each row is 1 ticket in our schema
+          totalPrice: pricePerTicket.toFixed(2),
+          orderId: orderId,
+          eventDate: selection.eventDate || null,
+          attendeeDetails: attendeeDetails,
+          emailSent: false,
+          // Use a session ID if provided in the purchase, otherwise null
+          paymentSessionId: typeof purchase.paymentSessionId === 'string' ? purchase.paymentSessionId : null
         })
         .returning();
 
       // Generate QR code
-      const qrCodeData = await generateTicketQRCode(ticket.id);
+      const qrCode = await generateTicketQRCode(ticket.id);
       
       // Update ticket with QR code
       const [updatedTicket] = await db
         .update(tickets)
-        .set({ qrCodeData })
+        .set({ qrCode })
         .where(eq(tickets.id, ticket.id))
         .returning();
 
@@ -190,14 +217,24 @@ export class ExternalApiService {
       throw new Error('Ticket not found');
     }
     
-    if (ticket.status !== 'active') {
-      throw new Error(`Ticket is not active (current status: ${ticket.status})`);
+    if (ticket.isUsed) {
+      throw new Error('Ticket has already been used');
     }
     
-    // Update ticket status to 'used'
+    // Create new attendee details object with validation timestamp
+    const currentAttendeeDetails = ticket.attendeeDetails || {};
+    const updatedAttendeeDetails = {
+      ...currentAttendeeDetails,
+      validatedAt: new Date().toISOString()
+    };
+    
+    // Update ticket status to used
     const [updatedTicket] = await db
       .update(tickets)
-      .set({ status: 'used', validatedAt: new Date() })
+      .set({ 
+        isUsed: true,
+        attendeeDetails: updatedAttendeeDetails
+      })
       .where(eq(tickets.id, ticketId))
       .returning();
     

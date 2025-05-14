@@ -26,6 +26,7 @@ import PaymentStatus from "@/pages/payment-status";
 import PaymentConfirmation from "@/pages/payment-confirmation";
 import Subscriptions from "@/pages/subscriptions";
 import Settings from "@/pages/settings";
+import ApiDocumentation from "@/pages/api-documentation";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { PaymentStatusChecker } from "@/components/domain/payments";
@@ -90,6 +91,11 @@ function Router() {
         <ProtectedRoute 
           path="/ticket-management/:id" 
           component={TicketManagement} 
+          requiredRoles={["eventManager"]} 
+        />
+        <ProtectedRoute 
+          path="/api-documentation" 
+          component={ApiDocumentation} 
           requiredRoles={["eventManager"]} 
         />
         

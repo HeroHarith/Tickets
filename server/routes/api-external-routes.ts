@@ -144,4 +144,48 @@ router.post('/tickets/purchase', apiKeyAuth, async (req: Request, res: Response)
   }
 });
 
+/**
+ * @route POST /api/external/tickets/:ticketId/validate
+ * @desc Validate a ticket (check-in) (requires API key authentication)
+ * @access External API (event managers only)
+ */
+router.post('/tickets/:ticketId/validate', apiKeyAuth, async (req: Request, res: Response) => {
+  try {
+    const ticketId = parseInt(req.params.ticketId);
+    if (isNaN(ticketId)) {
+      return res.status(400).json(errorResponse('Invalid ticket ID', 400));
+    }
+    
+    // Get ticket to check event ownership
+    const ticket = await externalApiService.getTicket(ticketId);
+    if (!ticket) {
+      return res.status(404).json(errorResponse('Ticket not found', 404));
+    }
+    
+    // Get the event to verify ownership
+    const event = await externalApiService.getEvent(ticket.eventId);
+    if (!event) {
+      return res.status(404).json(errorResponse('Event not found', 404));
+    }
+    
+    // Check if the API key's user is the organizer of this event
+    const userId = (req as any).externalUserId;
+    if (event.organizer !== userId) {
+      return res.status(403).json(errorResponse('Access denied: You are not the organizer of this ticket\'s event', 403));
+    }
+    
+    // Validate the ticket
+    const validated = await externalApiService.validateTicket(ticketId);
+    
+    if (validated) {
+      return res.json(successResponse({ validated: true }, 200, 'Ticket validated successfully'));
+    } else {
+      return res.status(400).json(errorResponse('Failed to validate ticket', 400));
+    }
+  } catch (error: any) {
+    console.error('Error validating ticket:', error);
+    return res.status(500).json(errorResponse(error.message, 500));
+  }
+});
+
 export const externalApiRoutes = router;

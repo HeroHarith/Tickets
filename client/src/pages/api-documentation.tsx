@@ -117,6 +117,178 @@ export default function ApiDocumentation() {
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <Ticket className="mr-2 h-5 w-5" />
+                  List All Events
+                </CardTitle>
+                <CardDescription>
+                  Retrieve a list of events with optional filtering.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2 mb-4">
+                  <Badge className="bg-green-600">GET</Badge>
+                  <span className="font-mono text-sm">/api/external/events</span>
+                </div>
+
+                <h3 className="text-lg font-semibold mb-2">Query Parameters</h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Parameter</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Description</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell className="font-mono">category</TableCell>
+                      <TableCell>String</TableCell>
+                      <TableCell>Filter events by category</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-mono">minDate</TableCell>
+                      <TableCell>Date</TableCell>
+                      <TableCell>Filter events that start on or after this date (ISO format)</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-mono">maxDate</TableCell>
+                      <TableCell>Date</TableCell>
+                      <TableCell>Filter events that start on or before this date (ISO format)</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-mono">search</TableCell>
+                      <TableCell>String</TableCell>
+                      <TableCell>Search term to find in event title, description, or location</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-mono">featured</TableCell>
+                      <TableCell>Boolean</TableCell>
+                      <TableCell>Filter to only show featured events when set to 'true'</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-mono">limit</TableCell>
+                      <TableCell>Number</TableCell>
+                      <TableCell>Maximum number of events to return (default: 100)</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-mono">offset</TableCell>
+                      <TableCell>Number</TableCell>
+                      <TableCell>Number of events to skip for pagination (default: 0)</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+
+                <h3 className="text-lg font-semibold mt-6 mb-2">Response</h3>
+                <div className="bg-gray-900 text-gray-100 p-4 rounded-md font-mono text-sm relative overflow-auto max-h-80">
+                  <pre>
+{`{
+  "code": 200,
+  "success": true,
+  "data": [
+    {
+      "id": 123,
+      "title": "Summer Concert",
+      "description": "Annual summer concert in the park",
+      "location": "Central Park",
+      "startDate": "2023-06-15T18:00:00.000Z",
+      "endDate": "2023-06-15T22:00:00.000Z",
+      "category": "Music",
+      "imageUrl": "https://example.com/images/concert.jpg",
+      "organizer": 789,
+      "featured": true,
+      "isMultiDay": false
+    },
+    // More events...
+  ],
+  "description": "Events retrieved successfully"
+}`}
+                  </pre>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-2 right-2"
+                    onClick={() => copyToClipboard('{\n  "code": 200,\n  "success": true,\n  "data": [\n    {\n      "id": 123,\n      "title": "Summer Concert",\n      "description": "Annual summer concert in the park",\n      "location": "Central Park",\n      "startDate": "2023-06-15T18:00:00.000Z",\n      "endDate": "2023-06-15T22:00:00.000Z",\n      "category": "Music",\n      "imageUrl": "https://example.com/images/concert.jpg",\n      "organizer": 789,\n      "featured": true,\n      "isMultiDay": false\n    },\n    // More events...\n  ],\n  "description": "Events retrieved successfully"\n}')}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Ticket className="mr-2 h-5 w-5" />
+                  Get Event Details
+                </CardTitle>
+                <CardDescription>
+                  Retrieve details for a specific event.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2 mb-4">
+                  <Badge className="bg-green-600">GET</Badge>
+                  <span className="font-mono text-sm">/api/external/events/:eventId</span>
+                </div>
+
+                <h3 className="text-lg font-semibold mb-2">Path Parameters</h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Parameter</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Description</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell className="font-mono">eventId</TableCell>
+                      <TableCell>Number</TableCell>
+                      <TableCell>The ID of the event to retrieve</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+
+                <h3 className="text-lg font-semibold mt-6 mb-2">Response</h3>
+                <div className="bg-gray-900 text-gray-100 p-4 rounded-md font-mono text-sm relative overflow-auto max-h-80">
+                  <pre>
+{`{
+  "code": 200,
+  "success": true,
+  "data": {
+    "id": 123,
+    "title": "Summer Concert",
+    "description": "Annual summer concert in the park",
+    "location": "Central Park",
+    "startDate": "2023-06-15T18:00:00.000Z",
+    "endDate": "2023-06-15T22:00:00.000Z",
+    "category": "Music",
+    "imageUrl": "https://example.com/images/concert.jpg",
+    "organizer": 789,
+    "featured": true,
+    "isMultiDay": false,
+    "isPrivate": false,
+    "eventType": "general",
+    "createdAt": "2023-05-01T10:30:00.000Z"
+  },
+  "description": "Event details retrieved successfully"
+}`}
+                  </pre>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-2 right-2"
+                    onClick={() => copyToClipboard('{\n  "code": 200,\n  "success": true,\n  "data": {\n    "id": 123,\n    "title": "Summer Concert",\n    "description": "Annual summer concert in the park",\n    "location": "Central Park",\n    "startDate": "2023-06-15T18:00:00.000Z",\n    "endDate": "2023-06-15T22:00:00.000Z",\n    "category": "Music",\n    "imageUrl": "https://example.com/images/concert.jpg",\n    "organizer": 789,\n    "featured": true,\n    "isMultiDay": false,\n    "isPrivate": false,\n    "eventType": "general",\n    "createdAt": "2023-05-01T10:30:00.000Z"\n  },\n  "description": "Event details retrieved successfully"\n}')}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Ticket className="mr-2 h-5 w-5" />
                   Get Event Tickets
                 </CardTitle>
                 <CardDescription>

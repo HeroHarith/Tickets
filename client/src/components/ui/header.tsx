@@ -270,6 +270,16 @@ const Header = () => {
                     Admin Dashboard
                   </Link>
                 )}
+                {user.role === 'eventManager' && (
+                  <Link 
+                    href="/api-documentation"
+                    className={`${location === '/api-documentation' ? 'text-primary' : 'text-gray-700'} flex items-center px-3 py-2 rounded-md text-base font-medium`}
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Code className="h-4 w-4 mr-2" />
+                    API Docs
+                  </Link>
+                )}
               </>
             )}
             {isCenter && (

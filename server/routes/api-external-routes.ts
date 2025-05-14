@@ -36,6 +36,90 @@ const apiKeyAuth = async (req: Request, res: Response, next: NextFunction) => {
 };
 
 /**
+ * @route GET /api/external/events
+ * @desc Get a list of events with optional filtering (requires API key authentication)
+ * @access External API (event managers only)
+ */
+router.get('/events', apiKeyAuth, async (req: Request, res: Response) => {
+  try {
+    // Extract query parameters
+    const {
+      category,
+      minDate,
+      maxDate,
+      search,
+      featured,
+      limit = 100,
+      offset = 0
+    } = req.query;
+    
+    // Get the user ID associated with the API key
+    const userId = (req as any).externalUserId;
+    
+    // Parse optional parameters
+    const parsedLimit = limit ? parseInt(limit as string) : 100;
+    const parsedOffset = offset ? parseInt(offset as string) : 0;
+    
+    // Parse date parameters if provided
+    const parsedMinDate = minDate ? new Date(minDate as string) : undefined;
+    const parsedMaxDate = maxDate ? new Date(maxDate as string) : undefined;
+    
+    // Parse boolean parameter
+    const parsedFeatured = featured === 'true' ? true : undefined;
+    
+    // Fetch events with filters
+    const events = await externalApiService.getEvents({
+      organizerId: userId, // Only return events owned by the API key holder
+      category: category as string | undefined,
+      minDate: parsedMinDate,
+      maxDate: parsedMaxDate,
+      search: search as string | undefined,
+      featured: parsedFeatured,
+      limit: parsedLimit,
+      offset: parsedOffset
+    });
+    
+    return res.json(successResponse(events, 200, 'Events retrieved successfully'));
+  } catch (error: any) {
+    console.error('Error fetching events:', error);
+    return res.status(500).json(errorResponse(error.message, 500));
+  }
+});
+
+/**
+ * @route GET /api/external/events/:eventId
+ * @desc Get details for a specific event (requires API key authentication)
+ * @access External API (event managers only)
+ */
+router.get('/events/:eventId', apiKeyAuth, async (req: Request, res: Response) => {
+  try {
+    const eventId = parseInt(req.params.eventId);
+    if (isNaN(eventId)) {
+      return res.status(400).json(errorResponse('Invalid event ID', 400));
+    }
+    
+    // Get event details
+    const event = await externalApiService.getEvent(eventId);
+    if (!event) {
+      return res.status(404).json(errorResponse('Event not found', 404));
+    }
+    
+    // Get the user ID associated with the API key
+    const userId = (req as any).externalUserId;
+    
+    // Check if the API key's user is the organizer of this event
+    if (event.organizer !== userId) {
+      return res.status(403).json(errorResponse('Access denied: You are not the organizer of this event', 403));
+    }
+    
+    return res.json(successResponse(event, 200, 'Event details retrieved successfully'));
+  } catch (error: any) {
+    console.error('Error fetching event details:', error);
+    return res.status(500).json(errorResponse(error.message, 500));
+  }
+});
+
+/**
  * @route GET /api/external/events/:eventId/tickets
  * @desc Get all tickets for an event (requires API key authentication)
  * @access External API (event managers only)

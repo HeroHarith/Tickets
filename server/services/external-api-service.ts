@@ -1,6 +1,6 @@
 import { db } from '../db';
 import { tickets, events, ticketTypes, users, Event, Ticket, TicketType, PurchaseTicketInput } from '@shared/schema';
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, and, inArray, or, like, gte, lte, asc } from 'drizzle-orm';
 import NodeCache from 'node-cache';
 import { generateTicketQRCode } from '../utils/external-qrcode-generator';
 
@@ -56,6 +56,102 @@ export class ExternalApiService {
     }
     
     return event;
+  }
+  
+  /**
+   * Get all events with filtering
+   */
+  async getEvents(options: {
+    organizerId?: number;
+    category?: string;
+    minDate?: Date;
+    maxDate?: Date;
+    search?: string;
+    featured?: boolean;
+    limit?: number;
+    offset?: number;
+  } = {}): Promise<Event[]> {
+    const { 
+      organizerId, 
+      category, 
+      minDate, 
+      maxDate, 
+      search, 
+      featured,
+      limit = 100,
+      offset = 0
+    } = options;
+    
+    // Build a cache key based on filter parameters
+    const cacheParams = JSON.stringify({ 
+      organizerId, 
+      category, 
+      minDate, 
+      maxDate, 
+      search, 
+      featured,
+      limit,
+      offset
+    });
+    
+    const cacheKey = this.getCacheKey('events', cacheParams);
+    const cachedEvents = this.cache.get<Event[]>(cacheKey);
+    
+    if (cachedEvents) {
+      return cachedEvents;
+    }
+    
+    // Create base query
+    let query = db.select().from(events);
+    
+    // Apply filters
+    if (organizerId) {
+      query = query.where(eq(events.organizer, organizerId));
+    }
+    
+    if (category) {
+      query = query.where(eq(events.category, category));
+    }
+    
+    if (minDate) {
+      query = query.where(gte(events.startDate, minDate));
+    }
+    
+    if (maxDate) {
+      query = query.where(lte(events.startDate, maxDate));
+    }
+    
+    if (featured) {
+      query = query.where(eq(events.featured, true));
+    }
+    
+    if (search) {
+      query = query.where(
+        or(
+          like(events.title, `%${search}%`),
+          like(events.description, `%${search}%`),
+          like(events.location, `%${search}%`)
+        )
+      );
+    }
+    
+    // Only fetch future events
+    const now = new Date();
+    query = query.where(gte(events.startDate, now));
+    
+    // Apply pagination
+    query = query.limit(limit).offset(offset);
+    
+    // Order by start date
+    query = query.orderBy(asc(events.startDate));
+    
+    // Execute query
+    const eventsList = await query;
+    
+    // Cache results
+    this.cache.set(cacheKey, eventsList);
+    
+    return eventsList;
   }
 
   /**

@@ -3,7 +3,7 @@ import { Helmet } from 'react-helmet';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Layout } from '@/components/common/layout';
+import { Header, Footer } from '@/components/common/layout';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -24,12 +24,14 @@ export default function ApiDocumentation() {
   };
 
   return (
-    <Layout>
+    <div className="flex flex-col min-h-screen">
       <Helmet>
         <title>API Documentation | Ticket Management System</title>
       </Helmet>
       
-      <div className="container mx-auto py-6 max-w-7xl">
+      <Header />
+      
+      <div className="container mx-auto py-6 max-w-7xl flex-grow">
         <h1 className="text-3xl font-bold mb-4">External API Documentation</h1>
         <p className="text-gray-600 mb-6">
           The Ticket Management System provides a set of secure APIs for event managers to integrate with external systems.
@@ -702,6 +704,8 @@ if __name__ == "__main__":
           </p>
         </div>
       </div>
-    </Layout>
+      
+      <Footer />
+    </div>
   );
 }

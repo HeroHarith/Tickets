@@ -8,7 +8,7 @@
 import { Router, Request, Response } from 'express';
 import { optimizedStorage } from '../optimized-storage';
 import { successResponse, errorResponse } from '../utils/api-response';
-import { requireLogin } from '../middleware/auth-middleware';
+import { requireLogin, requireRole } from '../middleware/auth-middleware';
 import fetch from 'node-fetch';
 
 const router = Router();
@@ -23,7 +23,7 @@ const THAWANI_CHECKOUT_URL = 'https://uatcheckout.thawani.om/pay';
  * Create a payment session for ticket purchase
  * POST /api/payments/enhanced/create-session
  */
-router.post('/create-session', requireLogin, async (req: Request, res: Response) => {
+router.post('/create-session', requireRole(["customer", "admin"]), async (req: Request, res: Response) => {
   try {
     const { 
       ticketSelections, 

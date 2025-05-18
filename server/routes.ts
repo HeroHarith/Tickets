@@ -8,6 +8,7 @@ import eventsRoutes from "./routes/events-routes";
 import ticketsRoutes from "./routes/tickets-routes";
 import cashiersRoutes from "./routes/cashiers-routes";
 import paymentsRoutes from "./routes/payments-routes";
+import enhancedPaymentsRoutes from "./routes/enhanced-payments-routes";
 import authRoutes from "./routes/auth-routes";
 import subscriptionRoutes from "./routes/subscription-routes";
 import { eventAttendeesRoutes } from "./routes/event-attendees-routes";
@@ -24,6 +25,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/tickets", ticketsRoutes);
   app.use("/api/cashiers", cashiersRoutes);
   app.use("/api/payments", paymentsRoutes);
+  app.use("/api/payments/enhanced", enhancedPaymentsRoutes);
   app.use("/api", authRoutes);
   app.use("/api/subscriptions", subscriptionRoutes);
   

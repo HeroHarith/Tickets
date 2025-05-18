@@ -126,8 +126,8 @@ const Header = () => {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
             <Link href="/" className="text-white text-xl font-bold font-poppins flex items-center">
-              <img src="/logo.png" alt="TicketU Logo" className="h-8 mr-2" />
-              <span className="text-accent">Ticket</span>U
+              <img src="/logo.png" alt="Ticketly Logo" className="h-8 mr-2" />
+              <span className="text-accent">Ticket</span>ly
             </Link>
           </div>
           

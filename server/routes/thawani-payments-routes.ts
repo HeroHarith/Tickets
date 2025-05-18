@@ -71,20 +71,18 @@ router.post('/tickets', requireRole(["customer", "admin"]), async (req: Request,
         return res.status(404).json(errorResponse(`Ticket type not found: ${item.ticketTypeId}`, 404));
       }
 
-      // Handle zero price tickets - Thawani doesn't accept 0 as a valid price
-      // Thawani requires prices in baisa (1 OMR = 1000 baisa)
-      
-      // First, calculate the unit price in OMR (subtotal / quantity)
+      // Calculate the unit price in OMR (subtotal / quantity)
       const unitPriceOMR = item.subtotal / item.quantity;
       
       // Convert from OMR to baisa (1 OMR = 1000 baisa)
-      // Make sure it's always a positive integer value
-      const unitAmount = Math.max(1, Math.round(unitPriceOMR * 1000));
+      // Thawani requires at least 100 baisa for paid items (0.1 OMR)
+      const baisaAmount = Math.round(unitPriceOMR * 1000);
+      const unitAmount = unitPriceOMR > 0 ? Math.max(100, baisaAmount) : 1;
       
       console.log(`Adding ticket: ${ticketType.name}, Price: ${unitPriceOMR} OMR (${unitAmount} baisa)`);
       
       products.push({
-        name: `${event.title} - ${ticketType.name}`,
+        name: `${event.title} - ${ticketType.name}`.substring(0, 80), // Limit name length
         quantity: item.quantity,
         unit_amount: unitAmount
       });
@@ -97,13 +95,14 @@ router.post('/tickets', requireRole(["customer", "admin"]), async (req: Request,
         const addOnPrice = typeof addOn.price === 'string' ? parseFloat(addOn.price) : addOn.price;
         
         // Convert from OMR to baisa (1 OMR = 1000 baisa) for Thawani
-        // Make sure it's always a positive integer value
-        const unitAmount = Math.max(1, Math.round(addOnPrice * 1000));
+        // Thawani requires at least 100 baisa for paid items (0.1 OMR)
+        const baisaAmount = Math.round(addOnPrice * 1000);
+        const unitAmount = addOnPrice > 0 ? Math.max(100, baisaAmount) : 1;
         
         console.log(`Adding add-on: ${addOn.name || `#${addOn.addOnId}`}, Price: ${addOnPrice} OMR (${unitAmount} baisa)`);
         
         products.push({
-          name: `Add-on: ${addOn.name || `#${addOn.addOnId}`}`,
+          name: `Add-on: ${addOn.name || `#${addOn.addOnId}`}`.substring(0, 80), // Limit name length
           quantity: addOn.quantity,
           unit_amount: unitAmount
         });
@@ -159,13 +158,28 @@ router.post('/tickets', requireRole(["customer", "admin"]), async (req: Request,
       console.log('Thawani payment request:', JSON.stringify(requestData, null, 2));
       
       // Create a Thawani payment session
+      // Testing with basic minimum required fields for Thawani
+      const simpleRequestData = {
+        client_reference_id: clientReferenceId,
+        mode: 'payment',
+        products: products.map(product => ({
+          name: product.name.substring(0, 80), // Ensure name isn't too long
+          quantity: product.quantity,
+          unit_amount: product.unit_amount
+        })),
+        success_url: successUrl,
+        cancel_url: cancelUrl
+      };
+      
+      console.log('Simplified Thawani request:', JSON.stringify(simpleRequestData, null, 2));
+      
       const response = await fetch(`${THAWANI_API_URL}/checkout/session`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'thawani-api-key': THAWANI_API_KEY!
         },
-        body: JSON.stringify(requestData)
+        body: JSON.stringify(simpleRequestData)
       });
 
       const responseText = await response.text();

@@ -168,8 +168,13 @@ class ThawaniPaymentService {
    */
   formatAmount(amount: string | number): number {
     const numericAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
-    // Ensure minimum amount of 1 baisa even for free items (Thawani might reject 0 amounts)
-    return Math.max(1, Math.round(numericAmount * 1000)); // Convert to baisa
+    
+    // Convert from OMR to baisa (1 OMR = 1000 baisa)
+    const baisaAmount = Math.round(numericAmount * 1000);
+    
+    // Thawani seems to require at least 100 baisa (0.1 OMR) for paid items
+    // For free items, use 1 baisa as a minimum
+    return numericAmount > 0 ? Math.max(100, baisaAmount) : 1;
   }
 
   /**

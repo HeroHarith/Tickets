@@ -5,7 +5,8 @@
  */
 
 import { db } from '../db';
-import { eventAddOns, purchasedAddOns } from '@shared/schema';
+import { eventAddOns, eventToAddOns } from '@shared/schema';
+import { purchasedAddOns } from '@shared/add-ons.schema';
 import { eq, and } from 'drizzle-orm';
 
 class AddOnsService {
@@ -14,11 +15,39 @@ class AddOnsService {
    */
   async getEventAddOns(eventId: number) {
     try {
-      const addOns = await db.select()
-        .from(eventAddOns)
-        .where(eq(eventAddOns.eventId, eventId));
+      // First get all add-on IDs related to this event from the join table
+      const relations = await db.select()
+        .from(eventToAddOns)
+        .where(eq(eventToAddOns.eventId, eventId));
       
-      return addOns;
+      if (!relations.length) {
+        return [];
+      }
+      
+      // Then get the actual add-ons by their IDs using a simpler approach
+      const addOnIds = relations.map(rel => rel.addOnId);
+      
+      // Use simple filter to avoid SQL template issues
+      let addOns = [];
+      for (const addOnId of addOnIds) {
+        const [addOn] = await db.select()
+          .from(eventAddOns)
+          .where(eq(eventAddOns.id, addOnId));
+        
+        if (addOn) {
+          addOns.push(addOn);
+        }
+      }
+      
+      // Enrich add-ons with relation data (like if it's required)
+      return addOns.map(addOn => {
+        const relation = relations.find(rel => rel.addOnId === addOn.id);
+        return {
+          ...addOn,
+          isRequired: relation?.isRequired || false,
+          maximumQuantity: relation?.maximumQuantity || null
+        };
+      });
     } catch (error) {
       console.error('Error fetching event add-ons:', error);
       throw error;
@@ -46,18 +75,32 @@ class AddOnsService {
    */
   async createAddOn(eventId: number, addOnData: any) {
     try {
+      // First create the add-on
       const [addOn] = await db.insert(eventAddOns)
         .values({
-          eventId,
           name: addOnData.name,
           description: addOnData.description,
           price: addOnData.price,
-          isRequired: !!addOnData.isRequired,
-          maximumQuantity: addOnData.maximumQuantity || null
+          category: addOnData.category || "general",
+          imageUrl: addOnData.imageUrl || null,
+          isActive: true
         })
         .returning();
       
-      return addOn;
+      // Then create the relationship to the event
+      await db.insert(eventToAddOns)
+        .values({
+          eventId,
+          addOnId: addOn.id,
+          isRequired: !!addOnData.isRequired,
+          maximumQuantity: addOnData.maximumQuantity || 1
+        });
+      
+      return {
+        ...addOn,
+        isRequired: !!addOnData.isRequired,
+        maximumQuantity: addOnData.maximumQuantity || 1
+      };
     } catch (error) {
       console.error('Error creating add-on:', error);
       throw error;

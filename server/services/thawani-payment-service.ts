@@ -181,9 +181,12 @@ class ThawaniPaymentService {
       
       if (sessionData.payment_status === 'paid') {
         // Update all tickets associated with this payment session
-        await db.update(tickets)
-          .set({ paymentStatus: 'paid' })
-          .where(eq(tickets.paymentSessionId, sessionId));
+        // Using the pool directly for raw SQL queries
+        await db.$client.query(`
+          UPDATE tickets 
+          SET payment_status = 'paid' 
+          WHERE payment_session_id = $1
+        `, [sessionId]);
       }
     } catch (error) {
       console.error('Error updating tickets payment status:', error);

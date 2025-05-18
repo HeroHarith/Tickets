@@ -27,11 +27,7 @@ export function EventCard({ event, ticketTypes, featured = false, className = ""
     
   // Common function to format prices with proper currency
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2
-    }).format(price);
+    return `${price.toFixed(2)} OMR`;
   };
   
   // Display price range if we have both low and high prices that differ

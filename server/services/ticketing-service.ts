@@ -305,8 +305,8 @@ export class TicketingService {
         }
       }
       
-      // Create ticket record
-      const [ticket] = await db.insert(tickets).values({
+      // Create ticket record with add-ons
+      const ticketData = {
         ticketTypeId: selection.ticketTypeId,
         eventId: purchase.eventId,
         userId,
@@ -320,7 +320,9 @@ export class TicketingService {
         giftRecipients: selection.giftRecipients || null,
         // Add purchased add-ons
         purchasedAddOns
-      }).returning();
+      };
+      
+      const [ticket] = await db.insert(tickets).values(ticketData).returning();
       
       // Update available quantity
       await db

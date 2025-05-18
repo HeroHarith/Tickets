@@ -155,7 +155,11 @@ router.post('/event/:eventId', requireRole(['admin', 'eventManager']), async (re
     // Validate the request body
     // Expect an array of { addOnId, isRequired, maximumQuantity } objects
     const schema = z.array(
-      insertEventToAddOnSchema.omit({ id: true, eventId: true, createdAt: true })
+      z.object({
+        addOnId: z.number().int().positive(),
+        isRequired: z.boolean().optional(),
+        maximumQuantity: z.number().int().positive().optional()
+      })
     );
     
     const addOnRelations = schema.parse(req.body);

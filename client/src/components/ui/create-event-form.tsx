@@ -15,8 +15,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Trash2, Plus, ChevronDown, ChevronUp, MapPin, Calendar, Tag, Users } from "lucide-react";
+import { Trash2, Plus, ChevronDown, ChevronUp, MapPin, Calendar, Tag, Users, Gift } from "lucide-react";
 import { EVENT_TYPES } from "@shared/schema";
+import { ManageEventAddOns } from "@/components/events/manage-event-add-ons";
 
 interface TicketTypeInput {
   name: string;
@@ -66,6 +67,24 @@ interface EventFormValues {
   ticketTypes: TicketTypeInput[];
   speakers: SpeakerInput[];
   workshops: WorkshopInput[];
+}
+
+interface EventFormValues {
+  title: string;
+  description: string;
+  location: string;
+  category: string;
+  startDate: Date;
+  endDate?: Date;
+  imageUrl?: string;
+  featured: boolean;
+  organizer: number;
+  eventType?: "general" | "conference" | "seated" | "private";
+  seatingMap?: Record<string, any> | null;
+  ticketTypes: TicketTypeInput[];
+  speakers: SpeakerInput[];
+  workshops: WorkshopInput[];
+  addOns: { addOnId: number; isRequired: boolean; maximumQuantity: number }[];
 }
 
 interface CreateEventFormProps {

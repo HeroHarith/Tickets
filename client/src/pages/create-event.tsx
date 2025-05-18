@@ -103,11 +103,12 @@ interface EventFormValues {
   imageUrl?: string;
   featured: boolean;
   organizer: number;
-  eventType?: "general" | "conference" | "seated"; // Typed to match EVENT_TYPES
+  eventType?: "general" | "conference" | "seated" | "private"; // Typed to match EVENT_TYPES
   seatingMap?: Record<string, any> | null; // For seated events
   ticketTypes: TicketTypeInput[];
   speakers: SpeakerInput[];
   workshops: WorkshopInput[];
+  addOns: { addOnId: number; isRequired: boolean; maximumQuantity: number }[]; // Add-ons for the event
 };
 
 const CreateEvent = () => {
@@ -156,7 +157,8 @@ const CreateEvent = () => {
         }
       ],
       speakers: [], // Empty array for speakers - we'll instantiate fully in the addSpeaker function
-      workshops: [] // Empty array for workshops
+      workshops: [], // Empty array for workshops
+      addOns: [] // Empty array for add-ons
     }
   });
   

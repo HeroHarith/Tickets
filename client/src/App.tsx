@@ -37,14 +37,14 @@ import { SubscriptionStatusChecker } from "@/components/domain/subscriptions";
 // Home redirect component to handle special user roles
 function HomeRedirect() {
   const { user } = useAuth();
-  
+
   // If user is center, redirect to center dashboard
   if (user?.role === "center") {
     return <Redirect to="/center" />;
   }
-  
+
   // Admin users will use a separate app
-  
+
   // Render the regular Home component for customers and event managers
   return <Home />;
 }
@@ -56,58 +56,56 @@ function Router() {
         <Route path="/auth" component={AuthPage} />
         <Route path="/payment-success" component={PaymentStatus} />
         <Route path="/payment-cancel" component={PaymentStatus} />
-        <ProtectedRoute path="/payment-confirmation/:sessionId" component={PaymentConfirmation} />
-        
+        <ProtectedRoute
+          path="/payment-confirmation/:sessionId"
+          component={PaymentConfirmation}
+        />
+
         {/* Use conditional home redirect component instead of conditional routes */}
         <ProtectedRoute path="/" component={HomeRedirect} />
-        
+
         {/* Event-related routes (protected by role in the components) */}
         <ProtectedRoute path="/events/:id" component={EventDetails} />
-        <ProtectedRoute 
-          path="/create-event" 
-          component={CreateEvent} 
-          requiredRoles={["eventManager"]} 
+        <ProtectedRoute
+          path="/create-event"
+          component={CreateEvent}
+          requiredRoles={["eventManager"]}
         />
-        <ProtectedRoute 
-          path="/my-tickets" 
-          component={MyTickets} 
+        <ProtectedRoute
+          path="/my-tickets"
+          component={MyTickets}
           requiredRoles={["customer", "eventManager"]}
         />
-        <ProtectedRoute 
-          path="/managed-events" 
-          component={ManagedEvents} 
-          requiredRoles={["eventManager"]} 
+        <ProtectedRoute
+          path="/managed-events"
+          component={ManagedEvents}
+          requiredRoles={["eventManager"]}
         />
-        <ProtectedRoute 
-          path="/sales-reports" 
-          component={SalesReportList} 
-          requiredRoles={["eventManager"]} 
+        <ProtectedRoute
+          path="/sales-reports"
+          component={SalesReportList}
+          requiredRoles={["eventManager"]}
         />
-        <ProtectedRoute 
-          path="/sales-reports/:id" 
-          component={SalesReports} 
-          requiredRoles={["eventManager"]} 
+        <ProtectedRoute
+          path="/sales-reports/:id"
+          component={SalesReports}
+          requiredRoles={["eventManager"]}
         />
-        <ProtectedRoute 
-          path="/ticket-management/:id" 
-          component={TicketManagement} 
-          requiredRoles={["eventManager"]} 
+        <ProtectedRoute
+          path="/ticket-management/:id"
+          component={TicketManagement}
+          requiredRoles={["eventManager"]}
         />
-        <ProtectedRoute 
-          path="/api-documentation" 
-          component={ApiDocumentation} 
-          requiredRoles={["eventManager"]} 
-        />
-        
+
         {/* Common routes for all authenticated users */}
         <ProtectedRoute path="/profile" component={ProfilePage} />
         <ProtectedRoute path="/settings" component={Settings} />
-        <ProtectedRoute 
-          path="/subscriptions" 
-          component={Subscriptions} 
-          requiredRoles={["eventManager", "center"]} 
+        <ProtectedRoute
+          path="/subscriptions"
+          component={Subscriptions}
+          requiredRoles={["eventManager", "center"]}
         />
-        
+
         {/* Center routes */}
         <ProtectedRoute
           path="/center-old"

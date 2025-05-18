@@ -195,7 +195,7 @@ class ThawaniPaymentService {
    * Prepare add-ons for Thawani checkout
    * This formats both custom and existing add-ons into the required Thawani product format
    */
-  prepareAddOns(addOnSelections: AddOnSelection[], eventAddOns: any[] = [], customAddOns: CustomAddOn[] = []): ThawaniProduct[] {
+  prepareAddOns(addOnSelections: any[], eventAddOns: any[] = [], customAddOns: CustomAddOn[] = []): ThawaniProduct[] {
     if (!addOnSelections || addOnSelections.length === 0) {
       return [];
     }
@@ -205,7 +205,7 @@ class ThawaniPaymentService {
       let name, price;
       
       // Handle custom add-ons created during event creation
-      if (typeof addOnId === 'string' && addOnId.startsWith('temp_')) {
+      if (typeof addOnId === 'string' && addOnId.toString().startsWith('temp_')) {
         const customAddOn = customAddOns.find(addon => addon.id === addOnId);
         if (!customAddOn) {
           throw new Error(`Custom add-on with ID ${addOnId} not found`);

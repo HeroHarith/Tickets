@@ -43,9 +43,8 @@ router.post('/create-session', requireLogin, async (req: Request, res: Response)
     // Get event add-ons if needed
     let eventAddOns: any[] = [];
     if (addOnSelections && addOnSelections.length > 0) {
-      // In a production system, this would come from your add-ons service
-      // For now, we'll use a simple implementation
       try {
+        // Use the add-ons service we just created
         const addOnsService = await import('../services/add-ons-service');
         eventAddOns = await addOnsService.default.getEventAddOns(eventId);
       } catch (error) {

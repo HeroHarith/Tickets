@@ -24,10 +24,10 @@ const EventCard = ({ event, ticketTypes, featured = false, className = "" }: Eve
     const maxPrice = Math.max(...prices);
     
     if (minPrice === maxPrice) {
-      return `$${minPrice.toFixed(2)}`;
+      return `${minPrice.toFixed(2)} OMR`;
     }
     
-    return `$${minPrice.toFixed(2)} - $${maxPrice.toFixed(2)}`;
+    return `${minPrice.toFixed(2)} - ${maxPrice.toFixed(2)} OMR`;
   };
   
   // Check ticket availability

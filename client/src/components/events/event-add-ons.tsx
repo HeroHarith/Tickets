@@ -175,7 +175,7 @@ export function EventAddOns({ eventId, onAddOnsSelected, selectedAddOns = [] }: 
                   {addOn.isRequired && (
                     <Badge variant="outline" className="mr-2">Required</Badge>
                   )}
-                  <Badge>${addOn.price}</Badge>
+                  <Badge>{addOn.price} OMR</Badge>
                 </div>
               </div>
             </CardHeader>
@@ -239,7 +239,7 @@ export function EventAddOns({ eventId, onAddOnsSelected, selectedAddOns = [] }: 
             <CardFooter>
               {addOnSelections[addOn.id]?.quantity > 0 && (
                 <div className="w-full text-right font-medium">
-                  Subtotal: ${(parseFloat(addOn.price) * (addOnSelections[addOn.id]?.quantity || 0)).toFixed(2)}
+                  Subtotal: {(parseFloat(addOn.price) * (addOnSelections[addOn.id]?.quantity || 0)).toFixed(2)} OMR
                 </div>
               )}
             </CardFooter>
@@ -252,7 +252,7 @@ export function EventAddOns({ eventId, onAddOnsSelected, selectedAddOns = [] }: 
           <Separator className="my-4" />
           <div className="flex justify-between items-center">
             <div className="text-lg font-medium">Total Add-ons:</div>
-            <div className="text-xl font-bold">${calculateTotalPrice().toFixed(2)}</div>
+            <div className="text-xl font-bold">{calculateTotalPrice().toFixed(2)} OMR</div>
           </div>
           <Button 
             className="w-full mt-4" 

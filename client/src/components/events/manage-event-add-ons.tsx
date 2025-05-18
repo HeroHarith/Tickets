@@ -278,7 +278,7 @@ export function ManageEventAddOns({
                         selected.addOnId === addOn.id && !selected.isCustom
                       )}
                     >
-                      {addOn.name} - ${addOn.price}
+                      {addOn.name} - {addOn.price} OMR
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -338,7 +338,7 @@ export function ManageEventAddOns({
             </div>
             
             <div>
-              <Label htmlFor="add-on-price">Price ($)</Label>
+              <Label htmlFor="add-on-price">Price (OMR)</Label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                   <DollarSign className="h-4 w-4 text-muted-foreground" />

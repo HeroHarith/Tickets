@@ -7,8 +7,10 @@
 import { Router, Request, Response } from 'express';
 import { thawaniPaymentService } from '../services/thawani-payment-service';
 import { optimizedStorage } from '../optimized-storage';
-import { successResponse, errorResponse } from '../utils/response';
-import { isAuthenticated } from '../middleware/auth-middleware';
+import { successResponse, errorResponse } from '../utils/api-response';
+import { requireLogin } from '../middleware/auth-middleware';
+import { db } from '../db';
+import { eq } from 'drizzle-orm';
 
 const router = Router();
 
@@ -16,104 +18,65 @@ const router = Router();
  * Create a payment session for ticket purchase
  * POST /api/payments/create-session
  */
-router.post('/create-session', isAuthenticated, async (req: Request, res: Response) => {
+router.post('/create-session', requireLogin, async (req: Request, res: Response) => {
   try {
     const { 
       ticketSelections, 
-      totalAmount, 
       eventId,
-      addOnSelections = []
+      addOnSelections = [],
+      customAddOns = []
     } = req.body;
 
     if (!ticketSelections || !Array.isArray(ticketSelections) || !eventId) {
-      return errorResponse(res, 400, 'Invalid request data');
+      return res.status(400).json(errorResponse('Invalid request data: ticket selections and event ID are required', 400));
     }
 
-    // Create a unique client reference ID
-    const clientReferenceId = `order_${Date.now()}_${req.user!.id}`;
-    
     // Get the event details
     const event = await optimizedStorage.getEvent(eventId);
     if (!event) {
-      return errorResponse(res, 404, 'Event not found');
+      return res.status(404).json(errorResponse('Event not found', 404));
     }
 
-    // Prepare products array for Thawani
-    const products = [];
-
-    // Add tickets to products
-    for (const selection of ticketSelections) {
-      const ticketType = await optimizedStorage.getTicketType(selection.ticketTypeId);
-      if (!ticketType) {
-        return errorResponse(res, 404, `Ticket type not found: ${selection.ticketTypeId}`);
-      }
-
-      products.push({
-        name: `${event.title} - ${ticketType.name}${selection.eventDate ? ` (${new Date(selection.eventDate).toLocaleDateString()})` : ''}`,
-        quantity: selection.quantity,
-        unit_amount: thawaniPaymentService.formatAmount(ticketType.price)
-      });
-    }
-
-    // Add add-ons to products if any
-    if (addOnSelections && addOnSelections.length > 0) {
-      for (const addOn of addOnSelections) {
-        // For custom add-ons created during event creation
-        if (addOn.isCustom) {
-          products.push({
-            name: `${addOn.name} (Add-on)`,
-            quantity: addOn.quantity,
-            unit_amount: thawaniPaymentService.formatAmount(addOn.price)
-          });
-        } else {
-          // For existing add-ons from the database
-          const addOnDetails = await optimizedStorage.getAddOn(addOn.addOnId);
-          if (!addOnDetails) {
-            return errorResponse(res, 404, `Add-on not found: ${addOn.addOnId}`);
-          }
-          
-          products.push({
-            name: `${addOnDetails.name} (Add-on)`,
-            quantity: addOn.quantity,
-            unit_amount: thawaniPaymentService.formatAmount(addOnDetails.price)
-          });
-        }
-      }
-    }
-
-    // Determine the success and cancel URLs
-    const hostUrl = req.get('host') || '';
-    const protocol = req.protocol;
-    const baseUrl = `${protocol}://${hostUrl}`;
+    // Get all ticket types for this event
+    const ticketTypes = await optimizedStorage.getTicketTypes(eventId);
     
-    const successUrl = `${baseUrl}/payment-success?session_id={session_id}`;
-    const cancelUrl = `${baseUrl}/payment-cancelled?session_id={session_id}`;
-
-    // Create a session with Thawani
-    const sessionId = await thawaniPaymentService.createSession({
-      clientReferenceId,
-      products,
-      successUrl,
-      cancelUrl,
-      metadata: {
-        userId: req.user!.id,
-        eventId,
-        ticketSelections: JSON.stringify(ticketSelections),
-        addOnSelections: JSON.stringify(addOnSelections)
+    // Get event add-ons if needed
+    let eventAddOns: any[] = [];
+    if (addOnSelections && addOnSelections.length > 0) {
+      // In a production system, this would come from your add-ons service
+      // For now, we'll use a simple implementation
+      try {
+        const addOnsService = await import('../services/add-ons-service');
+        eventAddOns = await addOnsService.default.getEventAddOns(eventId);
+      } catch (error) {
+        console.error("Error loading event add-ons:", error);
+        // Continue even if add-ons can't be loaded
       }
-    });
+    }
 
-    // Generate checkout URL
-    const checkoutUrl = thawaniPaymentService.getCheckoutUrl(sessionId);
+    // Create session using the enhanced service
+    try {
+      const { sessionId, checkoutUrl } = await thawaniPaymentService.createTicketSessionWithAddOns(
+        eventId,
+        event.title,
+        ticketSelections,
+        ticketTypes,
+        addOnSelections,
+        eventAddOns,
+        customAddOns,
+        req.user!.id
+      );
 
-    return successResponse(res, {
-      sessionId,
-      checkoutUrl,
-      clientReferenceId
-    }, 'Payment session created successfully');
+      return res.status(200).json(successResponse({
+        sessionId,
+        checkoutUrl
+      }, 200, 'Payment session created successfully'));
+    } catch (error: any) {
+      return res.status(500).json(errorResponse(`Payment session creation failed: ${error.message}`, 500));
+    }
   } catch (error: any) {
     console.error('Error creating payment session:', error);
-    return errorResponse(res, 500, `Failed to create payment session: ${error.message}`);
+    return res.status(500).json(errorResponse(`Failed to create payment session: ${error.message}`, 500));
   }
 });
 
@@ -126,7 +89,7 @@ router.get('/verify/:sessionId', async (req: Request, res: Response) => {
     const { sessionId } = req.params;
     
     if (!sessionId) {
-      return errorResponse(res, 400, 'Session ID is required');
+      return res.status(400).json(errorResponse('Session ID is required', 400));
     }
 
     // Verify the session with Thawani
@@ -134,7 +97,7 @@ router.get('/verify/:sessionId', async (req: Request, res: Response) => {
     
     // If the payment was successful, complete the purchase
     if (sessionData.payment_status === 'paid') {
-      // Extract metadata to get the user and ticket details
+      // Extract metadata
       const metadata = sessionData.metadata || {};
       const userId = metadata.userId ? parseInt(metadata.userId) : undefined;
       const eventId = metadata.eventId ? parseInt(metadata.eventId) : undefined;
@@ -142,10 +105,10 @@ router.get('/verify/:sessionId', async (req: Request, res: Response) => {
       const addOnSelections = metadata.addOnSelections ? JSON.parse(metadata.addOnSelections) : [];
 
       if (!userId || !eventId || !ticketSelections.length) {
-        return errorResponse(res, 400, 'Invalid session metadata');
+        return res.status(400).json(errorResponse('Invalid session metadata', 400));
       }
 
-      // Create the tickets in the database
+      // Create the tickets in the database using the optimized storage
       await optimizedStorage.purchaseTickets({
         userId,
         eventId,
@@ -155,20 +118,20 @@ router.get('/verify/:sessionId', async (req: Request, res: Response) => {
         paymentStatus: 'paid'
       });
 
-      return successResponse(res, {
+      return res.status(200).json(successResponse({
         paymentStatus: sessionData.payment_status,
         clientReferenceId: sessionData.client_reference_id,
         total: sessionData.total_amount / 1000 // Convert from baisa to OMR
-      }, 'Payment successful and tickets created');
+      }, 200, 'Payment successful and tickets created'));
     } else {
-      return successResponse(res, {
+      return res.status(200).json(successResponse({
         paymentStatus: sessionData.payment_status,
         clientReferenceId: sessionData.client_reference_id
-      }, 'Payment not completed');
+      }, 200, 'Payment not completed'));
     }
   } catch (error: any) {
     console.error('Error verifying payment session:', error);
-    return errorResponse(res, 500, `Failed to verify payment: ${error.message}`);
+    return res.status(500).json(errorResponse(`Failed to verify payment: ${error.message}`, 500));
   }
 });
 
@@ -181,21 +144,21 @@ router.get('/status/:sessionId', async (req: Request, res: Response) => {
     const { sessionId } = req.params;
     
     if (!sessionId) {
-      return errorResponse(res, 400, 'Session ID is required');
+      return res.status(400).json(errorResponse('Session ID is required', 400));
     }
 
     // Verify the session with Thawani
     const sessionData = await thawaniPaymentService.verifySession(sessionId);
     
-    return successResponse(res, {
+    return res.status(200).json(successResponse({
       paymentStatus: sessionData.payment_status,
       clientReferenceId: sessionData.client_reference_id,
-      total: sessionData.total_amount / 1000,
+      total: sessionData.total_amount / 1000, // Convert from baisa to OMR
       products: sessionData.products
-    }, 'Payment status retrieved');
+    }, 200, 'Payment status retrieved'));
   } catch (error: any) {
     console.error('Error getting payment status:', error);
-    return errorResponse(res, 500, `Failed to get payment status: ${error.message}`);
+    return res.status(500).json(errorResponse(`Failed to get payment status: ${error.message}`, 500));
   }
 });
 
@@ -210,7 +173,7 @@ router.post('/webhook', async (req: Request, res: Response) => {
     
     const { event, data } = req.body;
     
-    if (event === 'payment_success') {
+    if (event === 'payment_completed' || event === 'payment_success') {
       const sessionId = data.session_id;
       
       // Update ticket payment status
@@ -224,6 +187,25 @@ router.post('/webhook', async (req: Request, res: Response) => {
     console.error('Error handling webhook:', error);
     return res.status(500).send(`Webhook error: ${error.message}`);
   }
+});
+
+/**
+ * Success and cancel routes for payment redirection
+ */
+router.get('/success', (req: Request, res: Response) => {
+  const sessionId = req.query.session_id as string;
+  return res.status(200).json(successResponse({ 
+    message: 'Payment successful',
+    sessionId 
+  }, 200, 'Payment completed successfully'));
+});
+
+router.get('/cancel', (req: Request, res: Response) => {
+  const sessionId = req.query.session_id as string;
+  return res.status(200).json(successResponse({ 
+    message: 'Payment canceled',
+    sessionId 
+  }, 200, 'Payment was canceled'));
 });
 
 export default router;

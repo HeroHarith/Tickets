@@ -341,7 +341,7 @@ export function ManageEventAddOns({
               <Label htmlFor="add-on-price">Price (OMR)</Label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  <span className="h-4 w-4 text-muted-foreground font-bold text-sm">OMR</span>
                 </div>
                 <Input
                   id="add-on-price"

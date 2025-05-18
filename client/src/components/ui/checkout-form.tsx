@@ -241,17 +241,17 @@ const CheckoutForm = ({ orderSummary, onSubmit, isPending }: CheckoutFormProps) 
               {orderSummary.items.map((item, index) => (
                 <div key={index} className="flex justify-between">
                   <span>{item.name} x{item.quantity}</span>
-                  <span>${(item.price * item.quantity).toFixed(2)}</span>
+                  <span>{(item.price * item.quantity).toFixed(2)} OMR</span>
                 </div>
               ))}
               <div className="flex justify-between text-sm text-gray-500">
                 <span>Service Fee</span>
-                <span>${orderSummary.serviceFee.toFixed(2)}</span>
+                <span>{orderSummary.serviceFee.toFixed(2)} OMR</span>
               </div>
               <Separator />
               <div className="flex justify-between font-bold">
                 <span>Total</span>
-                <span>${orderSummary.total.toFixed(2)}</span>
+                <span>{orderSummary.total.toFixed(2)} OMR</span>
               </div>
             </div>
           </CardContent>

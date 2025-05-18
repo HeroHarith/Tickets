@@ -200,7 +200,7 @@ export function SubscriptionDetails({ subscription, onCancelled, compact = false
                 {payments.map((payment) => (
                   <div key={payment.id} className="flex justify-between items-center p-2 border rounded">
                     <div>
-                      <p className="font-medium">${parseFloat(payment.amount.toString()).toFixed(2)}</p>
+                      <p className="font-medium">{parseFloat(payment.amount.toString()).toFixed(2)} OMR</p>
                       <p className="text-xs text-muted-foreground">
                         {payment.paymentDate ? format(new Date(payment.paymentDate), "PPP") : "N/A"}
                       </p>

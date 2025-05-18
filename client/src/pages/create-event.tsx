@@ -93,6 +93,9 @@ const eventFormSchema = createEventSchema.extend({
 });
 
 // Define the EventFormValues interface to match the one in create-event-form.tsx
+// Define a consistent event type to use throughout the form
+type EventType = "general" | "conference" | "seated" | "private";
+
 interface EventFormValues {
   title: string;
   description: string;
@@ -103,7 +106,7 @@ interface EventFormValues {
   imageUrl?: string;
   featured: boolean;
   organizer: number;
-  eventType?: "general" | "conference" | "seated" | "private"; // Typed to match EVENT_TYPES
+  eventType?: EventType; // Typed to match EVENT_TYPES
   seatingMap?: Record<string, any> | null; // For seated events
   ticketTypes: TicketTypeInput[];
   speakers: SpeakerInput[];

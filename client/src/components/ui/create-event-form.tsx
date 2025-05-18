@@ -17,6 +17,9 @@ import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2, Plus, ChevronDown, ChevronUp, MapPin, Calendar, Tag, Users, Gift } from "lucide-react";
 import { EVENT_TYPES } from "@shared/schema";
+
+// Define a consistent event type to use throughout the form
+type EventType = "general" | "conference" | "seated" | "private";
 import { ManageEventAddOns } from "@/components/events/manage-event-add-ons";
 
 interface TicketTypeInput {
@@ -79,7 +82,7 @@ interface EventFormValues {
   imageUrl?: string;
   featured: boolean;
   organizer: number;
-  eventType?: "general" | "conference" | "seated" | "private";
+  eventType?: EventType;
   seatingMap?: Record<string, any> | null;
   ticketTypes: TicketTypeInput[];
   speakers: SpeakerInput[];
@@ -1300,7 +1303,30 @@ const CreateEventForm = ({ form, onSubmit, isPending, categories }: CreateEventF
           </Button>
         </div>
         
-        <div className="flex justify-end">
+        {/* Add-ons Section */}
+        <Separator className="my-6" />
+        <div className="mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h3 className="text-lg font-medium flex items-center">
+                <Gift className="h-5 w-5 mr-2 text-primary" />
+                Event Add-ons
+              </h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Add optional extras that attendees can purchase along with their tickets
+              </p>
+            </div>
+          </div>
+          
+          <ManageEventAddOns 
+            onAddOnsChange={(addOns) => {
+              form.setValue('addOns', addOns);
+            }}
+            initialAddOns={form.getValues('addOns')}
+          />
+        </div>
+        
+        <div className="flex justify-end mt-6">
           <Button 
             type="submit" 
             className="bg-primary hover:bg-primary/90"

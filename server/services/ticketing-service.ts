@@ -8,12 +8,16 @@ import {
   tickets,
   users,
   eventAttendees,
+  eventAddOns,
+  eventToAddOns,
   type Event,
   type TicketType,
   type Ticket,
   type User,
   type EventAttendee,
-  type InsertEventAttendee
+  type InsertEventAttendee,
+  type EventAddOn,
+  type AddOnSelection
 } from '@shared/schema';
 import { 
   type EventSearchParams,
@@ -224,6 +228,33 @@ export class TicketingService {
     const orderId = Date.now().toString() + Math.floor(Math.random() * 1000);
     const purchasedTickets: Ticket[] = [];
     
+    // Get add-ons for the event
+    let eventAddOnsList: EventAddOn[] = [];
+    if (purchase.addOnSelections && purchase.addOnSelections.length > 0) {
+      const result = await db
+        .select()
+        .from(eventAddOns)
+        .innerJoin(
+          eventToAddOns, 
+          and(
+            eq(eventToAddOns.addOnId, eventAddOns.id),
+            eq(eventToAddOns.eventId, purchase.eventId)
+          )
+        )
+        .where(
+          inArray(
+            eventAddOns.id, 
+            purchase.addOnSelections.map(addOn => addOn.addOnId)
+          )
+        );
+      
+      eventAddOnsList = result.map(item => ({
+        ...item.eventAddOns,
+        isRequired: item.eventToAddOns.isRequired,
+        maximumQuantity: item.eventToAddOns.maximumQuantity
+      }));
+    }
+    
     // Process each ticket selection
     for (const selection of purchase.ticketSelections) {
       const ticketType = await this.getTicketType(selection.ticketTypeId);
@@ -236,8 +267,42 @@ export class TicketingService {
         throw new Error(`Not enough tickets available for ${ticketType.name}`);
       }
       
-      // Calculate total price
-      const totalPrice = parseFloat(ticketType.price.toString()) * selection.quantity;
+      // Calculate ticket base price
+      let totalPrice = parseFloat(ticketType.price.toString()) * selection.quantity;
+      
+      // Process add-ons if present
+      let purchasedAddOns = null;
+      if (purchase.addOnSelections && purchase.addOnSelections.length > 0) {
+        purchasedAddOns = [];
+        
+        for (const addOnSelection of purchase.addOnSelections) {
+          const matchingAddOn = eventAddOnsList.find(addOn => addOn.id === addOnSelection.addOnId);
+          
+          if (!matchingAddOn) {
+            throw new Error(`Add-on ${addOnSelection.addOnId} not found or not available for this event`);
+          }
+          
+          // Validate quantity
+          if (matchingAddOn.maximumQuantity && addOnSelection.quantity > matchingAddOn.maximumQuantity) {
+            throw new Error(`Maximum quantity for add-on ${matchingAddOn.name} is ${matchingAddOn.maximumQuantity}`);
+          }
+          
+          // Calculate add-on price
+          const addOnPrice = parseFloat(matchingAddOn.price.toString()) * addOnSelection.quantity;
+          totalPrice += addOnPrice;
+          
+          // Add to purchased add-ons
+          purchasedAddOns.push({
+            id: matchingAddOn.id,
+            name: matchingAddOn.name,
+            description: matchingAddOn.description,
+            quantity: addOnSelection.quantity,
+            unitPrice: matchingAddOn.price.toString(),
+            totalPrice: addOnPrice.toString(),
+            note: addOnSelection.note || null
+          });
+        }
+      }
       
       // Create ticket record
       const [ticket] = await db.insert(tickets).values({
@@ -252,6 +317,8 @@ export class TicketingService {
         // Handle gift tickets
         isGift: selection.isGift || false,
         giftRecipients: selection.giftRecipients || null,
+        // Add purchased add-ons
+        purchasedAddOns
       }).returning();
       
       // Update available quantity

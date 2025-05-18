@@ -93,9 +93,14 @@ router.post('/tickets', requireRole(["customer", "admin"]), async (req: Request,
     // Add add-ons to products if any
     if (validatedData.addOnSelections && validatedData.addOnSelections.length > 0) {
       for (const addOn of validatedData.addOnSelections) {
+        // Ensure price is a number
         const addOnPrice = typeof addOn.price === 'string' ? parseFloat(addOn.price) : addOn.price;
+        
         // Convert from OMR to baisa (1 OMR = 1000 baisa) for Thawani
+        // Make sure it's always a positive integer value
         const unitAmount = Math.max(1, Math.round(addOnPrice * 1000));
+        
+        console.log(`Adding add-on: ${addOn.name || `#${addOn.addOnId}`}, Price: ${addOnPrice} OMR (${unitAmount} baisa)`);
         
         products.push({
           name: `Add-on: ${addOn.name || `#${addOn.addOnId}`}`,
@@ -163,24 +168,30 @@ router.post('/tickets', requireRole(["customer", "admin"]), async (req: Request,
         body: JSON.stringify(requestData)
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Thawani API error:', errorText);
-        return res.status(500).json(errorResponse(`Payment gateway error: ${errorText}`, 500));
+      const responseText = await response.text();
+      console.log('Thawani API response:', responseText);
+      
+      try {
+        const result = JSON.parse(responseText);
+        
+        if (!response.ok || !result.success) {
+          console.error('Thawani payment session creation failed:', result);
+          return res.status(500).json(errorResponse(`Payment error: ${result.description || 'Unknown error'}`, 500));
+        }
+        
+        // Continue with the successful result
+        const sessionData = result.data;
+        const sessionId = sessionData.session_id;
+        const checkoutUrl = `${THAWANI_CHECKOUT_URL}/${sessionId}?key=${THAWANI_PUBLIC_KEY}`;
+
+        return res.json(successResponse({
+          session_id: sessionId,
+          checkout_url: checkoutUrl
+        }, 200, 'Payment session created'));
+      } catch (error) {
+        console.error('Error parsing Thawani response:', error);
+        return res.status(500).json(errorResponse(`Failed to process payment response: ${error.message}`, 500));
       }
-
-      const result = await response.json() as any;
-      if (!result.success) {
-        return res.status(500).json(errorResponse(`Payment error: ${result.message}`, 500));
-      }
-
-      const sessionId = result.data.session_id;
-      const checkoutUrl = `${THAWANI_CHECKOUT_URL}/${sessionId}?key=${THAWANI_PUBLIC_KEY}`;
-
-      return res.json(successResponse({
-        session_id: sessionId,
-        checkout_url: checkoutUrl
-      }, 200, 'Payment session created'));
     } catch (error: any) {
       console.error('Error creating payment session:', error);
       return res.status(500).json(errorResponse(`Failed to create payment session: ${error.message}`, 500));

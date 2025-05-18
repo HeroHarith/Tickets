@@ -595,7 +595,7 @@ const EventDetails = () => {
                       <div className="text-sm text-gray-500">{ticketType.description}</div>
                     </div>
                     <div className="text-right">
-                      <div className="font-semibold">${Number(ticketType.price).toFixed(2)}</div>
+                      <div className="font-semibold">{Number(ticketType.price).toFixed(2)} OMR</div>
                       <div className={`text-sm ${
                         ticketType.availableQuantity === 0 
                           ? "text-gray-500" 
@@ -631,7 +631,7 @@ const EventDetails = () => {
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <span className="font-medium">{ticketType.name}</span>
-                      <span className="text-gray-500 ml-2">(${Number(ticketType.price).toFixed(2)} each)</span>
+                      <span className="text-gray-500 ml-2">({Number(ticketType.price).toFixed(2)} OMR each)</span>
                     </div>
                     <div className="flex items-center">
                       <button 

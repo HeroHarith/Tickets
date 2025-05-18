@@ -229,7 +229,7 @@ export class TicketingService {
     const purchasedTickets: Ticket[] = [];
     
     // Get add-ons for the event
-    let eventAddOnsList: EventAddOn[] = [];
+    let eventAddOnsList: (EventAddOn & { isRequired?: boolean; maximumQuantity?: number })[] = [];
     if (purchase.addOnSelections && purchase.addOnSelections.length > 0) {
       const result = await db
         .select()
@@ -249,9 +249,9 @@ export class TicketingService {
         );
       
       eventAddOnsList = result.map(item => ({
-        ...item.eventAddOns,
-        isRequired: item.eventToAddOns.isRequired,
-        maximumQuantity: item.eventToAddOns.maximumQuantity
+        ...item.event_add_ons,
+        isRequired: item.event_to_add_ons.isRequired,
+        maximumQuantity: item.event_to_add_ons.maximumQuantity
       }));
     }
     
@@ -282,9 +282,10 @@ export class TicketingService {
             throw new Error(`Add-on ${addOnSelection.addOnId} not found or not available for this event`);
           }
           
-          // Validate quantity
-          if (matchingAddOn.maximumQuantity && addOnSelection.quantity > matchingAddOn.maximumQuantity) {
-            throw new Error(`Maximum quantity for add-on ${matchingAddOn.name} is ${matchingAddOn.maximumQuantity}`);
+          // Validate quantity if maximumQuantity constraint exists
+          const maxQuantity = matchingAddOn.maximumQuantity;
+          if (maxQuantity && addOnSelection.quantity > maxQuantity) {
+            throw new Error(`Maximum quantity for add-on ${matchingAddOn.name} is ${maxQuantity}`);
           }
           
           // Calculate add-on price

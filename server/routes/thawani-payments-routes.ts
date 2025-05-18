@@ -71,10 +71,17 @@ router.post('/tickets', requireRole(["customer", "admin"]), async (req: Request,
         return res.status(404).json(errorResponse(`Ticket type not found: ${item.ticketTypeId}`, 404));
       }
 
-      // Handle zero price tickets - Thawani might not accept 0 as a valid price
+      // Handle zero price tickets - Thawani doesn't accept 0 as a valid price
       // Thawani requires prices in baisa (1 OMR = 1000 baisa)
-      // If the price is already in OMR, we need to convert it to baisa
-      const unitAmount = Math.max(1, Math.round((item.subtotal / item.quantity) * 1000));
+      
+      // First, calculate the unit price in OMR (subtotal / quantity)
+      const unitPriceOMR = item.subtotal / item.quantity;
+      
+      // Convert from OMR to baisa (1 OMR = 1000 baisa)
+      // Make sure it's always a positive integer value
+      const unitAmount = Math.max(1, Math.round(unitPriceOMR * 1000));
+      
+      console.log(`Adding ticket: ${ticketType.name}, Price: ${unitPriceOMR} OMR (${unitAmount} baisa)`);
       
       products.push({
         name: `${event.title} - ${ticketType.name}`,
@@ -128,6 +135,24 @@ router.post('/tickets', requireRole(["customer", "admin"]), async (req: Request,
         customerDetails: JSON.stringify(validatedData.customerDetails)
       };
 
+      // Logging the request data to debug
+      const requestData = {
+        client_reference_id: clientReferenceId,
+        mode: 'payment',
+        products,
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        customer: {
+          first_name: customerDetails.firstName,
+          last_name: customerDetails.lastName,
+          email: customerDetails.email,
+          phone: customerDetails.phone
+        }
+        // Don't include metadata as it might not be supported by Thawani
+      };
+      
+      console.log('Thawani payment request:', JSON.stringify(requestData, null, 2));
+      
       // Create a Thawani payment session
       const response = await fetch(`${THAWANI_API_URL}/checkout/session`, {
         method: 'POST',
@@ -135,14 +160,7 @@ router.post('/tickets', requireRole(["customer", "admin"]), async (req: Request,
           'Content-Type': 'application/json',
           'thawani-api-key': THAWANI_API_KEY!
         },
-        body: JSON.stringify({
-          client_reference_id: clientReferenceId,
-          mode: 'payment',
-          products,
-          success_url: successUrl,
-          cancel_url: cancelUrl,
-          metadata
-        })
+        body: JSON.stringify(requestData)
       });
 
       if (!response.ok) {

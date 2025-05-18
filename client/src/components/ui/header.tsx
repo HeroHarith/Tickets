@@ -19,7 +19,7 @@ const UserProfile = () => {
   if (!user) {
     return (
       <Link href="/auth">
-        <Button variant="outline">Login</Button>
+        <Button variant="outline" className="border-accent text-accent hover:bg-accent hover:text-black">Login</Button>
       </Link>
     );
   }
@@ -121,13 +121,13 @@ const Header = () => {
   const isCenter = user && user.role === 'center';
 
   return (
-    <header className="bg-white shadow-sm">
+    <header className="bg-black text-white shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
-            <Link href="/" className="text-primary text-xl font-bold font-poppins flex items-center">
-              <img src="/src/assets/logo.png" alt="TicketU Logo" className="h-8 mr-2" />
-              TicketU
+            <Link href="/" className="text-white text-xl font-bold font-poppins flex items-center">
+              <img src="/logo.png" alt="TicketU Logo" className="h-8 mr-2" />
+              <span className="text-accent">Ticket</span>U
             </Link>
           </div>
           
@@ -136,13 +136,13 @@ const Header = () => {
               <>
                 <Link 
                   href="/" 
-                  className={`${location === '/' ? 'text-primary' : 'text-gray-700'} hover:text-primary px-3 py-2 rounded-md text-sm font-medium`}
+                  className={`${location === '/' ? 'text-accent' : 'text-white'} hover:text-accent px-3 py-2 rounded-md text-sm font-medium`}
                 >
                   Browse Events
                 </Link>
                 <Link 
                   href="/my-tickets" 
-                  className={`${location === '/my-tickets' ? 'text-primary' : 'text-gray-700'} hover:text-primary px-3 py-2 rounded-md text-sm font-medium`}
+                  className={`${location === '/my-tickets' ? 'text-accent' : 'text-white'} hover:text-accent px-3 py-2 rounded-md text-sm font-medium`}
                 >
                   My Tickets
                 </Link>
@@ -152,20 +152,20 @@ const Header = () => {
               <>
                 <Link 
                   href="/managed-events" 
-                  className={`${location === '/managed-events' ? 'text-primary' : 'text-gray-700'} hover:text-primary px-3 py-2 rounded-md text-sm font-medium`}
+                  className={`${location === '/managed-events' ? 'text-accent' : 'text-white'} hover:text-accent px-3 py-2 rounded-md text-sm font-medium`}
                 >
                   Managed Events
                 </Link>
                 <Link 
                   href="/sales-reports"
-                  className={`${location.startsWith('/sales-reports') ? 'text-primary' : 'text-gray-700'} hover:text-primary px-3 py-2 rounded-md text-sm font-medium`}
+                  className={`${location.startsWith('/sales-reports') ? 'text-accent' : 'text-white'} hover:text-accent px-3 py-2 rounded-md text-sm font-medium`}
                 >
                   Sales Reports
                 </Link>
                 {user.role === 'eventManager' && (
                   <Link 
                     href="/api-documentation"
-                    className={`${location === '/api-documentation' ? 'text-primary' : 'text-gray-700'} hover:text-primary px-3 py-2 rounded-md text-sm font-medium flex items-center`}
+                    className={`${location === '/api-documentation' ? 'text-accent' : 'text-white'} hover:text-accent px-3 py-2 rounded-md text-sm font-medium flex items-center`}
                   >
                     <Code className="h-4 w-4 mr-1" />
                     API Docs
@@ -174,7 +174,7 @@ const Header = () => {
                 {user.role === 'admin' && (
                   <Link 
                     href="/admin"
-                    className={`${location === '/admin' ? 'text-primary' : 'text-gray-700'} hover:text-primary px-3 py-2 rounded-md text-sm font-medium`}
+                    className={`${location === '/admin' ? 'text-accent' : 'text-white'} hover:text-accent px-3 py-2 rounded-md text-sm font-medium`}
                   >
                     Admin Dashboard
                   </Link>
@@ -184,7 +184,7 @@ const Header = () => {
             {isCenter && (
               <Link 
                 href="/center"
-                className={`${location === '/center' ? 'text-primary' : 'text-gray-700'} hover:text-primary px-3 py-2 rounded-md text-sm font-medium flex items-center`}
+                className={`${location === '/center' ? 'text-accent' : 'text-white'} hover:text-accent px-3 py-2 rounded-md text-sm font-medium flex items-center`}
               >
                 <Building2 className="h-4 w-4 mr-1" />
                 Venue Dashboard

@@ -125,8 +125,8 @@ router.post('/tickets', requireRole(["customer", "admin"]), async (req: Request,
     const protocol = req.protocol;
     const baseUrl = `${protocol}://${hostUrl}`;
     
-    const successUrl = `${baseUrl}/payment-success?session_id={session_id}`;
-    const cancelUrl = `${baseUrl}/payment-cancelled?session_id={session_id}`;
+    const successUrl = `${baseUrl}/payment-status?session_id={sessionId}&status=success`;
+    const cancelUrl = `${baseUrl}/payment-status?session_id={sessionId}&status=failed`;
 
     try {
       // Create metadata for post-payment processing

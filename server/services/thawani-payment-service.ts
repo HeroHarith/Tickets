@@ -289,8 +289,8 @@ class ThawaniPaymentService {
       // Determine the success and cancel URLs
       // These would typically be set based on environment or configuration
       const baseUrl = process.env.BASE_URL || 'http://localhost:5000';
-      const successUrl = `${baseUrl}/payment-success?session_id={session_id}`;
-      const cancelUrl = `${baseUrl}/payment-failed?session_id={session_id}`;
+      const successUrl = `${baseUrl}/payment-status?session_id={sessionId}&status=success`;
+      const cancelUrl = `${baseUrl}/payment-status?session_id={sessionId}&status=failed`;
       
       // Create session with appropriate metadata
       const sessionId = await this.createSession({

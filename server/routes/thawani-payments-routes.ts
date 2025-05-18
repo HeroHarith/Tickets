@@ -72,8 +72,9 @@ router.post('/tickets', requireRole(["customer", "admin"]), async (req: Request,
       }
 
       // Handle zero price tickets - Thawani might not accept 0 as a valid price
-      // So we set a minimum price of 1 baisa (0.001 OMR) for free tickets
-      const unitAmount = Math.max(1, Math.round(item.subtotal / item.quantity));
+      // Thawani requires prices in baisa (1 OMR = 1000 baisa)
+      // If the price is already in OMR, we need to convert it to baisa
+      const unitAmount = Math.max(1, Math.round((item.subtotal / item.quantity) * 1000));
       
       products.push({
         name: `${event.title} - ${ticketType.name}`,
@@ -86,8 +87,8 @@ router.post('/tickets', requireRole(["customer", "admin"]), async (req: Request,
     if (validatedData.addOnSelections && validatedData.addOnSelections.length > 0) {
       for (const addOn of validatedData.addOnSelections) {
         const addOnPrice = typeof addOn.price === 'string' ? parseFloat(addOn.price) : addOn.price;
-        // Convert to smallest currency unit (baisa for OMR)
-        const unitAmount = Math.max(1, Math.round(addOnPrice * 1000 / addOn.quantity));
+        // Convert from OMR to baisa (1 OMR = 1000 baisa) for Thawani
+        const unitAmount = Math.max(1, Math.round(addOnPrice * 1000));
         
         products.push({
           name: `Add-on: ${addOn.name || `#${addOn.addOnId}`}`,

@@ -19,7 +19,7 @@ const UserProfile = () => {
   if (!user) {
     return (
       <Link href="/auth">
-        <Button variant="outline" className="border-accent text-accent hover:bg-accent hover:text-black">Login</Button>
+        <Button variant="outline" className="border-accent text-accent hover:bg-accent hover:text-white">Login</Button>
       </Link>
     );
   }

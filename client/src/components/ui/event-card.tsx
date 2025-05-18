@@ -89,7 +89,7 @@ const EventCard = ({ event, ticketTypes, featured = false, className = "" }: Eve
           className="w-full h-full object-cover"
         />
         {featured && (
-          <div className="absolute top-4 right-4 bg-accent text-black text-xs font-bold px-2 py-1 rounded">
+          <div className="absolute top-4 right-4 bg-accent text-white text-xs font-bold px-2 py-1 rounded">
             FEATURED
           </div>
         )}
@@ -101,7 +101,7 @@ const EventCard = ({ event, ticketTypes, featured = false, className = "" }: Eve
             <h3 className="text-lg font-semibold font-poppins text-gray-900 mb-1">{event.title}</h3>
             <p className="text-sm text-gray-600 mb-2">{event.location}</p>
           </div>
-          <div className="bg-black text-accent text-xs font-bold px-2 py-1 rounded">
+          <div className="bg-black text-white text-xs font-bold px-2 py-1 rounded border border-accent">
             {event.category.toUpperCase()}
           </div>
         </div>
@@ -127,7 +127,7 @@ const EventCard = ({ event, ticketTypes, featured = false, className = "" }: Eve
           <Link href={`/events/${event.id}`} className="flex-1">
             <Button 
               variant="default" 
-              className="w-full bg-accent text-black hover:bg-accent/90 hover:text-black font-semibold"
+              className="w-full bg-accent text-white hover:bg-accent/90 hover:text-white font-semibold"
               disabled={availability.text === "Sold Out"}
             >
               {availability.text === "Sold Out" ? "Sold Out" : "Get Tickets"}

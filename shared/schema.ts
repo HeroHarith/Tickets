@@ -101,6 +101,28 @@ export const attendeeDetailsSchema = z.object({
   specialRequirements: z.string().optional(),
 });
 
+// Event add-ons model for paid options
+export const eventAddOns = pgTable("event_add_ons", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  price: numeric("price", { precision: 10, scale: 2 }).notNull(),
+  category: text("category").default("general").notNull(), // Type of add-on: general, vip, accommodation, merchandise, etc.
+  imageUrl: text("image_url"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Event to add-ons relation model (many-to-many)
+export const eventToAddOns = pgTable("event_to_add_ons", {
+  id: serial("id").primaryKey(),
+  eventId: integer("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  addOnId: integer("add_on_id").notNull().references(() => eventAddOns.id, { onDelete: "cascade" }),
+  isRequired: boolean("is_required").default(false).notNull(), // Whether this add-on is required for the event
+  maximumQuantity: integer("maximum_quantity").default(1).notNull(), // Maximum quantity a user can purchase
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Event attendees model for private events
 export const eventAttendees = pgTable("event_attendees", {
   id: serial("id").primaryKey(),
@@ -175,6 +197,35 @@ export const insertTicketSchema = createInsertSchema(tickets).omit({
   id: true,
 });
 
+// Event AddOn Relations
+export const eventAddOnsRelations = relations(eventAddOns, ({ many }) => ({
+  eventRelations: many(eventToAddOns)
+}));
+
+export const eventToAddOnsRelations = relations(eventToAddOns, ({ one }) => ({
+  event: one(events, {
+    fields: [eventToAddOns.eventId],
+    references: [events.id]
+  }),
+  addOn: one(eventAddOns, {
+    fields: [eventToAddOns.addOnId],
+    references: [eventAddOns.id]
+  })
+}));
+
+// This block will be deleted as we will merge with the existing eventsRelations below
+
+// Insert schemas for the add-ons
+export const insertEventAddOnSchema = createInsertSchema(eventAddOns).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertEventToAddOnSchema = createInsertSchema(eventToAddOns).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -190,6 +241,12 @@ export type InsertTicket = z.infer<typeof insertTicketSchema>;
 
 export type EventAttendee = typeof eventAttendees.$inferSelect;
 export type InsertEventAttendee = z.infer<typeof insertEventAttendeeSchema>;
+
+export type EventAddOn = typeof eventAddOns.$inferSelect;
+export type InsertEventAddOn = z.infer<typeof insertEventAddOnSchema>;
+
+export type EventToAddOn = typeof eventToAddOns.$inferSelect;
+export type InsertEventToAddOn = z.infer<typeof insertEventToAddOnSchema>;
 
 // Extended schemas for validation
 export const createEventSchema = insertEventSchema.extend({

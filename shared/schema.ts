@@ -91,6 +91,8 @@ export const tickets = pgTable("tickets", {
   passStatus: text("pass_status"), // Status of the pass: "available", "generated", "added_to_wallet"
   checkInStatus: text("check_in_status"), // Status of check-in: "not_checked", "checked_in"
   badgeInfo: jsonb("badge_info"), // Information to display on a conference badge
+  // Add-ons information
+  purchasedAddOns: jsonb("purchased_add_ons"), // Array of purchased add-ons with quantities and prices
 });
 
 // Customer details schema for ticket purchase
@@ -275,6 +277,15 @@ export const createEventSchema = insertEventSchema.extend({
 
 export type CreateEventInput = z.infer<typeof createEventSchema>;
 
+// Define schema for add-on selection
+export const addOnSelectionSchema = z.object({
+  addOnId: z.number(),
+  quantity: z.number().min(1, "At least one quantity must be selected"),
+  note: z.string().optional(),
+});
+
+export type AddOnSelection = z.infer<typeof addOnSelectionSchema>;
+
 export const purchaseTicketSchema = z.object({
   ticketSelections: z.array(
     z.object({
@@ -304,6 +315,10 @@ export const purchaseTicketSchema = z.object({
       ).optional().default([]),
     })
   ).min(1, "At least one ticket must be selected"),
+  // Add-ons selection for the entire purchase
+  addOnSelections: z.array(addOnSelectionSchema)
+    .optional()
+    .default([]),
   eventId: z.number(),
   isDigitalPass: z.boolean().optional().default(false),
   passType: z.enum(['standard', 'apple-wallet', 'google-wallet']).optional(),
@@ -777,4 +792,7 @@ export const eventsRelations = relations(events, ({ many }) => ({
   shares: many(eventShares),
   speakers: many(speakers),
   workshops: many(workshops),
+  tickets: many(tickets),
+  attendees: many(eventAttendees),
+  addOnRelations: many(eventToAddOns)
 }));
